@@ -91,7 +91,7 @@ function PinPadModal({ title, subtitle, error, busy, onSubmit, onClose }) {
         </div>
       </div>
       <div className="mb-3"><ErrorNote message={error} /></div>
-      <div className="mx-auto grid max-w-[240px] grid-cols-3 gap-2">
+      <div className="pos-pinpad mx-auto grid max-w-[240px] grid-cols-3 gap-2">
         {PIN_PAD_KEYS.map((d) => (
           <button
             key={d}
