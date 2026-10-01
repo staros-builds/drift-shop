@@ -1,0 +1,316 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Visible keyboard focus everywhere (accent ring, theme-aware). */
+:focus-visible {
+  outline: 2px solid var(--os-accent);
+  outline-offset: 2px;
+}
+
+/* ---- Drift theme tokens ---- */
+:root,
+html[data-theme='daybreak'],
+html[data-theme='light'] {
+  color-scheme: light;
+  --os-bg: #faf7f2; /* paper */
+  --os-surface: #fffdf9; /* warm card surface */
+  --os-ink: #1c1917; /* ink text */
+  --os-muted: #78716c; /* warm gray */
+  --os-accent: #5e2b97; /* LFDD violet (brand) */
+  --os-accent-ink: #ffffff;
+  --os-border: #e7e0d3; /* warm hairline */
+  --os-shadow: 0 8px 30px rgba(28, 25, 23, 0.08);
+  --os-shadow-win: 0 18px 60px rgba(28, 25, 23, 0.16);
+}
+
+html[data-theme='nightshift'],
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --os-bg: #16130f; /* deep warm charcoal */
+  --os-surface: #211c16;
+  --os-ink: #f1eae0;
+  --os-muted: #a89c8d;
+  --os-accent: #b794e6; /* violet clair */
+  --os-accent-ink: #16130f;
+  --os-border: #3a322a;
+  --os-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+  --os-shadow-win: 0 18px 60px rgba(0, 0, 0, 0.55);
+}
+
+/* Window/drop shadows follow the theme (unlayered beats the Tailwind utility). */
+.shadow-win {
+  box-shadow: var(--os-shadow-win);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: 'Avenir Next', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--os-bg);
+  color: var(--os-ink);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+/* ---- Built-in wallpapers (all real CSS, no images) ---- */
+.wallpaper-paper-grain {
+  background-color: var(--os-bg);
+  background-image: radial-gradient(rgba(28, 25, 23, 0.045) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+.wallpaper-linen {
+  background-color: var(--os-bg);
+  background-image:
+    repeating-linear-gradient(45deg, rgba(28, 25, 23, 0.03) 0 2px, transparent 2px 6px),
+    repeating-linear-gradient(-45deg, rgba(28, 25, 23, 0.03) 0 2px, transparent 2px 6px);
+}
+.wallpaper-dusk {
+  background: linear-gradient(160deg, #2b2118 0%, #16130f 70%);
+}
+html[data-theme='daybreak'] .wallpaper-dusk,
+html[data-theme='light'] .wallpaper-dusk {
+  background: linear-gradient(160deg, #f3e4cf 0%, #e9d9bd 70%);
+}
+/* Keep the paper textures visible on dark backgrounds. */
+html[data-theme='nightshift'] .wallpaper-paper-grain,
+html[data-theme='dark'] .wallpaper-paper-grain {
+  background-image: radial-gradient(rgba(241, 234, 224, 0.05) 1px, transparent 1px);
+}
+html[data-theme='nightshift'] .wallpaper-linen,
+html[data-theme='dark'] .wallpaper-linen {
+  background-image:
+    repeating-linear-gradient(45deg, rgba(241, 234, 224, 0.035) 0 2px, transparent 2px 6px),
+    repeating-linear-gradient(-45deg, rgba(241, 234, 224, 0.035) 0 2px, transparent 2px 6px);
+}
+.wallpaper-plain {
+  background: var(--os-bg);
+}
+
+/* ---- Generated image wallpapers (public/wallpapers/) ---- */
+.wallpaper-img {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.wallpaper-img-dawn { background-image: url('/wallpapers/drift-dawn.jpg'); }
+.wallpaper-img-ink { background-image: url('/wallpapers/drift-ink.jpg'); }
+.wallpaper-img-garden { background-image: url('/wallpapers/drift-garden.jpg'); }
+.wallpaper-img-harbor { background-image: url('/wallpapers/drift-harbor.jpg'); }
+
+/* ---- Dark-mode safety for hardcoded light panels ----
+   A few surfaces use literal Tailwind colors (browser fallback banners,
+   iframe wells) in files owned by other tasks, so they are remapped here
+   instead of in the components. */
+html[data-theme='nightshift'] .bg-amber-50,
+html[data-theme='dark'] .bg-amber-50 {
+  background-color: #2b2117;
+}
+html[data-theme='nightshift'] .text-amber-900,
+html[data-theme='dark'] .text-amber-900 {
+  color: #e6c48c;
+}
+html[data-theme='nightshift'] .border-amber-300,
+html[data-theme='dark'] .border-amber-300 {
+  border-color: #57462f;
+}
+html[data-theme='nightshift'] .bg-white,
+html[data-theme='dark'] .bg-white {
+  background-color: var(--os-surface);
+}
+
+/* ---- Calm motion: everything 160ms, honor reduced motion ---- */
+* {
+  transition-timing-function: ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ---- Window chrome ---- */
+.drift-window {
+  animation: drift-win-in 160ms ease;
+}
+@keyframes drift-win-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ---- Scrollbars: quiet ---- */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--os-border);
+  border-radius: 8px;
+  border: 2px solid var(--os-bg);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--os-muted);
+}
+
+/* ---- Text selection in brand ---- */
+::selection {
+  background: var(--os-accent);
+  color: var(--os-accent-ink);
+}
+
+/* ---- POS receipt printing: only the receipt prints ---- */
+@media print {
+  body * { visibility: hidden; }
+  .pos-receipt-print, .pos-receipt-print * { visibility: visible; }
+  .pos-receipt-print {
+    position: absolute; left: 0; top: 0; width: 100%;
+    box-shadow: none; border: none;
+  }
+}
+
+/* ---- Interface styles (Settings > Appearance > Interface style) ---- */
+
+/* Windows 11: Segoe UI stack + blue accent. Dark variant keeps contrast. */
+.ui-windows11 {
+  font-family: 'Segoe UI', 'Segoe UI Variable', system-ui, -apple-system, sans-serif;
+  --os-accent: #0078d4;
+  --os-accent-ink: #ffffff;
+}
+html[data-theme='dark'] .ui-windows11,
+html[data-theme='nightshift'] .ui-windows11 {
+  --os-accent: #4cc2ff;
+  --os-accent-ink: #0b1c26;
+}
+
+/* Mac OS X (Snow Leopard): Lucida Grande stack. */
+.ui-macosx {
+  font-family: 'Lucida Grande', 'Lucida Sans Unicode', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+/* Platinum/graphite gradient titlebar with a subtle pinstripe texture. */
+.mac-titlebar {
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.025) 0 1px, transparent 1px 3px),
+    linear-gradient(to bottom, #f7f7f7 0%, #e8e8e8 45%, #d5d5d5 55%, #e2e2e2 100%);
+  border-bottom: 1px solid #a8a8a8;
+  color: #2b2b2b;
+}
+html[data-theme='dark'] .ui-macosx .mac-titlebar,
+html[data-theme='nightshift'] .ui-macosx .mac-titlebar {
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px 3px),
+    linear-gradient(to bottom, #4a4a4c 0%, #3a3a3c 45%, #2e2e30 55%, #38383a 100%);
+  border-bottom: 1px solid #141414;
+  color: #f2f2f2;
+}
+.mac-window {
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+}
+
+/* Traffic lights: red/yellow/green, glyphs appear on hover (classic Mac). */
+.mac-traffic {
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.55), 0 1px 1px rgba(0, 0, 0, 0.15);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.55);
+  cursor: default;
+}
+.mac-traffic .glyph { opacity: 0; }
+.mac-traffic-group:hover .mac-traffic .glyph { opacity: 1; }
+.mac-traffic-close { background: radial-gradient(circle at 35% 30%, #ff8f80, #e0442e 70%); }
+.mac-traffic-min { background: radial-gradient(circle at 35% 30%, #ffd97a, #e6a817 70%); }
+.mac-traffic-zoom { background: radial-gradient(circle at 35% 30%, #9fe870, #3fae2a 70%); }
+.mac-traffic:active { filter: brightness(0.85); }
+
+/* Snow Leopard menu bar: white/translucent. */
+.mac-menubar {
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.92), rgba(235, 235, 235, 0.88));
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.25);
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.18);
+  color: #1a1a1a;
+}
+html[data-theme='dark'] .ui-macosx .mac-menubar,
+html[data-theme='nightshift'] .ui-macosx .mac-menubar {
+  background: linear-gradient(to bottom, rgba(48, 48, 50, 0.92), rgba(28, 28, 30, 0.88));
+  border-bottom: 1px solid rgba(0, 0, 0, 0.6);
+  color: #f2f2f2;
+}
+
+/* The 3D glass-shelf Dock: perspective shelf + reflections + magnification. */
+.mac-dock {
+  perspective: 800px;
+}
+.mac-dock-tray {
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0.12) 45%, rgba(120, 130, 140, 0.18) 55%, rgba(60, 70, 80, 0.28));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-bottom-color: rgba(0, 0, 0, 0.25);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  transform: rotateX(12deg);
+  transform-origin: bottom center;
+}
+html[data-theme='dark'] .ui-macosx .mac-dock-tray,
+html[data-theme='nightshift'] .ui-macosx .mac-dock-tray {
+  background: linear-gradient(to bottom, rgba(90, 95, 105, 0.4), rgba(60, 65, 75, 0.25) 45%, rgba(30, 33, 40, 0.35) 55%, rgba(10, 12, 16, 0.5));
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+.mac-dock-icon {
+  -webkit-box-reflect: below 1px linear-gradient(transparent 62%, rgba(255, 255, 255, 0.28));
+  transition: transform 120ms ease-out, filter 120ms ease-out;
+  transform-origin: bottom center;
+}
+.mac-dock-icon:hover { filter: brightness(1.08); }
+.mac-dock-divider {
+  width: 1px;
+  align-self: stretch;
+  margin: 6px 2px;
+  background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.3), transparent);
+}
+.mac-running-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 40% 35%, #ffffff, rgba(255, 255, 255, 0.55) 60%, transparent 75%);
+  box-shadow: 0 0 6px 1px rgba(255, 255, 255, 0.8);
+}
+
+/* Aqua-style button (used sparingly in the Mac style). */
+.aqua-btn {
+  background: linear-gradient(to bottom, #fdfdfd 0%, #e9eef4 48%, #d4dde8 52%, #c3cfdd 100%);
+  border: 1px solid #8a97a8;
+  border-radius: 9999px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 2px rgba(0, 0, 0, 0.18);
+  color: #1c2733;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+.aqua-btn:active {
+  background: linear-gradient(to bottom, #c3cfdd 0%, #d4dde8 100%);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
