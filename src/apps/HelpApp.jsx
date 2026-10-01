@@ -92,7 +92,7 @@ const SECTIONS = [
             'Drag any edge or corner to resize it.',
             'Use the title-bar buttons to minimize, maximize, or close.',
           ] },
-          { t: 'tip', text: 'On a phone or tablet, turn on Touch mode in Settings → Appearance: apps go full-screen with big touch targets.' },
+          { t: 'tip', text: 'On a phone or tablet, turn on Touch screen optimization in Settings → Appearance: apps go full-screen with big touch targets.' },
         ],
       },
       {
@@ -282,15 +282,15 @@ const SECTIONS = [
     ],
   },
   {
-    id: 'touch', title: 'Touch mode', icon: Smartphone,
+    id: 'touch', title: 'Touch screen optimization', icon: Smartphone,
     articles: [
       {
         id: 'touch-mode', title: `Using ${BRAND.name} on a phone or tablet`,
         keywords: 'touch mobile phone tablet ios android fullscreen',
         blocks: [
-          { t: 'p', text: `Touch mode turns ${BRAND.name} into a phone-style home screen: big icons, swipeable pages, a dock, and full-screen apps.` },
+          { t: 'p', text: `Touch screen optimization turns ${BRAND.name} into a phone-style home screen: big icons, swipeable pages, a dock, and full-screen apps.` },
           { t: 'steps', items: [
-            'Turn it on in Settings → Appearance → Touch mode (it switches on automatically on small touch screens).',
+            'Turn it on in Settings → Appearance → Touch screen optimization.',
             'Tap an icon to open the app full-screen.',
             'Tap the X or the home bar at the bottom to go back to the home screen.',
             'Turn it off any time to get the desktop back.',

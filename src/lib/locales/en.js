@@ -199,7 +199,7 @@ export const en = {
     steps: [
       { title: `Welcome to ${BRAND.name}`, text: 'This is your own desktop that lives on the web. Your apps, files, and notes are here — let’s take a 30-second look around.' },
       { title: 'Open apps two ways', text: 'Double-click any desktop icon to open it, or open the Start menu to search every app by name. Try it — nothing here can break.' },
-      { title: 'Make it yours', text: 'Open Settings, then Appearance: light or dark mode, wallpapers, the Windows 11 or Mac OS X 10.6 look, a moveable taskbar — even a phone-style Touch mode.' },
+      { title: 'Make it yours', text: 'Open Settings, then Appearance: light or dark mode, wallpapers, the Windows 11 or Mac OS X 10.6 look, a moveable taskbar — even a phone-style touch screen optimization.' },
       { title: 'Your stuff follows you', text: 'In the Cloud, files and settings sync to any device you sign in on. And Helm, your built-in assistant, can open apps and find things for you — just ask.' },
       { title: 'You’re ready', text: 'That’s the whole tour. If you ever get stuck, open Help & Guide from the Start menu — it answers everything in plain language.' },
     ],
@@ -269,7 +269,7 @@ export const en = {
       themeSystemHint: 'System follows your device’s light or dark setting.',
       taskbarHint: 'Applies to the Drift style. Windows 11 locks the taskbar to the bottom; Mac OS X uses the Dock.',
       scaleHint: 'Scales the interface; does not change monitor resolution.',
-      touchMode: 'Touch mode',
+      touchMode: 'Touch screen optimization',
       interfaceSounds: 'Interface sounds',
       volume: 'Volume',
       fullscreen: 'Fullscreen',

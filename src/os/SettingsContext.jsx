@@ -5,23 +5,10 @@ import { loadThemeMode, saveThemeMode, resolveTheme, THEME_MODES } from '../lib/
 
 const SettingsContext = createContext(null);
 
-/**
- * First-run default for touch mode: on when the device reports a coarse
- * (touch) pointer and the screen is phone-sized. Evaluated once at module
- * load; afterwards the stored setting (or the user's toggle) wins.
- */
-function detectTouchMode() {
-  try {
-    return (
-      typeof window !== 'undefined' &&
-      window.matchMedia('(pointer: coarse)').matches &&
-      window.innerWidth < 820
-    );
-  } catch {
-    return false;
-  }
-}
-
+// Touch screen optimization is opt-in (Settings > Appearance): it defaults
+// off, and the stored per-device setting (drift-touch-mode) wins once
+// settings load. When on, applyToDocument puts `touch-mode` on <html> and
+// src/index.css enlarges tap targets/type for small touch screens.
 const DEFAULTS = {
   visual_theme: 'daybreak',
   wallpaper: 'paper-grain',
@@ -34,7 +21,7 @@ const DEFAULTS = {
   desktop_icon_order: [], // app ids in the user's preferred desktop order
   taskbar_position: 'bottom', // 'top' | 'bottom' | 'left' | 'right'
   ui_style: 'drift', // 'drift' | 'windows11' | 'macosx'
-  touch_mode: detectTouchMode(),
+  touch_mode: false,
   welcome_seen: false,
   welcome_tour_seen: false,
 };
@@ -42,6 +29,8 @@ const DEFAULTS = {
 function applyToDocument(s, mode) {
   const theme = resolveTheme(mode || 'light');
   document.documentElement.dataset.theme = theme;
+  // Touch screen optimization: global CSS hooks off this class (index.css).
+  document.documentElement.classList.toggle('touch-mode', !!s?.touch_mode);
   if (s.accent_override) {
     document.documentElement.style.setProperty('--os-accent', s.accent_override);
   } else {
@@ -51,8 +40,9 @@ function applyToDocument(s, mode) {
 
 /**
  * OS settings. Loads from backend.settings on login, applies the resolved
- * theme to documentElement.dataset.theme and the accent override to
- * --os-accent.
+ * theme to documentElement.dataset.theme, the accent override to
+ * --os-accent, and the touch-mode class when touch screen optimization
+ * is on.
  *
  * Theme mode ('light' | 'dark' | 'system') is a per-user, per-device
  * preference in localStorage; the backend visual_theme always holds the

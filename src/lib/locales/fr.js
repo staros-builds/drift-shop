@@ -197,7 +197,7 @@ export const fr = {
     steps: [
       { title: `Bienvenue à ${BRAND.name}`, text: 'Ceci est votre propre bureau qui vit sur le web. Vos applications, fichiers et notes sont ici — jetons un coup d’œil de 30 secondes.' },
       { title: 'Ouvrez les applis de deux façons', text: 'Double-cliquez une icône du bureau pour l’ouvrir, ou ouvrez le menu Démarrer pour chercher chaque appli par son nom. Essayez — rien ici ne peut casser.' },
-      { title: 'À votre goût', text: 'Ouvrez Réglages, puis Apparence : mode clair ou sombre, fonds d’écran, l’aspect Windows 11 ou Mac OS X 10.6, une barre des tâches déplaçable — même un mode tactile façon téléphone.' },
+      { title: 'À votre goût', text: 'Ouvrez Réglages, puis Apparence : mode clair ou sombre, fonds d’écran, l’aspect Windows 11 ou Mac OS X 10.6, une barre des tâches déplaçable — même une optimisation tactile façon téléphone.' },
       { title: 'Vos affaires vous suivent', text: 'En mode Infonuagique, fichiers et réglages se synchronisent sur tous vos appareils où vous vous connectez. Et Helm, votre assistant intégré, peut ouvrir des applis et trouver des choses — demandez simplement.' },
       { title: 'Vous êtes prêt', text: 'C’est toute la visite. Si jamais vous êtes coincé, ouvrez Aide & Guide depuis le menu Démarrer — il répond à tout en langage simple.' },
     ],
@@ -267,7 +267,7 @@ export const fr = {
       themeSystemHint: 'Système suit le réglage clair ou sombre de votre appareil.',
       taskbarHint: 'S’applique au style Drift. Windows 11 verrouille la barre des tâches en bas; Mac OS X utilise le Dock.',
       scaleHint: 'Met l’interface à l’échelle; ne change pas la résolution de l’écran.',
-      touchMode: 'Mode tactile',
+      touchMode: 'Optimisation tactile',
       interfaceSounds: 'Sons d’interface',
       volume: 'Volume',
       fullscreen: 'Plein écran',
