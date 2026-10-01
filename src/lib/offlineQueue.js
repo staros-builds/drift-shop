@@ -1,7 +1,7 @@
 /**
  * OFFLINE QUEUE — nuclear bunker comms.
  *
- * If the network dies mid-sale, the bookstore CANNOT stop selling.
+ * If the network dies mid-sale, the shop CANNOT stop selling.
  * This module provides a persistent, idempotent operation queue:
  *
  * - Operations are saved to localStorage immediately (survives crash/close)

@@ -360,7 +360,7 @@ function SellTab({ products, store, v4, customers, customerId, onCustomerChange,
   const [schoolOpen, setSchoolOpen] = useState(false);
   const [presetAdjustments, setPresetAdjustments] = useState([]);
   // Catalogue as a product source: when
-  // bqMode is on, the grid searches the bookstore catalogue instead of POS
+  // bqMode is on, the grid searches the catalogue instead of POS
   // products, and completed sales decrement catalogue stock.
   const [bqMode, setBqMode] = useState(false);
   const [bqItems, setBqItems] = useState([]);
