@@ -106,10 +106,16 @@ begin
   -- instance_id identifies the GoTrue instance; copy it from any existing
   -- user (verified nullable on the live auth.users table 2026-09-29, but
   -- setting it matches what GoTrue writes for normal signups). On a fresh
-  -- project with no users yet, fall back to auth.instances.
+  -- project with no users yet, fall back to auth.instances. A NULL
+  -- instance_id breaks GoTrue sign-in entirely ("invalid credentials" with
+  -- a perfectly good password hash), so refuse to seed rather than insert
+  -- a broken user.
   select u.instance_id into v_instance_id from auth.users u limit 1;
   if v_instance_id is null then
     select i.id into v_instance_id from auth.instances i limit 1;
+  end if;
+  if v_instance_id is null then
+    raise exception '056: could not determine auth instance_id — cannot seed master user';
   end if;
 
   -- Shape mirrors a normal email signup (see migration 020
