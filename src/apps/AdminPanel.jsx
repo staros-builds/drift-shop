@@ -3,9 +3,10 @@ import {
   ShieldCheck, RefreshCw, Lock, LockOpen, BadgeDollarSign,
   Search, ShieldAlert, Cloud, MessageCircleQuestion, Star, Send,
   Users, UserPlus, KeyRound, Trash2, X, Check, Pencil, Plus, CheckCircle2,
-  Store,
+  Store, Globe, ExternalLink,
 } from 'lucide-react';
 import { backend } from '../lib/backend/current.js';
+import { BRAND } from '../lib/brand.js';
 import { exportAccountBackup, downloadBackupFile } from '../lib/accountBackup.js';
 import { snapshotBeforeDestructive } from '../lib/autoBackup.js';
 import { useAuth } from '../os/AuthContext.jsx';
@@ -1561,6 +1562,323 @@ function DangerSection() {
   );
 }
 
+/* ------------------------------------------------------------------ */
+/* Storefront editor (migration 063). Owners/managers shape the shop's */
+/* public web page here; once published, the page is served to anyone  */
+/* by the anon public_storefront() RPC. Visibility lives on the POS     */
+/* products themselves (public_visible, default on) — products created  */
+/* in the POS show up automatically.                                    */
+/* ------------------------------------------------------------------ */
+function StorefrontSection() {
+  const { t } = useLang();
+  const [stores, setStores] = useState([]);
+  const [storeId, setStoreId] = useState('');
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [saved, setSaved] = useState(false);
+  const lock = useRef(false);
+  const [form, setForm] = useState({
+    slug: '', displayName: '', tagline: '', about: '', hours: '',
+    contactEmail: '', contactPhone: '', accentColor: '',
+    published: false, showPrices: true,
+  });
+
+  const slugify = (s) =>
+    String(s || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 63);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const list = (await backend.pos.listStores()) || [];
+        if (cancelled) return;
+        const mine = list.filter((s) => s.role === 'owner' || s.role === 'manager');
+        setStores(mine);
+        setStoreId((cur) => (mine.some((s) => s.id === cur) ? cur : mine[0]?.id || ''));
+      } catch (e) {
+        if (!cancelled) setError(e.message || t('storefront.loadFail'));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!storeId) { setProducts([]); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const [prof, prods] = await Promise.all([
+          backend.pos.getStorefrontProfile(storeId),
+          backend.pos.listProducts(storeId).catch(() => []),
+        ]);
+        if (cancelled) return;
+        const store = stores.find((s) => s.id === storeId);
+        setError('');
+        setSaved(false);
+        if (prof) {
+          setForm({
+            slug: prof.slug || '',
+            displayName: prof.display_name || '',
+            tagline: prof.tagline || '',
+            about: prof.about || '',
+            hours: prof.hours || '',
+            contactEmail: prof.contact_email || '',
+            contactPhone: prof.contact_phone || '',
+            accentColor: prof.accent_color || '',
+            published: !!prof.published,
+            showPrices: prof.show_prices !== false,
+          });
+        } else {
+          setForm({
+            slug: slugify(store?.name || ''),
+            displayName: store?.name || '',
+            tagline: '', about: '', hours: '',
+            contactEmail: '', contactPhone: '', accentColor: '',
+            published: false, showPrices: true,
+          });
+        }
+        setProducts(prods || []);
+      } catch (e) {
+        if (!cancelled) setError(e.message || t('storefront.loadFail'));
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeId, stores]);
+
+  const save = async () => {
+    if (!storeId || lock.current) return;
+    if (!form.slug.trim()) { setError(t('storefront.needSlug')); return; }
+    lock.current = true;
+    setBusy(true); setError(''); setSaved(false);
+    try {
+      await backend.pos.saveStorefrontProfile(storeId, form);
+      setSaved(true);
+    } catch (e) {
+      setError(t('storefront.saveFail') + (e.message || ''));
+    } finally {
+      lock.current = false; setBusy(false);
+    }
+  };
+
+  const toggleProduct = async (p) => {
+    const next = !p.publicVisible;
+    setProducts((prev) => prev.map((x) => (x.id === p.id ? { ...x, publicVisible: next } : x)));
+    try {
+      await backend.pos.setProductPublicVisible(storeId, p.id, next);
+    } catch (e) {
+      setError(t('storefront.saveFail') + (e.message || ''));
+      setProducts((prev) => prev.map((x) => (x.id === p.id ? { ...x, publicVisible: !next } : x)));
+    }
+  };
+
+  const field = (key) => ({
+    value: form[key],
+    onChange: (e) => { setForm((f) => ({ ...f, [key]: e.target.value })); setSaved(false); },
+  });
+
+  const inputCls = 'h-9 w-full rounded-os border border-osborder bg-surface px-2.5 text-sm outline-none';
+  const labelCls = 'mb-1 block text-xs font-semibold text-muted';
+  const publicLink = form.slug
+    ? `${window.location.origin}${BRAND.basePath}#/store/${form.slug}`
+    : '';
+
+  return (
+    <div className="space-y-4">
+      <section className="rounded-os border border-osborder bg-paper p-4">
+        <h3 className="text-base font-semibold text-ink">{t('storefront.title')}</h3>
+        <p className="mt-1 text-xs text-muted">{t('storefront.intro')}</p>
+        {!!error && (
+          <div className="mt-3 rounded-os border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">{error}</div>
+        )}
+        {loading ? (
+          <p className="mt-3 text-sm text-muted">{t('common.loading')}</p>
+        ) : stores.length === 0 ? (
+          <div className="mt-3">
+            <p className="text-sm text-ink">{t('storefront.noStores')}</p>
+            <p className="mt-1 text-xs text-muted">{t('storefront.noStoresHint')}</p>
+          </div>
+        ) : (
+          <div className="mt-4 space-y-4">
+            {stores.length > 1 && (
+              <div>
+                <label className={labelCls}>{t('storefront.storeLabel')}</label>
+                <select
+                  value={storeId}
+                  onChange={(e) => setStoreId(e.target.value)}
+                  className={inputCls}
+                >
+                  {stores.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className={labelCls}>{t('storefront.displayName')}</label>
+                <input {...field('displayName')} className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>{t('storefront.tagline')}</label>
+                <input {...field('tagline')} className={inputCls} />
+              </div>
+            </div>
+
+            <div>
+              <label className={labelCls}>{t('storefront.slug')}</label>
+              <input
+                {...field('slug')}
+                onChange={(e) => { setForm((f) => ({ ...f, slug: slugify(e.target.value) })); setSaved(false); }}
+                className={inputCls}
+                placeholder="my-shop"
+              />
+              <p className="mt-1 text-xs text-muted">{t('storefront.slugHint')}</p>
+            </div>
+
+            {!!publicLink && (
+              <div>
+                <label className={labelCls}>{t('storefront.publicLink')}</label>
+                <div className="flex items-center gap-2">
+                  <code className="min-w-0 flex-1 truncate rounded-os border border-osborder bg-surface px-2.5 py-2 text-xs text-ink">{publicLink}</code>
+                  <a
+                    href={publicLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-os border border-osborder bg-surface px-3 text-xs font-semibold text-ink"
+                  >
+                    <ExternalLink size={13} /> {t('storefront.openPage')}
+                  </a>
+                </div>
+              </div>
+            )}
+
+            <div>
+              <label className={labelCls}>{t('storefront.about')}</label>
+              <textarea {...field('about')} rows={3} className="w-full rounded-os border border-osborder bg-surface px-2.5 py-2 text-sm outline-none" />
+            </div>
+
+            <div>
+              <label className={labelCls}>{t('storefront.hours')}</label>
+              <textarea
+                {...field('hours')}
+                rows={2}
+                placeholder={t('storefront.hoursPlaceholder')}
+                className="w-full rounded-os border border-osborder bg-surface px-2.5 py-2 text-sm outline-none"
+              />
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className={labelCls}>{t('storefront.contactEmail')}</label>
+                <input {...field('contactEmail')} type="email" className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>{t('storefront.contactPhone')}</label>
+                <input {...field('contactPhone')} type="tel" className={inputCls} />
+              </div>
+            </div>
+
+            <div>
+              <label className={labelCls}>{t('storefront.accentColor')}</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  aria-label={t('storefront.accentColor')}
+                  value={/^#[0-9a-fA-F]{6}$/.test(form.accentColor) ? form.accentColor : '#b4542a'}
+                  onChange={(e) => { setForm((f) => ({ ...f, accentColor: e.target.value })); setSaved(false); }}
+                  className="h-9 w-12 cursor-pointer rounded-os border border-osborder bg-surface p-1"
+                />
+                <input {...field('accentColor')} placeholder="#b4542a" className="h-9 w-32 rounded-os border border-osborder bg-surface px-2.5 text-sm outline-none" />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="flex cursor-pointer items-start gap-2 text-sm text-ink">
+                <input
+                  type="checkbox"
+                  checked={form.published}
+                  onChange={(e) => { setForm((f) => ({ ...f, published: e.target.checked })); setSaved(false); }}
+                  className="mt-0.5 h-4 w-4 accent-[#b4542a]"
+                />
+                <span>
+                  {t('storefront.published')}
+                  <span className="block text-xs font-normal text-muted">{t('storefront.publishedHint')}</span>
+                </span>
+              </label>
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-ink">
+                <input
+                  type="checkbox"
+                  checked={form.showPrices}
+                  onChange={(e) => { setForm((f) => ({ ...f, showPrices: e.target.checked })); setSaved(false); }}
+                  className="h-4 w-4 accent-[#b4542a]"
+                />
+                {t('storefront.showPrices')}
+              </label>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={save}
+                disabled={busy}
+                className="h-9 rounded-os bg-accent px-4 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                {busy ? t('common.loading') : t('storefront.save')}
+              </button>
+              {saved && <span className="text-xs font-semibold text-emerald-700">{t('storefront.saved')}</span>}
+            </div>
+          </div>
+        )}
+      </section>
+
+      {stores.length > 0 && storeId && (
+        <section className="rounded-os border border-osborder bg-paper p-4">
+          <h3 className="text-sm font-semibold text-ink">{t('storefront.products')}</h3>
+          <p className="mt-1 text-xs text-muted">{t('storefront.productsHint')}</p>
+          {products.length === 0 ? (
+            <p className="mt-3 text-sm text-muted">{t('storefront.noProducts')}</p>
+          ) : (
+            <ul className="mt-3 divide-y divide-osborder/60">
+              {products.map((p) => (
+                <li key={p.id} className="flex items-center gap-3 py-2">
+                  <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5">
+                    <input
+                      type="checkbox"
+                      checked={!!p.publicVisible}
+                      onChange={() => toggleProduct(p)}
+                      className="h-4 w-4 shrink-0 accent-[#b4542a]"
+                    />
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm text-ink">{p.name}</span>
+                      <span className="block text-xs text-muted">
+                        ${(Number(p.priceCents || 0) / 100).toFixed(2)} · {p.publicVisible ? t('storefront.visible') : t('storefront.hidden')}
+                      </span>
+                    </span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+    </div>
+  );
+}
+
 export default function AdminPanel() {
   const { user } = useAuth();
   const { t } = useLang();
@@ -1569,6 +1887,7 @@ export default function AdminPanel() {
     typeof backend.support?.adminListTickets === 'function';
   const [role, setRole] = useState(null);
   const [isMaster, setIsMaster] = useState(false);
+  const [ownsStore, setOwnsStore] = useState(false);
   const [section, setSection] = useState('accounts');
   const [loading, setLoading] = useState(true);
 
@@ -1588,6 +1907,12 @@ export default function AdminPanel() {
       } finally {
         setLoading(false);
       }
+      // Store owners/managers get the Storefront tab even without admin
+      // rights (the existing per-store role check, migration 002 roles).
+      try {
+        const mine = (await backend.pos.listStores()) || [];
+        setOwnsStore(mine.some((s) => s.role === 'owner' || s.role === 'manager'));
+      } catch { /* panel still works without it */ }
     })();
   }, [cloud]);
 
@@ -1610,7 +1935,8 @@ export default function AdminPanel() {
   }
 
   const admin = role === 'admin';
-  if (!admin) {
+  const canStorefront = admin || ownsStore;
+  if (!admin && !canStorefront) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
         <ShieldAlert size={28} className="text-accent" />
@@ -1622,15 +1948,19 @@ export default function AdminPanel() {
 
   const tabs = [
     ...(cloud ? [
-      { id: 'accounts', label: t('adminUsers.tabAccounts'), icon: ShieldCheck },
-      { id: 'shops', label: t('adminUsers.tabShops'), icon: Users },
-      { id: 'tickets', label: t('adminUsers.tabSupport'), icon: MessageCircleQuestion },
-      { id: 'feedback', label: t('adminUsers.tabFeedback'), icon: Star },
-      // Factory reset is master-only: the tab renders solely for the
-      // seeded master account (the RPC re-verifies server-side).
-      ...(isMaster ? [{ id: 'danger', label: t('adminUsers.dangerTab'), icon: ShieldAlert }] : []),
+      ...(admin ? [
+        { id: 'accounts', label: t('adminUsers.tabAccounts'), icon: ShieldCheck },
+        { id: 'shops', label: t('adminUsers.tabShops'), icon: Users },
+        { id: 'tickets', label: t('adminUsers.tabSupport'), icon: MessageCircleQuestion },
+        { id: 'feedback', label: t('adminUsers.tabFeedback'), icon: Star },
+        // Factory reset is master-only: the tab renders solely for the
+        // seeded master account (the RPC re-verifies server-side).
+        ...(isMaster ? [{ id: 'danger', label: t('adminUsers.dangerTab'), icon: ShieldAlert }] : []),
+      ] : []),
+      ...(canStorefront ? [{ id: 'storefront', label: t('storefront.tab'), icon: Globe }] : []),
     ] : []),
   ];
+  const cur = tabs.some((x) => x.id === section) ? section : (tabs[0]?.id || 'accounts');
 
   return (
     <div className="flex h-full flex-col bg-surface text-ink">
@@ -1643,7 +1973,7 @@ export default function AdminPanel() {
             type="button"
             onClick={() => setSection(t.id)}
             className={`flex items-center gap-1.5 border-b-2 px-3 py-2 text-xs font-medium duration-160 ${
-              section === t.id
+              cur === t.id
                 ? 'border-accent text-ink'
                 : 'border-transparent text-muted hover:text-ink'
             }`}
@@ -1654,11 +1984,12 @@ export default function AdminPanel() {
         ))}
       </div>
 
-      {section === 'accounts' && <AccountsSection user={user} />}
-      {section === 'shops' && <ShopsSection />}
-      {section === 'tickets' && <TicketsSection />}
-      {section === 'feedback' && <FeedbackSection />}
-      {section === 'danger' && isMaster && <DangerSection />}
+      {cur === 'accounts' && admin && <AccountsSection user={user} />}
+      {cur === 'shops' && admin && <ShopsSection />}
+      {cur === 'tickets' && admin && <TicketsSection />}
+      {cur === 'feedback' && admin && <FeedbackSection />}
+      {cur === 'danger' && isMaster && <DangerSection />}
+      {cur === 'storefront' && canStorefront && <StorefrontSection />}
     </div>
   );
 }
