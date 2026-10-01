@@ -14,7 +14,7 @@ import { useToasts } from '../os/ToastContext.jsx';
 import { useLang, localeTag} from '../lib/i18n.jsx';
 import { qrDataUrl, receiptQrText } from '../lib/qr.js';
 import { playSound } from '../lib/sound.js';
-import { enqueue as enqueueOffline, getQueueDepth as getOfflineQueueDepth } from '../lib/offlineQueue.js';
+import { enqueue as enqueueOffline, getQueueDepth as getOfflineQueueDepth, clearQueue as clearOfflineQueue } from '../lib/offlineQueue.js';
 import { withTimeout, isTimeoutError } from '../lib/timeout.js';
 import { startAutoSync, onSyncStatus } from '../lib/queueSync.js';
 import { snapshotBeforeDestructive } from '../lib/autoBackup.js';
@@ -1050,9 +1050,31 @@ function SellTab({ products, store, v4, customers, customerId, onCustomerChange,
                 {t('resiliency.queue.bannerHint')}
               </p>
               {queueLastError && !queueSyncing && (
-                <p className="mt-1 font-medium text-red-700 dark:text-red-300">
-                  {t('resiliency.queue.lastError', { msg: queueLastError })}
-                </p>
+                <>
+                  <p className="mt-1 font-medium text-red-700 dark:text-red-300">
+                    {t('resiliency.queue.lastError', { msg: queueLastError })}
+                  </p>
+                  {/* Queue-management surface: a permanently failing item can
+                      be discarded by the cashier after an explicit confirm.
+                      Drain/retry logic is untouched — this only empties the
+                      queue on the user's word. */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!window.confirm(t('resiliency.queue.discardConfirm', { n: queueDepth }))) return;
+                      try {
+                        clearOfflineQueue();
+                      } catch {
+                        /* queue already empty or unreadable — banner refreshes anyway */
+                      }
+                      setQueueDepth(0);
+                      setQueueLastError(null);
+                    }}
+                    className="mt-2 rounded-os border border-red-400 px-2 py-1 text-xs font-semibold text-red-700 duration-160 hover:bg-red-100 dark:text-red-300 dark:hover:bg-red-900/40"
+                  >
+                    {t('resiliency.queue.discardFailed')}
+                  </button>
+                </>
               )}
             </div>
           )}

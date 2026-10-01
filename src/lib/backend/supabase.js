@@ -683,7 +683,9 @@ export function createSupabaseBackend() {
     // runs the wipe+reseed in a single transaction (failure-atomic). The
     // caller's own user row is deleted, so the app must sign out right
     // after this resolves. No automatic backup is taken server-side (the
-    // backup mechanism is client-side) — the UI says so honestly.
+    // backup mechanism is client-side) — the UI attempts a full account
+    // backup + auto-download BEFORE calling this RPC and aborts the reset
+    // if the backup attempt fails.
     async factoryReset() {
       const { error } = await client.rpc('factory_reset');
       if (error) throw new Error(`Factory reset failed: ${error.message}`);

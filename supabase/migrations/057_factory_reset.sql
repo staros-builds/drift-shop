@@ -11,10 +11,12 @@
 --      CALLER's profile has is_master = true. The RPC is granted to
 --      `authenticated` only (revoked from public/anon).
 --   2. is_master is added to protect_profile_fields()'s guarded column
---      list below: only an administrator can change it through RLS, and
---      only the seeded master account ever holds it (056 sets it on the
---      master email only; the reseed here sets it again so it survives
---      re-seeding — it is never granted anywhere else).
+--      list below, and migration 058 tightens that guard so ONLY a master
+--      (not merely an administrator) can change it — a non-master admin
+--      cannot self-grant it and then call this RPC. Only the seeded master
+--      account ever holds it (056 sets it on the master email only; the
+--      reseed here sets it again so it survives re-seeding — it is never
+--      granted anywhere else).
 --   3. The app UI renders the Factory Reset section only for is_master,
 --      and requires typing "RESET" exactly before the button arms.
 --
@@ -30,8 +32,10 @@
 -- punch-history *import* RPC, not an exporter. A SQL function cannot run
 -- the client exporter, and reimplementing the 40-table JSON export in
 -- plpgsql would be an untested parallel mechanism — worse than honest.
--- The UI confirmation screen states plainly that no automatic backup is
--- taken and points at Settings -> Backup before proceeding.
+-- Instead the app (Admin panel -> Danger zone) attempts a full account
+-- backup + automatic download BEFORE calling this RPC, and ABORTS the
+-- reset if the backup attempt fails — the wipe never runs without the
+-- attempted safety net.
 --
 -- TABLE LIST (grounded 2026-10-01 in supabase/schema.sql + migrations
 -- 001-055): all 40 public application tables —
@@ -165,10 +169,21 @@ begin
           'email', v_id::text,
           now(), now(), now());
 
-  -- Stamp the master flags. protect_profile_fields / guard_role_change
-  -- allow this: the caller is is_master AND role admin (the profile row was
-  -- just recreated as admin by handle_new_user), so public.is_admin() is
-  -- true for the remainder of this transaction.
+  -- Stamp the master flags. The caller's profile row was deleted above
+  -- (delete from auth.users cascades to public.profiles), so auth.uid() no
+  -- longer resolves to any profile row and public.is_admin() is FALSE for
+  -- the rest of this transaction — an earlier comment claiming is_admin()
+  -- stays true here was wrong. Without the DISABLE below,
+  -- protect_profile_fields() raises on the guarded columns and rolls back
+  -- the ENTIRE reset (the B2 blocker). The triggers are disabled only for
+  -- this UPDATE and re-enabled immediately after; ALTER ... DISABLE
+  -- TRIGGER is transactional DDL, so any failure rolls the triggers back
+  -- to enabled along with everything else. handle_new_user() already set
+  -- role 'admin' (profiles was empty, so is_first was true), so the role
+  -- stamp is a no-op and profiles_guard_role is disabled only for
+  -- determinism.
+  alter table public.profiles disable trigger protect_profile_fields;
+  alter table public.profiles disable trigger profiles_guard_role;
   update public.profiles
      set role = 'admin',
          is_paid = true,
@@ -178,6 +193,8 @@ begin
          is_master = true
    where id = v_id;
   get diagnostics v_rows = row_count;
+  alter table public.profiles enable trigger protect_profile_fields;
+  alter table public.profiles enable trigger profiles_guard_role;
   if v_rows <> 1 then
     raise exception 'factory reset reseed failed: master profile row missing (handle_new_user did not run?)';
   end if;

@@ -6,6 +6,8 @@ import {
   Store,
 } from 'lucide-react';
 import { backend } from '../lib/backend/current.js';
+import { exportAccountBackup, downloadBackupFile } from '../lib/accountBackup.js';
+import { snapshotBeforeDestructive } from '../lib/autoBackup.js';
 import { useAuth } from '../os/AuthContext.jsx';
 import { localeTag, useLang } from '../lib/i18n.jsx';
 
@@ -1447,8 +1449,12 @@ function ShopsSection() {
  *  - the server-side factory_reset() RPC re-verifies is_master and runs
  *    the wipe+reseed in a single transaction (failure-atomic);
  *  - the button arms only after typing RESET exactly;
- *  - NO automatic backup is taken (the backup mechanism is client-side) —
- *    the warning says so honestly and points at Settings -> Backup.
+ *  - BEFORE the wipe, the app attempts a full account backup (the same
+ *    export as Settings -> Backup) and auto-downloads it; if the backup
+ *    attempt fails the reset is ABORTED with a loud error and nothing is
+ *    deleted (fail-safe direction — never wipe without the attempted
+ *    safety net). Best-effort device-local store snapshots are also
+ *    stashed first via snapshotBeforeDestructive().
  * After the RPC resolves the caller's own user row is gone, so we sign out
  * and leave a one-time notice flag for the login screen.
  */
@@ -1465,6 +1471,31 @@ function DangerSection() {
     setBusy(true);
     setError('');
     try {
+      // Pre-reset safety net (Jesse's requirement): attempt a full account
+      // backup BEFORE the wipe, using the exact same export mechanism as
+      // Settings → Backup, and auto-download it. If the backup attempt
+      // fails, ABORT the reset with a loud bilingual error — fail-safe
+      // direction: never wipe without the attempted safety net.
+      try {
+        // Best-effort device-local snapshots first (never throw, never block).
+        try {
+          const stores = (await backend.pos.listStores().catch(() => [])) || [];
+          for (const s of stores) {
+            await snapshotBeforeDestructive(s.id, 'pre-factory-reset');
+          }
+        } catch {
+          /* best effort only */
+        }
+        const dump = await exportAccountBackup();
+        downloadBackupFile(
+          dump,
+          `drift-shop-pre-reset-backup-${new Date().toISOString().slice(0, 10)}.json`
+        );
+      } catch (bErr) {
+        throw new Error(
+          `${t('adminUsers.factoryResetBackupFailed')}${bErr?.message ? ` (${bErr.message})` : ''}`
+        );
+      }
       await backend.auth.factoryReset();
       try {
         localStorage.setItem('driftshop_factory_reset_notice', '1');

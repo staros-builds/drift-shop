@@ -17,10 +17,30 @@
 -- BRAND.accountsDomain, update c_master_email below BEFORE running this
 -- migration (or update the account's email afterwards).
 --
--- Idempotent: guarded by "if not exists" on the email, so re-running is a
--- no-op. Reviewed carefully — it has NOT been applied to any live project
+-- Idempotent: the master email is checked first. Re-running after a
+-- successful seed is a NO-OP — the exists-branch only stamps the flags
+-- when the account is not already the master (is_master = false), so a
+-- re-run never re-arms must_change_password after the owner already
+-- changed the default password, and never downgrades anything else.
+-- (First-seed path always sets must_change_password = true.)
+-- Reviewed carefully — it has NOT been applied to any live project
 -- (no Supabase project exists for this build yet); the buyer runs
--- supabase/migrations/ 001-056 in order in the SQL editor during setup.
+-- supabase/migrations/ 001-058 in order in the SQL editor during setup.
+--
+-- TRIGGER BYPASS: the privileged UPDATEs below change guarded columns
+-- (is_paid, is_master, and defensively role). During migrations
+-- auth.uid() is NULL, so public.is_admin() is false and the BEFORE UPDATE
+-- trigger protect_profile_fields on public.profiles would raise
+-- 'Only an administrator can change account status fields.' — rolling the
+-- whole DO block back. The UPDATEs therefore run with the
+-- protect_profile_fields and profiles_guard_role triggers DISABLEd and
+-- are re-ENABLEd immediately after. ALTER ... DISABLE TRIGGER is
+-- transactional DDL, so any failure rolls the triggers back to enabled
+-- along with everything else. Migrations run as the table owner, which is
+-- required for DISABLE TRIGGER. handle_new_user() already builds the
+-- profile row with role 'admin' (profiles empty, and the master email is
+-- special-cased), so the role stamp is normally a no-op — the guard_role
+-- disable is belt-and-braces for determinism.
 --
 -- must_change_password is deliberately NOT added to the
 -- protect_profile_fields() trigger's guarded column list (migration 006):
@@ -29,11 +49,13 @@
 -- never a server-side privilege.
 --
 -- is_master IS a privilege: it is added to protect_profile_fields()'s
--- guarded columns in migration 057, so only an administrator can change it
--- (and the factory_reset() RPC additionally requires it). It is set true
--- ONLY for this seeded master account (both seed paths below key on the
--- master email) and the factory-reset reseed in 057 sets it true again —
--- it must survive re-seeding, never be granted anywhere else.
+-- guarded columns in migration 057, and migration 058 tightens that guard
+-- so ONLY a master (not merely an admin) can change it; the
+-- factory_reset() RPC additionally requires it. It is set true ONLY for
+-- this seeded master account (both seed paths below key on the master
+-- email, and only when the account is not already the master) and the
+-- factory-reset reseed in 057 sets it true again — it must survive
+-- re-seeding, never be granted anywhere else.
 
 create extension if not exists pgcrypto with schema extensions;
 
@@ -48,13 +70,19 @@ declare
   c_default_pw   constant text := 'admin123';
   v_id           uuid := gen_random_uuid();
   v_instance_id  uuid;
+  v_rows         int;
 begin
   if exists (select 1 from auth.users where lower(email) = lower(c_master_email)) then
     -- Already seeded (or the buyer created their own account on this
-    -- email): still make sure it is a paid, unlocked admin that must
-    -- change its password, then stop. is_master is set here too: only the
-    -- master email ever reaches this path, so only the master account can
-    -- hold the factory-reset privilege.
+    -- email): stamp it as a paid, unlocked admin that must change its
+    -- password — but ONLY if it is not already the master, so re-running
+    -- after a successful seed is a strict no-op (never re-arms
+    -- must_change_password after the owner changed the password).
+    -- is_master is set here too: only the master email ever reaches this
+    -- path, so only the master account can hold the factory-reset
+    -- privilege. Guarded columns require the trigger bypass (see header).
+    alter table public.profiles disable trigger protect_profile_fields;
+    alter table public.profiles disable trigger profiles_guard_role;
     update public.profiles
        set role = 'admin',
            is_paid = true,
@@ -62,7 +90,16 @@ begin
            disabled_until = null,
            must_change_password = true,
            is_master = true
-     where id in (select id from auth.users where lower(email) = lower(c_master_email));
+     where id in (select id from auth.users where lower(email) = lower(c_master_email))
+       and is_master = false;
+    get diagnostics v_rows = row_count;
+    alter table public.profiles enable trigger protect_profile_fields;
+    alter table public.profiles enable trigger profiles_guard_role;
+    if v_rows = 0 then
+      raise notice '056: master account already seeded — no-op.';
+    else
+      raise notice '056: existing account on the master email elevated to master.';
+    end if;
     return;
   end if;
 
@@ -101,9 +138,13 @@ begin
           now(), now(), now());
 
   -- Deterministic admin stamping regardless of trigger ordering or
-  -- pre-existing profiles (protect_profile_fields allows it: this runs as
-  -- the migration owner, not through RLS). is_master=true ONLY here: the
-  -- seeded master account alone holds the factory-reset privilege.
+  -- pre-existing profiles. Guarded columns require the trigger bypass
+  -- (see header): without it protect_profile_fields() raises because
+  -- auth.uid() is NULL during migrations, rolling back the whole seed.
+  -- is_master=true ONLY here: the seeded master account alone holds the
+  -- factory-reset privilege.
+  alter table public.profiles disable trigger protect_profile_fields;
+  alter table public.profiles disable trigger profiles_guard_role;
   update public.profiles
      set role = 'admin',
          is_paid = true,
@@ -112,4 +153,7 @@ begin
          must_change_password = true,
          is_master = true
    where id = v_id;
+  alter table public.profiles enable trigger protect_profile_fields;
+  alter table public.profiles enable trigger profiles_guard_role;
+  raise notice '056: master account seeded (admin@drift-shop.app).';
 end $$;

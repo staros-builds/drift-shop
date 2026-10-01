@@ -35,6 +35,8 @@ export const resiliency = {
       bannerHint: 'They will sync automatically when the connection returns. Do not clear this device\u2019s data.',
       syncing: 'Syncing queued sales…',
       lastError: 'Last sync error: {msg}',
+      discardFailed: 'Discard failed items',
+      discardConfirm: 'Discard all {n} queued sale(s) that failed to sync? They will be permanently removed from this device. Only do this if the sales were re-entered another way.',
     },
     backup: {
       snapshotNote: 'Auto-backup saved before a destructive action.',
@@ -66,6 +68,8 @@ export const resiliency = {
       bannerHint: 'Elles se synchroniseront automatiquement au retour de la connexion. N\u2019effacez pas les données de cet appareil.',
       syncing: 'Synchronisation des ventes en attente…',
       lastError: 'Dernière erreur de synchro : {msg}',
+      discardFailed: 'Écarter les éléments en échec',
+      discardConfirm: 'Écarter les {n} vente(s) en attente dont la synchronisation a échoué ? Elles seront définitivement supprimées de cet appareil. Faites-le seulement si les ventes ont été saisies autrement.',
     },
     backup: {
       snapshotNote: 'Sauvegarde automatique enregistrée avant une action destructive.',
