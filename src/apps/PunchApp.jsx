@@ -10,12 +10,12 @@ import { useLang, localeTag } from '../lib/i18n.jsx';
 import { sha256hex } from '../lib/sha256.js';
 
 /* ------------------------------------------------------------------ */
-/* Poinçon — standalone employee time clock (FR/EN).                    */
-/* Reuses the tested backend.pos time-clock + staff-PIN APIs; every    */
-/* punch re-verifies the PIN server-side. The Poinçon app is the system */
-/* of record: breaks, schedule, time-off, pay-period approval and the   */
-/* payroll export all live here (the POS clock tab keeps only basic     */
-/* in/out + corrections).                                              */
+/* Certificates (Attestations) — standalone employee time clock (FR/EN). */
+/* Reuses the tested backend.pos time-clock + staff-PIN APIs; every     */
+/* punch re-verifies the PIN server-side. The Certificates app is the   */
+/* system of record: breaks, schedule, time-off, pay-period approval    */
+/* and the payroll export all live here (the POS clock tab keeps only   */
+/* basic in/out + corrections).                                         */
 /* ------------------------------------------------------------------ */
 
 const canManage = (role) => role === 'owner' || role === 'manager';
@@ -1867,7 +1867,7 @@ function PayTab({ store, refreshKey }) {
       const blob = new Blob(["\uFEFF" + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = `poincon-paie-${days[0]}_${days[6]}.csv`;
+      a.download = `certificates-payroll-${days[0]}_${days[6]}.csv`;
       document.body.appendChild(a);
       a.click();
       a.remove();
