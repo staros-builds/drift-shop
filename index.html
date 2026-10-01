@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en" data-theme="daybreak">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#5e2b97" />
+    <meta
+      name="description"
+      content="Drift Shop — point of sale, catalogue, team and files in one calm app. Installable, works offline."
+    />
+    <link rel="manifest" href="/drift-shop/manifest.webmanifest" />
+    <link rel="icon" type="image/png" href="/drift-shop/icons/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" href="/drift-shop/icons/apple-touch-icon.png" />
+    <title>Drift Shop</title>
+    <script type="module" crossorigin src="/drift-shop/assets/index-DUWAOkIV.js"></script>
+    <link rel="stylesheet" crossorigin href="/drift-shop/assets/index-8ka26msc.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      // Restore deep links bounced through 404.html (GitHub Pages SPA
+      // fallback): 404.html stashes the requested URL in sessionStorage and
+      // redirects here; put it back in the address bar before boot.
+      (function () {
+        try {
+          var r = sessionStorage.getItem('driftshop_spa_redirect');
+          if (r) {
+            sessionStorage.removeItem('driftshop_spa_redirect');
+            history.replaceState(null, '', r);
+          }
+        } catch (e) { /* ignore */ }
+      })();
+    </script>
+  </body>
+</html>
