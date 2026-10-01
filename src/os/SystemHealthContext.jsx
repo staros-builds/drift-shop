@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { backend } from '../lib/backend/current.js';
 import { useAuth } from './AuthContext.jsx';
-import { getQueueDepth } from '../lib/offlineQueue.js';
 import { getCrashCount } from '../components/os/RootErrorBoundary.jsx';
 
 const SystemHealthContext = createContext(null);
@@ -18,9 +17,8 @@ const SystemHealthContext = createContext(null);
  * 1. backend.reachable — can we talk to Supabase at all?
  * 2. auth.session     — is there a valid session?
  * 3. db.read         — can we read a core table?
- * 4. queue.depth     — offline queue depth (nuclear failsafe)
- * 5. storage.write   — localStorage writable? (nuclear failsafe)
- * 6. crashes.recent  — crash loop detected? (nuclear failsafe)
+ * 4. storage.write   — localStorage writable? (nuclear failsafe)
+ * 5. crashes.recent  — crash loop detected? (nuclear failsafe)
  *
  * The taskbar renders a colored dot; clicking it opens a detail panel.
  */
@@ -86,22 +84,8 @@ async function checkDbRead() {
   }
 }
 
-// NUCLEAR FAILSAFE: check offline queue depth. Queued sales are a promise
-// the system must keep — surface them in health status.
-function checkQueue() {
-  try {
-    const depth = getQueueDepth();
-    if (depth > 0) {
-      return { ok: true, warning: `${depth} sale(s) queued offline`, depth };
-    }
-    return { ok: true, depth: 0 };
-  } catch {
-    return { ok: true, skipped: true };
-  }
-}
-
 // NUCLEAR FAILSAFE: check localStorage health. If we can't write, cart
-// recovery and offline queue are broken — that's a critical failure.
+// recovery is broken — that's a critical failure.
 function checkStorage() {
   try {
     const key = 'driftshop_health_probe';
@@ -154,8 +138,7 @@ export function SystemHealthProvider({ children }) {
         checkAuth(),
         checkDbRead(),
       ]);
-      // NUCLEAR FAILSAFE: synchronous local checks (queue, storage, crashes).
-      const queueRes = checkQueue();
+      // NUCLEAR FAILSAFE: synchronous local checks (storage, crashes).
       const storageRes = checkStorage();
       const crashRes = checkCrashLoop();
       if (!mountedRef.current) return;
@@ -163,7 +146,6 @@ export function SystemHealthProvider({ children }) {
         backend: backendRes,
         auth: authRes,
         db: dbRes,
-        queue: queueRes,
         storage: storageRes,
         crashes: crashRes,
       };

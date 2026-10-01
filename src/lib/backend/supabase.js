@@ -2713,8 +2713,8 @@ export function createSupabaseBackend() {
       const v4 = await posHasV4();
       const allowed = v4 ? ['cash', 'card', 'other'] : ['cash', 'card'];
       if (!allowed.includes(sale.method)) throw new Error('Unknown payment method.');
-      // NUCLEAR FAILSAFE: server-enforced idempotency (migration 050). The
-      // offline queue passes its UUID idempotency key; the unique index on
+      // NUCLEAR FAILSAFE: server-enforced idempotency (migration 050). If a
+      // caller supplies a UUID idempotency key, the unique index on
       // (store_id, idempotency_key) makes replays safe. A duplicate key means
       // the sale was ALREADY recorded — return the existing row instead of
       // creating a duplicate.

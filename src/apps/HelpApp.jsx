@@ -41,7 +41,7 @@ const SECTIONS = [
       },
       {
         id: 'cloud', title: 'Your cloud account',
-        keywords: 'cloud sync offline account storage',
+        keywords: 'cloud sync account storage',
         blocks: [
           { t: 'p', text: 'Everything lives in your cloud account. Sign in on any device and your desktop — files, apps, sales — is waiting for you.' },
           { t: 'steps', items: [
@@ -392,7 +392,7 @@ const SECTIONS = [
             'Or just type in the search box at the top of this Help app — it searches the manual\'s full text too, and each result opens the PDF at the right page.',
           ] },
           { t: 'pdf', text: 'Open the getting-started guide (PDF)' },
-          { t: 'tip', text: 'The manual works offline once opened — your browser keeps a copy.' },
+          { t: 'tip', text: 'Drift Shop is cloud-only: you need an internet connection, and everything is stored in the one cloud database shared by every app.' },
         ],
       },
     ],

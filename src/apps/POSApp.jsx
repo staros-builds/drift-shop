@@ -6,7 +6,7 @@ import {
   Copy, Crown, BarChart3, Wallet, KeyRound, UserCheck, UserPlus,
   TrendingUp, CalendarDays, CircleDollarSign, Percent, Hash, Lock, Clock3,
   LibraryBig, Gift, Star, GraduationCap, HandCoins, FileDown,
-  Undo2, Repeat, Bell, Edit2, Building2, CloudOff, RefreshCw,
+  Undo2, Repeat, Bell, Edit2, Building2,
 } from 'lucide-react';
 import { backend } from '../lib/backend/current.js';
 import { usePOSMode } from '../os/POSModeContext.jsx';
@@ -14,9 +14,7 @@ import { useToasts } from '../os/ToastContext.jsx';
 import { useLang, localeTag} from '../lib/i18n.jsx';
 import { qrDataUrl, receiptQrText } from '../lib/qr.js';
 import { playSound } from '../lib/sound.js';
-import { enqueue as enqueueOffline, getQueueDepth as getOfflineQueueDepth, clearQueue as clearOfflineQueue } from '../lib/offlineQueue.js';
 import { withTimeout, isTimeoutError } from '../lib/timeout.js';
-import { startAutoSync, onSyncStatus } from '../lib/queueSync.js';
 import { snapshotBeforeDestructive } from '../lib/autoBackup.js';
 import { logMoneyMovement } from '../lib/moneyAudit.js';
 import {
@@ -244,35 +242,6 @@ function ErrorNote({ message }) {
 
 function SellTab({ products, store, v4, customers, customerId, onCustomerChange, cashier, onSaleComplete, extras, giftCards, onCustomersChanged, seedLines, onSeedConsumed, orgs, orgId, onOrgChange, orgsOk }) {
   const { t } = useLang();
-  // Offline queue: sales captured when the network is down.
-  const [queueDepth, setQueueDepth] = useState(0);
-  const [queueSyncing, setQueueSyncing] = useState(false);
-  const [queueLastError, setQueueLastError] = useState(null);
-  useEffect(() => {
-    const update = () => {
-      try {
-        setQueueDepth(getOfflineQueueDepth());
-      } catch {}
-    };
-    update();
-    const handler = () => update();
-    window.addEventListener('driftshop:queue-changed', handler);
-    window.addEventListener('online', handler);
-    window.addEventListener('offline', handler);
-    // Loud sync state: while draining, and the last failure if one stuck.
-    const stopSyncWatch = onSyncStatus((st) => {
-      setQueueSyncing(!!st.syncing);
-      setQueueDepth(st.depth);
-      if (st.lastError) setQueueLastError(st.lastError);
-      else if (!st.syncing && st.depth === 0) setQueueLastError(null);
-    });
-    return () => {
-      window.removeEventListener('driftshop:queue-changed', handler);
-      window.removeEventListener('online', handler);
-      window.removeEventListener('offline', handler);
-      stopSyncWatch();
-    };
-  }, []);
   const [cart, setCart] = useState([]); // [{ key, productId, variantId, variantName, name, priceCents, qty, itemDiscountType, itemDiscountValue }]
   const [query, setQuery] = useState('');
   const [catFilter, setCatFilter] = useState('All');
@@ -725,63 +694,24 @@ function SellTab({ products, store, v4, customers, customerId, onCustomerChange,
     };
     let recorded;
     try {
-      // NUCLEAR FAILSAFE (fast-path): when the browser already knows it's
-      // offline, skip the doomed save attempt (its capability probes burn
-      // ~15s on failing requests with zero user feedback) and drop straight
-      // to the offline queue via the catch block below. Safe even if
-      // navigator.onLine lies: the queue is persistent and auto-syncs, so a
-      // false offline only delays the sale, never loses it.
-      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-        throw new Error('network offline (navigator.onLine === false) — routing to offline queue');
-      }
       recorded = await onSaleComplete(sale);
     } catch (err) {
-      // NUCLEAR FAILSAFE: if the sale failed due to a network error (offline),
-      // and it's a simple cash sale with no tender instruments that require
-      // server validation, QUEUE it instead of losing it. The sale is captured
-      // locally with a UUID idempotency key and synced when connectivity
-      // returns. Migration 050 enforces the key server-side via a unique
-      // (store_id, idempotency_key) index — replays return the existing sale
-      // instead of duplicating it.
-      const isNetworkError = /network|offline|fetch|failed to fetch|load failed/i.test(err?.message || '');
-      const hasComplexTender = adjustments.some((a) => a.kind !== 'cash' && (a.cents > 0 || a.points > 0));
-      const isSimpleCashSale = method === 'cash' && !hasComplexTender;
-      
-      if (isNetworkError && isSimpleCashSale) {
-        try {
-          const queued = enqueueOffline('pos_sale', {
-            sale,
-            storeId: store.id,
-            queuedAt: Date.now(),
-          });
-          // Show a "queued" receipt — the sale is captured, not lost.
-          const receiptData = {
-            ...sale,
-            id: `queued-${queued.id}`,
-            queued: true,
-            queueId: queued.id,
-            taxLines,
-            customerName: selectedCustomer?.name || null,
-            stockWarnings: [t('pos.queuedStockWarning')],
-          };
-          setReceipt(receiptData);
-          setCart([]);
-          setDiscount({ type: 'amount', value: '' });
-          setPromo(null);
-          setPromoInput('');
-          setPromoError('');
-          setPresetAdjustments([]);
-          // Clear the draft (the sale is now in the offline queue, not a draft).
-          try { localStorage.removeItem('driftshop_pos_draft'); } catch {}
-          return; // Don't throw — the sale was captured.
-        } catch (queueErr) {
-          console.error('[driftshop] offline queue failed:', queueErr);
-          // Fall through to the normal error path.
-        }
-      }
-      // The sale failed to record AFTER tender instruments were debited —
-      // reverse the debits so balances aren't lost with no sale on the books.
+      // Cloud-only: a sale exists only once the backend records it. If the
+      // network or backend is unreachable, say so honestly — reverse any
+      // tender instruments debited above (so balances aren't lost with no
+      // sale on the books) and rethrow. The TenderModal shows the error and
+      // stays open; the cart is left exactly as it was (nothing has been
+      // cleared or persisted anywhere) so the cashier can simply retry.
       await reverseRedemptions(redeemed);
+      if (isTimeoutError(err)) throw err;
+      // A raw fetch failure ("Failed to fetch") means nothing to a cashier —
+      // translate network-class failures into a clear, honest message. Any
+      // other error (stock conflict, validation) is rethrown as-is.
+      if (/network|offline|failed to fetch|load failed/i.test(err?.message || '')) {
+        const wrapped = new Error(t('err.saleNotRecorded'));
+        wrapped.cause = err;
+        throw wrapped;
+      }
       throw err;
     }
     // Best-effort audit link: tie each redeemed gift card back to this sale
@@ -1037,56 +967,6 @@ function SellTab({ products, store, v4, customers, customerId, onCustomerChange,
           <h3 className="flex items-center gap-2 font-semibold text-ink">
             <ShoppingCart size={16} className="text-accent" /> {t('pos.ui.currentSale')}
           </h3>
-          {/* NUCLEAR LOUD: queued offline sales are a promise, not a secret.
-              This banner is unmissable while any sale waits to sync, shows
-              live sync progress, and surfaces the last sync failure. */}
-          {(queueDepth > 0 || queueSyncing) && (
-            <div
-              role="alert"
-              className="mt-2 rounded-os border-2 border-amber-500 bg-amber-50 px-3 py-2 text-xs dark:bg-amber-950"
-            >
-              <div className="flex items-center gap-2 font-semibold text-amber-800 dark:text-amber-200">
-                {queueSyncing ? (
-                  <RefreshCw size={14} className="animate-spin" />
-                ) : (
-                  <CloudOff size={14} />
-                )}
-                {queueSyncing
-                  ? t('resiliency.queue.syncing')
-                  : t('resiliency.queue.banner', { n: queueDepth })}
-              </div>
-              <p className="mt-1 leading-snug text-amber-700 dark:text-amber-300">
-                {t('resiliency.queue.bannerHint')}
-              </p>
-              {queueLastError && !queueSyncing && (
-                <>
-                  <p className="mt-1 font-medium text-red-700 dark:text-red-300">
-                    {t('resiliency.queue.lastError', { msg: queueLastError })}
-                  </p>
-                  {/* Queue-management surface: a permanently failing item can
-                      be discarded by the cashier after an explicit confirm.
-                      Drain/retry logic is untouched — this only empties the
-                      queue on the user's word. */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!window.confirm(t('resiliency.queue.discardConfirm', { n: queueDepth }))) return;
-                      try {
-                        clearOfflineQueue();
-                      } catch {
-                        /* queue already empty or unreadable — banner refreshes anyway */
-                      }
-                      setQueueDepth(0);
-                      setQueueLastError(null);
-                    }}
-                    className="mt-2 rounded-os border border-red-400 px-2 py-1 text-xs font-semibold text-red-700 duration-160 hover:bg-red-100 dark:text-red-300 dark:hover:bg-red-900/40"
-                  >
-                    {t('resiliency.queue.discardFailed')}
-                  </button>
-                </>
-              )}
-            </div>
-          )}
           <div className="mt-2 flex items-center gap-2 text-xs">
             {v4 && (
               <button
@@ -2641,19 +2521,8 @@ function ReceiptModal({ receipt, store, onClose }) {
     }
   };
   return (
-    <Modal title={receipt.queued ? t('pos.queuedTitle') : `Receipt #${receipt.number}`} onClose={onClose}>
+    <Modal title={`Receipt #${receipt.number}`} onClose={onClose}>
       <div className="pos-receipt-print rounded-os border border-osborder bg-paper p-5">
-        {/* NUCLEAR FAILSAFE: queued (offline) sales show a prominent banner. */}
-        {receipt.queued && (
-          <div className="mb-3 rounded-os border-2 border-amber-500 bg-amber-50 p-3 text-center dark:bg-amber-950">
-            <p className="text-sm font-bold text-amber-800 dark:text-amber-200">
-              {t('pos.queuedTitle')}
-            </p>
-            <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
-              {t('pos.queuedMsg')}
-            </p>
-          </div>
-        )}
         <div className="text-center">
           <p className="text-lg font-bold text-ink">{store.name}</p>
           <p className="text-xs text-muted">
@@ -6256,27 +6125,6 @@ export default function POSApp({
         setStores(list);
         // In kiosk mode the store is fixed by the lock — never auto-switch.
         if (!kiosk && list.length > 0) setStoreId(list[0].id);
-        // NUCLEAR FAILSAFE: start offline queue auto-sync. Queued sales
-        // (captured while offline) sync automatically when connectivity returns.
-        if (!cancelled) {
-          startAutoSync(async (item) => {
-            if (item.type === 'pos_sale') {
-              // Use the idempotency key so retries are safe.
-              await withTimeout(
-                backend.pos.recordSale(item.payload.storeId, {
-                  ...item.payload.sale,
-                  idempotencyKey: item.idempotencyKey,
-                }),
-                30000,
-                'queueSync'
-              );
-              // Refresh sales list after sync.
-              if (item.payload.storeId === storeId) {
-                backend.pos.listSales(item.payload.storeId).then(setSales).catch(() => {});
-              }
-            }
-          });
-        }
       } catch (err) {
         if (!cancelled) setError(err.message || t('err.loadPosData'));
       }
@@ -6417,7 +6265,6 @@ export default function POSApp({
   const recordSale = async (sale) => {
     // NUCLEAR FAILSAFE: 30s timeout. A hung sale recording is indistinguishable
     // from a crash to the user — fail fast with a clear error, don't spin forever.
-    // (The offline queue catches network failures; this catches hangs.)
     const recorded = await withTimeout(
       backend.pos.recordSale(store.id, sale),
       30000,

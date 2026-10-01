@@ -38,9 +38,9 @@ function renderBootError(err) {
 /*   2. a known table exists (basic schema sanity).                    */
 /*                                                                     */
 /* A failure never leaves a blank page: the user gets a clear status   */
-/* screen with Retry, plus "Continue offline" — because the POS is      */
-/* designed to sell offline and queue sales for later sync. Blocking   */
-/* boot on a dead network would turn an outage into a closed shop.      */
+/* screen with Retry. Drift Shop is cloud-only — there is no offline   */
+/* mode, so a dead network means boot waits rather than starting a     */
+/* session that cannot reach the one shared database.                  */
 /* ------------------------------------------------------------------ */
 
 const SELF_CHECK_TIMEOUT_MS = 12000;
@@ -153,28 +153,11 @@ function renderCheckFailed({ schemaProblem, detail }) {
       connexion Internet, puis réessayez.
     </>
   );
-  const note = (
-    <>
-      <div style={{ fontSize: 13, color: '#6b6257', marginTop: 10 }}>
-        Sales made offline are saved on this device and sync when the connection
-        returns — the shop can keep selling.
-        <br />
-        Les ventes hors ligne sont enregistrées sur cet appareil et se
-        synchronisent au retour de la connexion.
-      </div>
-    </>
-  );
   bootCard(
     title,
-    <>
-      {msg}
-      {note}
-    </>,
+    <>{msg}</>,
     detail || null,
-    <>
-      {bootBtn('Retry / Réessayer', () => window.location.reload(), true)}
-      {bootBtn('Continue offline / Continuer hors ligne', () => bootApp(false))}
-    </>,
+    <>{bootBtn('Retry / Réessayer', () => window.location.reload(), true)}</>,
   );
 }
 
@@ -276,7 +259,8 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
 }
 
 // PWA: capture the install prompt for the Settings "Install" button, and
-// register the offline service worker. Both are best-effort and silent.
+// register the service worker (app-shell asset cache only — all data
+// still comes from the cloud on every use). Both are best-effort and silent.
 captureInstallPrompt();
 if (typeof window !== 'undefined') {
   window.addEventListener('load', () => {
