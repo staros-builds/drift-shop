@@ -103,20 +103,15 @@ begin
     return;
   end if;
 
-  -- instance_id identifies the GoTrue instance; copy it from any existing
-  -- user (verified nullable on the live auth.users table 2026-09-29, but
-  -- setting it matches what GoTrue writes for normal signups). On a fresh
-  -- project with no users yet, fall back to auth.instances. A NULL
-  -- instance_id breaks GoTrue sign-in entirely ("invalid credentials" with
-  -- a perfectly good password hash), so refuse to seed rather than insert
-  -- a broken user.
-  select u.instance_id into v_instance_id from auth.users u limit 1;
-  if v_instance_id is null then
-    select i.id into v_instance_id from auth.instances i limit 1;
-  end if;
-  if v_instance_id is null then
-    raise exception '056: could not determine auth instance_id — cannot seed master user';
-  end if;
+  -- instance_id identifies the GoTrue instance. GoTrue's password grant
+  -- filters users with "instance_id = uuid.Nil" (see supabase/auth
+  -- internal/models/user.go: FindUserByEmailAndAudience), so the seeded
+  -- user MUST carry the nil UUID 00000000-0000-0000-0000-000000000000 —
+  -- verified against the live drift-shop project 2026-10-01, where a NULL
+  -- instance_id produced "invalid credentials" with a correct password
+  -- hash. auth.instances is normally EMPTY on Supabase (even on healthy
+  -- projects), so it cannot be used to discover the value.
+  v_instance_id := '00000000-0000-0000-0000-000000000000'::uuid;
 
   -- Shape mirrors a normal email signup (see migration 020
   -- admin_create_user): auth.users row first — the handle_new_user()
