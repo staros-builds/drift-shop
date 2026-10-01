@@ -1439,6 +1439,97 @@ function ShopsSection() {
  * Admin-only: the component gates on the caller's profile role, and every
  * mutation is enforced again server-side by RLS. Cloud mode only.
  */
+/* ---------------- factory reset (master account only) ----------------
+ * One action wiping the build back to factory state: every account, every
+ * row of application data, every stored file — then the master account is
+ * reseeded (migration 057). Destructive by design:
+ *  - rendered only when the caller's profile has is_master = true;
+ *  - the server-side factory_reset() RPC re-verifies is_master and runs
+ *    the wipe+reseed in a single transaction (failure-atomic);
+ *  - the button arms only after typing RESET exactly;
+ *  - NO automatic backup is taken (the backup mechanism is client-side) —
+ *    the warning says so honestly and points at Settings -> Backup.
+ * After the RPC resolves the caller's own user row is gone, so we sign out
+ * and leave a one-time notice flag for the login screen.
+ */
+function DangerSection() {
+  const { t } = useLang();
+  const { signOut } = useAuth();
+  const [confirm, setConfirm] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const armed = confirm === 'RESET';
+
+  const doReset = async () => {
+    if (!armed || busy) return;
+    setBusy(true);
+    setError('');
+    try {
+      await backend.auth.factoryReset();
+      try {
+        localStorage.setItem('driftshop_factory_reset_notice', '1');
+      } catch {
+        /* non-fatal */
+      }
+      try {
+        await signOut();
+      } catch {
+        // The user row is gone; if sign-out itself fails, a reload lands
+        // on the login screen with the dead session discarded.
+        window.location.reload();
+      }
+    } catch (e) {
+      setError(e?.message || t('adminUsers.factoryResetFailed'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="flex h-full flex-col gap-4 overflow-y-auto p-4">
+      <section className="rounded-os border border-red-500/50 bg-paper p-4">
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-red-700">
+          <ShieldAlert size={16} />
+          {t('adminUsers.factoryResetTitle')}
+        </h3>
+        <div className="mt-2 space-y-2 text-xs leading-relaxed text-ink">
+          <p>{t('adminUsers.factoryResetWhat')}</p>
+          <p className="font-semibold text-red-700">{t('adminUsers.factoryResetIrreversible')}</p>
+          <p>{t('adminUsers.factoryResetNoBackup')}</p>
+          <p className="text-muted">{t('adminUsers.factoryResetSession')}</p>
+        </div>
+        {error && (
+          <div role="alert" className="mt-3 rounded-os border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-700">
+            {error}
+          </div>
+        )}
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+          <input
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            placeholder="RESET"
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
+            aria-label={t('adminUsers.factoryResetTypeLabel')}
+            className="w-full rounded-os border border-osborder bg-surface px-3 py-2 text-sm text-ink outline-none duration-160 focus:border-red-500 sm:max-w-[12rem]"
+          />
+          <button
+            type="button"
+            onClick={doReset}
+            disabled={!armed || busy}
+            className="flex items-center justify-center gap-2 rounded-os bg-red-600 px-4 py-2 text-sm font-semibold text-white duration-160 hover:bg-red-700 disabled:opacity-40"
+          >
+            <Trash2 size={15} />
+            {busy ? t('adminUsers.factoryResetWorking') : t('adminUsers.factoryResetButton')}
+          </button>
+        </div>
+        <p className="mt-2 text-xs text-muted">{t('adminUsers.factoryResetTypeHint')}</p>
+      </section>
+    </div>
+  );
+}
+
 export default function AdminPanel() {
   const { user } = useAuth();
   const { t } = useLang();
@@ -1446,6 +1537,7 @@ export default function AdminPanel() {
     typeof backend.auth?.adminListProfiles === 'function' &&
     typeof backend.support?.adminListTickets === 'function';
   const [role, setRole] = useState(null);
+  const [isMaster, setIsMaster] = useState(false);
   const [section, setSection] = useState('accounts');
   const [loading, setLoading] = useState(true);
 
@@ -1458,8 +1550,10 @@ export default function AdminPanel() {
       try {
         const me = await backend.auth.getAccessProfile();
         setRole(me.role);
+        setIsMaster(!!me.is_master);
       } catch {
         setRole(null);
+        setIsMaster(false);
       } finally {
         setLoading(false);
       }
@@ -1501,6 +1595,9 @@ export default function AdminPanel() {
       { id: 'shops', label: t('adminUsers.tabShops'), icon: Users },
       { id: 'tickets', label: t('adminUsers.tabSupport'), icon: MessageCircleQuestion },
       { id: 'feedback', label: t('adminUsers.tabFeedback'), icon: Star },
+      // Factory reset is master-only: the tab renders solely for the
+      // seeded master account (the RPC re-verifies server-side).
+      ...(isMaster ? [{ id: 'danger', label: t('adminUsers.dangerTab'), icon: ShieldAlert }] : []),
     ] : []),
   ];
 
@@ -1530,6 +1627,7 @@ export default function AdminPanel() {
       {section === 'shops' && <ShopsSection />}
       {section === 'tickets' && <TicketsSection />}
       {section === 'feedback' && <FeedbackSection />}
+      {section === 'danger' && isMaster && <DangerSection />}
     </div>
   );
 }

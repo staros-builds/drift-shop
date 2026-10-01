@@ -16,6 +16,20 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Restore deep links bounced through 404.html (GitHub Pages SPA
+      // fallback): 404.html stashes the requested URL in sessionStorage and
+      // redirects here; put it back in the address bar before boot.
+      (function () {
+        try {
+          var r = sessionStorage.getItem('driftshop_spa_redirect');
+          if (r) {
+            sessionStorage.removeItem('driftshop_spa_redirect');
+            history.replaceState(null, '', r);
+          }
+        } catch (e) { /* ignore */ }
+      })();
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

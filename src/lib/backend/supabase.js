@@ -627,7 +627,7 @@ export function createSupabaseBackend() {
       const uid = uidOverride || requireUid();
       const { data, error } = await client
         .from('profiles')
-        .select('id, username, role, is_guest, is_paid, is_locked, disabled_until, trial_started_at, trial_ends_at, created_at, account_type, device_store_id, must_change_password')
+        .select('id, username, role, is_guest, is_paid, is_locked, disabled_until, trial_started_at, trial_ends_at, created_at, account_type, device_store_id, must_change_password, is_master')
         .eq('id', uid)
         .maybeSingle();
       if (error) throw new Error(`Loading account status failed: ${error.message}`);
@@ -674,6 +674,19 @@ export function createSupabaseBackend() {
         new_password: newPassword ?? '',
       });
       if (error) throw new Error(`Password reset failed: ${error.message}`);
+    },
+
+    // Factory reset (master account ONLY): wipes every account, every row
+    // of application data and every stored file, then reseeds the master
+    // account — the build returns to the exact state it ships in. The
+    // server-side factory_reset() RPC verifies the caller is_master and
+    // runs the wipe+reseed in a single transaction (failure-atomic). The
+    // caller's own user row is deleted, so the app must sign out right
+    // after this resolves. No automatic backup is taken server-side (the
+    // backup mechanism is client-side) — the UI says so honestly.
+    async factoryReset() {
+      const { error } = await client.rpc('factory_reset');
+      if (error) throw new Error(`Factory reset failed: ${error.message}`);
     },
 
     // ---- Admin -> Users tab -------------------------------------------------

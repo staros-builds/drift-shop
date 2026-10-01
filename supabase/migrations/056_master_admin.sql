@@ -27,12 +27,20 @@
 -- the account owner must be able to clear their OWN flag after choosing a
 -- new password, and the column only gates a client-side first-login prompt,
 -- never a server-side privilege.
+--
+-- is_master IS a privilege: it is added to protect_profile_fields()'s
+-- guarded columns in migration 057, so only an administrator can change it
+-- (and the factory_reset() RPC additionally requires it). It is set true
+-- ONLY for this seeded master account (both seed paths below key on the
+-- master email) and the factory-reset reseed in 057 sets it true again —
+-- it must survive re-seeding, never be granted anywhere else.
 
 create extension if not exists pgcrypto with schema extensions;
 
--- Profile flag consumed by the app shell after sign-in.
+-- Profile flags consumed by the app shell after sign-in.
 alter table public.profiles
-  add column if not exists must_change_password boolean not null default false;
+  add column if not exists must_change_password boolean not null default false,
+  add column if not exists is_master boolean not null default false;
 
 do $$
 declare
@@ -44,13 +52,16 @@ begin
   if exists (select 1 from auth.users where lower(email) = lower(c_master_email)) then
     -- Already seeded (or the buyer created their own account on this
     -- email): still make sure it is a paid, unlocked admin that must
-    -- change its password, then stop.
+    -- change its password, then stop. is_master is set here too: only the
+    -- master email ever reaches this path, so only the master account can
+    -- hold the factory-reset privilege.
     update public.profiles
        set role = 'admin',
            is_paid = true,
            is_locked = false,
            disabled_until = null,
-           must_change_password = true
+           must_change_password = true,
+           is_master = true
      where id in (select id from auth.users where lower(email) = lower(c_master_email));
     return;
   end if;
@@ -91,12 +102,14 @@ begin
 
   -- Deterministic admin stamping regardless of trigger ordering or
   -- pre-existing profiles (protect_profile_fields allows it: this runs as
-  -- the migration owner, not through RLS).
+  -- the migration owner, not through RLS). is_master=true ONLY here: the
+  -- seeded master account alone holds the factory-reset privilege.
   update public.profiles
      set role = 'admin',
          is_paid = true,
          is_locked = false,
          disabled_until = null,
-         must_change_password = true
+         must_change_password = true,
+         is_master = true
    where id = v_id;
 end $$;

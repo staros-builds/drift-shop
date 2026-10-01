@@ -58,33 +58,46 @@ section('First-run setup', 'Premi\u00e8re installation', [
     ('p', f'This page is for the person installing <b>{PRODUCT}</b> on their own backend. The app is cloud-only: '
           'it needs a Supabase project before anyone can sign in.'),
     ('h2', '1. Create the database / 1. Cr\u00e9er la base de donn\u00e9es'),
-    ('b', 'Create a free project at supabase.com \\u2014 Dashboard \\u2014 New project.'),
-    ('b', 'Open the SQL editor and run every file in supabase/migrations/ in order, from 001 to 056. '
-          'The last one (056_master_admin.sql) creates the built-in master admin account.'),
-    ('b', 'Cr\\u00e9ez un projet gratuit sur supabase.com, puis ex\\u00e9cutez dans l\\u2019\\u00e9diteur SQL '
-          'chaque fichier de supabase/migrations/ dans l\\u2019ordre, de 001 \\u00e0 056. '
-          'Le dernier (056_master_admin.sql) cr\\u00e9e le compte administrateur int\\u00e9gr\\u00e9.'),
+    ('b', 'Create a free project at supabase.com \u2014 Dashboard \u2014 New project.'),
+    ('b', 'Open the SQL editor and run every file in supabase/migrations/ in order, from 001 to 057. '
+          'Migration 056 (056_master_admin.sql) creates the built-in master admin account; '
+          '057 adds the master-only factory reset.'),
+    ('b', 'Cr\u00e9ez un projet gratuit sur supabase.com, puis ex\u00e9cutez dans l\u2019\u00e9diteur SQL '
+          'chaque fichier de supabase/migrations/ dans l\u2019ordre, de 001 \u00e0 057. '
+          'La migration 056 cr\u00e9e le compte administrateur int\u00e9gr\u00e9; la 057 ajoute la r\u00e9initialisation.'),
     ('h2', '2. Connect and build / 2. Connecter et compiler'),
-    ('b', 'Copy your project\\u2019s URL and anon key (Project Settings \\u2014 API) into a .env file '
+    ('b', 'Copy your project\u2019s URL and anon key (Project Settings \u2014 API) into a .env file '
           'as VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY (see .env.example).'),
     ('b', 'Run: npm install, then npm run build. Deploy the dist/ folder to any static host.'),
-    ('b', 'Copiez l\\u2019URL du projet et la cl\\u00e9 anon (R\\u00e9glages du projet \\u2014 API) dans un fichier .env '
+    ('b', 'Copiez l\u2019URL du projet et la cl\u00e9 anon (R\u00e9glages du projet \u2014 API) dans un fichier .env '
           '(VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY, voir .env.example), puis : npm install, npm run build. '
-          'D\\u00e9ployez le dossier dist/ sur n\\u2019importe quel h\\u00e9bergeur statique.'),
-    ('h2', '3. First sign-in \\u2014 the master account / 3. Premi\\u00e8re connexion \\u2014 le compte ma\\u00eetre'),
-    ('b', 'Sign in with username \\u201cadmin\\u201d and password \\u201cadmin123\\u201d. '
-          'On first sign-in the app REQUIRES you to choose a new password before the desktop opens \\u2014 '
+          'D\u00e9ployez le dossier dist/ sur n\u2019importe quel h\u00e9bergeur statique.'),
+    ('h2', '3. First sign-in \u2014 the master account / 3. Premi\u00e8re connexion \u2014 le compte ma\u00eetre'),
+    ('b', 'Sign in with username \u201cadmin\u201d and password \u201cadmin123\u201d. '
+          'On first sign-in the app REQUIRES you to choose a new password before the desktop opens \u2014 '
           'the default password is temporary. Change it immediately and pick something strong '
           '(at least 8 characters, not a common or repeating password).'),
-    ('b', 'Connectez-vous avec le nom d\\u2019utilisateur \\u00ab admin \\u00bb et le mot de passe \\u00ab admin123 \\u00bb. '
-          '\\u00c0 la premi\\u00e8re connexion, l\\u2019appli EXIGE un nouveau mot de passe avant d\\u2019ouvrir le bureau \\u2014 '
-          'le mot de passe par d\\u00e9faut est temporaire. Changez-le aussit\\u00f4t (8 caract\\u00e8res minimum, '
-          '\\u00e9vitez les mots de passe courants ou r\\u00e9p\\u00e9titifs).'),
+    ('b', 'Connectez-vous avec le nom d\u2019utilisateur \u00ab admin \u00bb et le mot de passe \u00ab admin123 \u00bb. '
+          '\u00c0 la premi\u00e8re connexion, l\u2019appli EXIGE un nouveau mot de passe avant d\u2019ouvrir le bureau \u2014 '
+          'le mot de passe par d\u00e9faut est temporaire. Changez-le aussit\u00f4t (8 caract\u00e8res minimum, '
+          '\u00e9vitez les mots de passe courants ou r\u00e9p\u00e9titifs).'),
     ('b', 'Rebranding note: the master email must match BRAND.accountsDomain in src/lib/brand.js. '
           'If you change the domain, update the email in migration 056 before running it '
           '(bare usernames are mapped to <username>@<domain> at sign-in).'),
-    ('b', 'Note : le courriel du compte ma\\u00eetre doit correspondre \\u00e0 BRAND.accountsDomain dans src/lib/brand.js. '
-          'Si vous changez de domaine, mettez \\u00e0 jour le courriel dans la migration 056 avant de l\\u2019ex\\u00e9cuter.'),
+    ('b', 'Note : le courriel du compte ma\u00eetre doit correspondre \u00e0 BRAND.accountsDomain dans src/lib/brand.js. '
+          'Si vous changez de domaine, mettez \u00e0 jour le courriel dans la migration 056 avant de l\u2019ex\u00e9cuter.'),
+    ('h2', 'Factory reset / R\u00e9initialisation'),
+    ('b', 'The master account has a Factory reset action (Admin panel \u2014 Danger zone, master account only). '
+          'It permanently deletes EVERY account and ALL data \u2014 sales, catalogue, appointments, files, team, everything \u2014 '
+          'then restores the build to its factory state with only the master account. '
+          'The button arms only after typing RESET; the wipe runs in a single database transaction, so any failure rolls everything back instead of leaving a half-wiped database.'),
+    ('b', 'No automatic backup is taken: download account backups from Settings \u2014 Backup BEFORE resetting \u2014 '
+          'only what you saved beforehand survives. After the reset you are signed out; sign back in with the master account (you will be asked to choose a new password again).'),
+    ('b', 'Le compte ma\u00eetre dispose d\u2019une action de r\u00e9initialisation (panneau Admin \u2014 Zone danger, compte ma\u00eetre uniquement). '
+          'Elle supprime D\u00c9FINITIVEMENT tous les comptes et TOUTES les donn\u00e9es, puis ram\u00e8ne l\u2019appli \u00e0 son \u00e9tat d\u2019usine '
+          'avec uniquement le compte ma\u00eetre. Le bouton s\u2019arme en tapant RESET; l\u2019effacement s\u2019ex\u00e9cute en une seule transaction '
+          '(en cas d\u2019\u00e9chec, tout est annul\u00e9). Aucune sauvegarde automatique : t\u00e9l\u00e9chargez vos sauvegardes depuis R\u00e9glages \u2014 Sauvegarde AVANT. '
+          'Vous serez d\u00e9connect\u00e9; reconnectez-vous avec le compte ma\u00eetre (nouveau mot de passe requis \u00e0 nouveau).'),
 ])
 
 section('Welcome', 'Bienvenue', [

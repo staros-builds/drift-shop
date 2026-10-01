@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Redirecting…</title>
+<script>
+(function () {
+  // GitHub Pages SPA fallback for the /drift-shop/ project site.
+  // Deep links (e.g. /drift-shop/some/path) land here because only static
+  // files exist. Stash the requested URL, then bounce to the app root —
+  // index.html restores it via history before the app boots.
+  try {
+    sessionStorage.setItem('driftshop_spa_redirect',
+      location.pathname + location.search + location.hash);
+  } catch (e) { /* storage unavailable (private mode): just go home */ }
+  location.replace('/drift-shop/');
+})();
+</script>
+</head>
+<body></body>
+</html>

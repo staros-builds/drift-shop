@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { LogIn, UserPlus, AlertCircle, Timer, X, Languages, KeyRound, MailQuestion } from 'lucide-react';
+import { LogIn, UserPlus, AlertCircle, Timer, X, Languages, KeyRound, MailQuestion, CheckCircle2 } from 'lucide-react';
 import { useAuth, TRIAL_USED_KEY } from '../../os/AuthContext.jsx';
 import { useLang } from '../../lib/i18n.jsx';
 import { backend } from '../../lib/backend/current.js';
@@ -402,6 +402,20 @@ export default function LoginScreen() {
       return true;
     }
   });
+  // One-time notice after a factory reset: the reset wiped every account
+  // (including the session just used), so the login screen explains why the
+  // user is suddenly signed out. Read + cleared on mount.
+  const [resetNotice, setResetNotice] = useState(() => {
+    try {
+      if (localStorage.getItem('driftshop_factory_reset_notice') === '1') {
+        localStorage.removeItem('driftshop_factory_reset_notice');
+        return true;
+      }
+    } catch {
+      /* non-fatal */
+    }
+    return false;
+  });
 
   // Security: never retain a password on the login screen. This runs on every
   // mount (including after logout) and defeats both React state reuse and
@@ -582,6 +596,12 @@ export default function LoginScreen() {
         )}
 
         <form onSubmit={submit} className="mt-3 space-y-2">
+          {resetNotice && (
+            <div role="status" className="flex items-start gap-2 rounded-os border border-osborder bg-paper px-3 py-2.5 text-sm text-ink">
+              <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-accent" />
+              <span>{t('adminUsers.factoryResetDoneNotice')}</span>
+            </div>
+          )}
           <Field
             label={t('login.identifier')}
             value={identifier}

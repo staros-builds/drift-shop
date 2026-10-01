@@ -24,6 +24,9 @@ create table public.profiles (
   -- Deliberately NOT guarded by protect_profile_fields(): the owner must be
   -- able to clear their own flag after choosing a new password.
   must_change_password boolean not null default false,
+  -- Factory-reset privilege: true ONLY for the seeded master account
+  -- (migrations 056/057). Guarded by protect_profile_fields().
+  is_master boolean not null default false,
   avatar_url   text,
   created_at   timestamptz not null default now()
 );
