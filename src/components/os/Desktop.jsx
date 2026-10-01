@@ -11,6 +11,7 @@ import StartMenu from './StartMenu.jsx';
 import WelcomeDialog from './WelcomeDialog.jsx';
 import WelcomeTour from './WelcomeTour.jsx';
 import POSModeOverlay from './POSModeOverlay.jsx';
+import AppErrorBoundary from './AppErrorBoundary.jsx';
 import { usePOSMode } from '../../os/POSModeContext.jsx';
 import MacMenuBar from './styles/MacMenuBar.jsx';
 import MacDock from './styles/MacDock.jsx';
@@ -495,7 +496,9 @@ export default function Desktop() {
       {desktopArea}
       <MacDock key="dock" />
 
-      <POSModeOverlay />
+      <AppErrorBoundary label="POS kiosk overlay">
+        <POSModeOverlay />
+      </AppErrorBoundary>
       {welcomeOpen && <WelcomeDialog onDone={closeWelcome} />}
       <WelcomeTour />
     </div>
@@ -505,7 +508,9 @@ export default function Desktop() {
       {desktopArea}
       <Taskbar key="taskbar" forcePosition="bottom" centered />
 
-      <POSModeOverlay />
+      <AppErrorBoundary label="POS kiosk overlay">
+        <POSModeOverlay />
+      </AppErrorBoundary>
       {welcomeOpen && <WelcomeDialog onDone={closeWelcome} />}
       <WelcomeTour />
     </div>
@@ -516,7 +521,9 @@ export default function Desktop() {
       {desktopArea}
       {!barFirst && <Taskbar key="taskbar" />}
 
-      <POSModeOverlay />
+      <AppErrorBoundary label="POS kiosk overlay">
+        <POSModeOverlay />
+      </AppErrorBoundary>
       {welcomeOpen && <WelcomeDialog onDone={closeWelcome} />}
       <WelcomeTour />
     </div>

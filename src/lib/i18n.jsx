@@ -13,8 +13,9 @@ import { en } from './locales/en.js';
 /* ------------------------------------------------------------------ */
 
 import { LANG_KEY, getLang, localeTag } from './localeTag.js';
+import { resiliency } from './locales/resiliency.js'; // resiliency UI strings, merged below (kept out of en.js/fr.js)
 export { LANG_KEY, getLang, localeTag };
-const DICTS = { fr, en };
+const DICTS = { fr: { ...fr, resiliency: resiliency.fr }, en: { ...en, resiliency: resiliency.en } };
 
 function lookup(dict, key) {
   return key.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : undefined), dict);

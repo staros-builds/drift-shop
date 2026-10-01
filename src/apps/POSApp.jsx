@@ -6,7 +6,7 @@ import {
   Copy, Crown, BarChart3, Wallet, KeyRound, UserCheck, UserPlus,
   TrendingUp, CalendarDays, CircleDollarSign, Percent, Hash, Lock, Clock3,
   LibraryBig, Gift, Star, GraduationCap, HandCoins, FileDown,
-  Undo2, Repeat, Bell, Edit2, Building2,
+  Undo2, Repeat, Bell, Edit2, Building2, CloudOff, RefreshCw,
 } from 'lucide-react';
 import { backend } from '../lib/backend/current.js';
 import { usePOSMode } from '../os/POSModeContext.jsx';
@@ -16,7 +16,8 @@ import { qrDataUrl, receiptQrText } from '../lib/qr.js';
 import { playSound } from '../lib/sound.js';
 import { enqueue as enqueueOffline, getQueueDepth as getOfflineQueueDepth } from '../lib/offlineQueue.js';
 import { withTimeout, isTimeoutError } from '../lib/timeout.js';
-import { startAutoSync } from '../lib/queueSync.js';
+import { startAutoSync, onSyncStatus } from '../lib/queueSync.js';
+import { snapshotBeforeDestructive } from '../lib/autoBackup.js';
 import { logMoneyMovement } from '../lib/moneyAudit.js';
 import {
   getPrinterConfig, savePrinterConfig, printReceipt, openCashDrawer,
@@ -245,6 +246,8 @@ function SellTab({ products, store, v4, customers, customerId, onCustomerChange,
   const { t } = useLang();
   // Offline queue: sales captured when the network is down.
   const [queueDepth, setQueueDepth] = useState(0);
+  const [queueSyncing, setQueueSyncing] = useState(false);
+  const [queueLastError, setQueueLastError] = useState(null);
   useEffect(() => {
     const update = () => {
       try {
@@ -256,10 +259,18 @@ function SellTab({ products, store, v4, customers, customerId, onCustomerChange,
     window.addEventListener('driftshop:queue-changed', handler);
     window.addEventListener('online', handler);
     window.addEventListener('offline', handler);
+    // Loud sync state: while draining, and the last failure if one stuck.
+    const stopSyncWatch = onSyncStatus((st) => {
+      setQueueSyncing(!!st.syncing);
+      setQueueDepth(st.depth);
+      if (st.lastError) setQueueLastError(st.lastError);
+      else if (!st.syncing && st.depth === 0) setQueueLastError(null);
+    });
     return () => {
       window.removeEventListener('driftshop:queue-changed', handler);
       window.removeEventListener('online', handler);
       window.removeEventListener('offline', handler);
+      stopSyncWatch();
     };
   }, []);
   const [cart, setCart] = useState([]); // [{ key, productId, variantId, variantName, name, priceCents, qty, itemDiscountType, itemDiscountValue }]
@@ -1017,6 +1028,34 @@ function SellTab({ products, store, v4, customers, customerId, onCustomerChange,
           <h3 className="flex items-center gap-2 font-semibold text-ink">
             <ShoppingCart size={16} className="text-accent" /> {t('pos.ui.currentSale')}
           </h3>
+          {/* NUCLEAR LOUD: queued offline sales are a promise, not a secret.
+              This banner is unmissable while any sale waits to sync, shows
+              live sync progress, and surfaces the last sync failure. */}
+          {(queueDepth > 0 || queueSyncing) && (
+            <div
+              role="alert"
+              className="mt-2 rounded-os border-2 border-amber-500 bg-amber-50 px-3 py-2 text-xs dark:bg-amber-950"
+            >
+              <div className="flex items-center gap-2 font-semibold text-amber-800 dark:text-amber-200">
+                {queueSyncing ? (
+                  <RefreshCw size={14} className="animate-spin" />
+                ) : (
+                  <CloudOff size={14} />
+                )}
+                {queueSyncing
+                  ? t('resiliency.queue.syncing')
+                  : t('resiliency.queue.banner', { n: queueDepth })}
+              </div>
+              <p className="mt-1 leading-snug text-amber-700 dark:text-amber-300">
+                {t('resiliency.queue.bannerHint')}
+              </p>
+              {queueLastError && !queueSyncing && (
+                <p className="mt-1 font-medium text-red-700 dark:text-red-300">
+                  {t('resiliency.queue.lastError', { msg: queueLastError })}
+                </p>
+              )}
+            </div>
+          )}
           <div className="mt-2 flex items-center gap-2 text-xs">
             {v4 && (
               <button
@@ -1904,6 +1943,9 @@ function GiftCardsModal({ store, cashier, onSaleComplete, onClose }) {
 
   const voidCard = async (card) => {
     if (!window.confirm(t('pos.gift.voidConfirm', { code: card.code }))) return;
+    // Auto-backup BEFORE the destructive action: a voided gift card is
+    // unrecoverable, so snapshot the store first (best-effort, time-boxed).
+    await snapshotBeforeDestructive(store.id, `gift-card void ${card.code}`);
     setBusy(true);
     setError('');
     try {
@@ -5811,6 +5853,9 @@ function ClockTab({ store }) {
 
   const removePunch = async (p) => {
     if (!window.confirm(t('punch.deleteConfirm', { name: p.staffName, day: fmtClockDay(p.punchIn) }))) return;
+    // Auto-backup BEFORE the destructive action: a deleted punch is
+    // unrecoverable, so snapshot the store first (best-effort, time-boxed).
+    await snapshotBeforeDestructive(store.id, `punch delete ${p.staffName}`);
     setBusy(true);
     setError('');
     try {

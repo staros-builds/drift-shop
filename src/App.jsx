@@ -19,6 +19,7 @@ import TouchHome, { TouchStatusBar } from './components/os/TouchHome.jsx';
 import { useWindows } from './os/WindowsContext.jsx';
 import { useSettings } from './os/SettingsContext.jsx';
 import RootErrorBoundary, { getCrashCount, recordCleanBoot } from './components/os/RootErrorBoundary.jsx';
+import AppErrorBoundary from './components/os/AppErrorBoundary.jsx';
 import SafeModeScreen from './components/os/SafeModeScreen.jsx';
 
 // Crash-loop SCRAM threshold: if the app crashed this many times in a row,
@@ -98,12 +99,22 @@ function Shell() {
     return <BootScreen onDone={() => setBooted(true)} />;
   }
   if (recovery && user) {
-    return <SetNewPasswordScreen onDone={() => setRecovery(false)} />;
+    return (
+      <AppErrorBoundary label="password reset">
+        <SetNewPasswordScreen onDone={() => setRecovery(false)} />
+      </AppErrorBoundary>
+    );
   }
   if (!user) {
     // Key on the auth epoch so every sign-out remounts the login screen
-    // with empty credential fields (no retained password).
-    return <LoginScreen key={`login-${authEpoch}`} />;
+    // with empty credential fields (no retained password). The per-region
+    // boundary keeps a login-screen crash from taking down the shell —
+    // the root boundary is the last resort, not the first.
+    return (
+      <AppErrorBoundary label="login">
+        <LoginScreen key={`login-${authEpoch}`} />
+      </AppErrorBoundary>
+    );
   }
   if (!accessChecked) {
     // The profile (and its account_type) is still loading — never flash the
@@ -121,13 +132,25 @@ function Shell() {
   // modal clears the flag through the auth context on success, so the
   // shell simply proceeds past this gate.
   if (profile?.must_change_password) {
-    return <ForcePasswordChangeModal onDone={() => {}} />;
+    return (
+      <AppErrorBoundary label="password change">
+        <ForcePasswordChangeModal onDone={() => {}} />
+      </AppErrorBoundary>
+    );
   }
   if (accountType === 'punch') {
-    return <PunchKiosk />;
+    return (
+      <AppErrorBoundary label="punch kiosk">
+        <PunchKiosk />
+      </AppErrorBoundary>
+    );
   }
   if (accountType === 'pos') {
-    return <POSKiosk />;
+    return (
+      <AppErrorBoundary label="POS kiosk">
+        <POSKiosk />
+      </AppErrorBoundary>
+    );
   }
   if (settings?.touch_mode) {
     return <TouchShell />;

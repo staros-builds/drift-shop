@@ -5,33 +5,12 @@ import { useWindows, TASKBAR_HEIGHT } from '../../os/WindowsContext.jsx';
 import { useNotifications } from '../../os/NotificationsContext.jsx';
 import { useSettings } from '../../os/SettingsContext.jsx';
 import { winTitle } from '../../lib/appTitle.js';
-import { useLang } from '../../lib/i18n.jsx';
 
-/** Catches app render crashes and reports them honestly instead of blanking the OS. */
-class WindowErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { failed: false };
-  }
-  static getDerivedStateFromError() {
-    return { failed: true };
-  }
-  componentDidCatch(error) {
-    this.props.onError(error);
-  }
-  render() {
-    if (this.state.failed) {
-      const lang = this.props.lang || 'fr';
-      return (
-        <div className="flex h-full flex-col items-center justify-center gap-2 bg-surface p-6 text-center">
-          <p className="text-sm font-medium text-ink">{lang === 'fr' ? 'Cette fenêtre a rencontré un problème.' : 'This window ran into a problem.'}</p>
-          <p className="text-xs text-muted">{lang === 'fr' ? 'Elle a été arrêtée pour que le reste de Drift Shop continue de fonctionner.' : 'It has been stopped so the rest of Drift Shop keeps working.'}</p>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
+import AppErrorBoundary from './AppErrorBoundary.jsx';
+
+/** Per-app crash bulkhead: one app's crash can never blank the OS.
+ * (Implementation lives in AppErrorBoundary.jsx; kept here as the mount
+ * point so every registry app window gets it.) */
 
 const desktopRect = () => {
   const el = document.getElementById('drift-desktop-area');
@@ -103,7 +82,6 @@ export default function Window({ win }) {
     useWindows();
   const { push } = useNotifications();
   const { settings } = useSettings();
-  const { lang } = useLang();
   const uiStyle = settings?.ui_style || 'drift';
   const drag = useRef(null);
   const [, forceTick] = useState(0);
@@ -283,15 +261,15 @@ export default function Window({ win }) {
           </button>
         </div>
         <div className="min-h-0 flex-1 overflow-hidden">
-          <WindowErrorBoundary
-            lang={lang}
+          <AppErrorBoundary
+            label={winTitle(win)}
             onError={(err) => {
               push('Error', `“${winTitle(win)}” crashed: ${err.message}`);
               forceTick((n) => n + 1);
             }}
           >
             <AppComponent {...win.props} windowApi={windowApi} appEntry={app} />
-          </WindowErrorBoundary>
+          </AppErrorBoundary>
         </div>
       </div>
     );
@@ -390,15 +368,15 @@ export default function Window({ win }) {
 
       {/* App content */}
       <div className="min-h-0 flex-1 overflow-hidden">
-        <WindowErrorBoundary
-          lang={lang}
+        <AppErrorBoundary
+          label={winTitle(win)}
           onError={(err) => {
             push('Error', `“${winTitle(win)}” crashed: ${err.message}`);
             forceTick((n) => n + 1);
           }}
         >
           <AppComponent {...win.props} windowApi={windowApi} appEntry={app} />
-        </WindowErrorBoundary>
+        </AppErrorBoundary>
       </div>
 
       {/* Resize handles */}
