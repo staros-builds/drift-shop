@@ -118,13 +118,19 @@ begin
   -- trigger builds the profile row (username 'admin', role 'admin' when
   -- profiles is empty or when the email matches the master special-case).
   insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
-                          raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+                          raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+                          confirmation_token, recovery_token,
+                          email_change_token_current, email_change_token_new, email_change,
+                          phone_change_token, phone_change, reauthentication_token)
   values (v_instance_id, v_id, 'authenticated', 'authenticated', c_master_email,
           extensions.crypt(c_default_pw, extensions.gen_salt('bf')),
           now(),
           '{"provider":"email","providers":["email"]}'::jsonb,
           jsonb_build_object('username', 'admin', 'is_guest', false),
-          now(), now());
+          now(), now(),
+          '', '',
+          '', '', '',
+          '', '', '');
 
   -- GoTrue resolves password sign-in through auth.identities; without this
   -- row the new account can never sign in. Shape mirrors a normal email
