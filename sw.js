@@ -10,7 +10,7 @@
  * requests (media streaming), and non-GETs always go to the network.
  */
 
-const CACHE_VERSION = 'driftshop-202610011705';
+const CACHE_VERSION = 'driftshop-202610011835';
 // Derive shell paths from the service worker's own scope so the app works
 // when hosted under a subpath (e.g. /drift-shop/) instead of the domain root.
 // self.registration.scope is like "https://host/drift-shop/" — strip the origin
