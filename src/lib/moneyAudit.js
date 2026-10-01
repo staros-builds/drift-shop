@@ -9,7 +9,8 @@
  * - Append-only: entries are never modified or deleted (only pruned by age).
  * - Tamper-evident: each entry includes a hash chain (prevHash) — if someone
  *   edits an old entry, the chain breaks and we can detect it.
- * - Local-first: works offline, syncs to backend when available (future).
+ * - Cloud-first: every entry mirrors a movement the cloud backend has
+ *   already recorded; this ledger never substitutes for it.
  * - Bounded: keeps last 1000 entries (~30 days of typical use).
  *
  * This is a LOCAL ledger. The backend is the source of truth; this is the

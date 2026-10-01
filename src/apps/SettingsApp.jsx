@@ -19,7 +19,6 @@ import {
   hasInstallPrompt,
   installInstructions,
   isInstalled,
-  isOfflineReady,
   promptInstall,
   registerServiceWorker,
 } from '../lib/pwa.js';
@@ -84,10 +83,9 @@ export default function SettingsApp({ windowApi }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const fileInputRef = useRef(null);
 
-  // Download & offline (PWA install + service worker status)
+  // Install app (PWA install + service worker update status)
   const [installState, setInstallState] = useState('unknown'); // unknown|installed|prompt|manual
   const [showInstallHelp, setShowInstallHelp] = useState(false);
-  const [offlineReady, setOfflineReady] = useState(() => isOfflineReady());
   const [swUpdate, setSwUpdate] = useState(false);
 
   const refreshInstallState = useCallback(() => {
@@ -98,7 +96,6 @@ export default function SettingsApp({ windowApi }) {
 
   useEffect(() => {
     refreshInstallState();
-    setOfflineReady(isOfflineReady());
     const onAvail = () => {
       refreshInstallState();
     };
@@ -107,26 +104,21 @@ export default function SettingsApp({ windowApi }) {
     };
     window.addEventListener('drift:install-available', onAvail);
     window.addEventListener('drift:install-changed', onChanged);
-    // Service worker: mark offline-ready once it controls the page, and
-    // flag when a newer build is waiting behind this one.
+    // Service worker: flag when a newer build is waiting behind this one
+    // so Settings can offer a reload onto the latest version.
     let cancelled = false;
     registerServiceWorker().then((reg) => {
       if (cancelled || !reg) return;
       const checkWaiting = () => {
         if (reg.waiting) setSwUpdate(true);
-        setOfflineReady(isOfflineReady());
       };
       checkWaiting();
       reg.addEventListener('updatefound', checkWaiting);
-      const onController = () => setOfflineReady(isOfflineReady());
-      window.navigator.serviceWorker?.addEventListener('controllerchange', onController);
     });
-    const t = setInterval(() => setOfflineReady(isOfflineReady()), 5000);
     return () => {
       cancelled = true;
       window.removeEventListener('drift:install-available', onAvail);
       window.removeEventListener('drift:install-changed', onChanged);
-      clearInterval(t);
     };
   }, [refreshInstallState]);
 
@@ -1150,9 +1142,9 @@ export default function SettingsApp({ windowApi }) {
           </p>
         </section>
 
-        {/* Download & offline */}
+        {/* Install app */}
         <section className="mb-8">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">{t('settings.sections.downloadOffline')}</h2>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">{t('settings.sections.installApp')}</h2>
           <div className="flex flex-wrap gap-2">
             {installState === 'installed' ? (
               <button
@@ -1195,8 +1187,7 @@ export default function SettingsApp({ windowApi }) {
             </p>
           )}
           <p className="mt-2 text-xs text-muted">
-            {offlineReady ? t('settings.sections.offlineReady') : t('settings.sections.offlinePreparing')}{' '}
-            {t('settings.sections.offlineNote')}
+            {t('settings.sections.installNote')}
           </p>
         </section>
 
