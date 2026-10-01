@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { backend } from '../lib/backend/current.js';
 import { evaluateAccess, ACCESS_CHECK_MS, TRIAL_USED_KEY } from './accessPolicy.js';
-import { BRAND } from '../lib/brand.js';
+import { loginIdToEmail } from '../lib/loginId.js';
 
 const AuthContext = createContext(null);
 
@@ -153,49 +153,6 @@ export function AuthProvider({ children }) {
     };
   }, [userId, runAccessCheck]);
 
-  // Cloud mode accepts usernames too: we map a bare username to a synthetic
-  // email on the brand's reserved accounts domain (see src/lib/brand.js) so
-  // Supabase auth works unchanged. The user only ever sees their username.
-  // Note: a `.local` domain is rejected by Supabase's email validation on
-  // signup, so the domain must be a real-looking one (it never receives mail).
-  const toCloudEmail = (identifier) => {
-    const id = identifier.trim();
-    if (!id) {
-      const e = new Error('username-required');
-      e.code = 'username-required';
-      throw e;
-    }
-    if (id.includes('@')) return id;
-    // Validate: only allow letters/numbers/dots/underscores/dashes.
-    // Reject loudly if the username contains anything else (spaces, emoji,
-    // special chars) instead of silently stripping them — silent stripping
-    // causes confusing collisions (e.g. "test user" and "test!user" both
-    // becoming "testuser").
-    const lower = id.toLowerCase();
-    if (!/^[a-z0-9._-]+$/.test(lower)) {
-      const e = new Error('username-invalid');
-      e.code = 'username-invalid';
-      throw e;
-    }
-    // Reject overlong usernames loudly instead of silently truncating —
-    // silent truncation causes confusing collisions ("a"×64 vs "a"×79
-    // becoming the same account).
-    if (lower.length > 64) {
-      const e = new Error('username-too-long');
-      e.code = 'username-too-long';
-      throw e;
-    }
-    const safe = lower.slice(0, 64);
-    // A username that sanitizes to nothing (e.g. "!@#$") must not silently
-    // collapse into a shared fallback identity — reject it loudly.
-    if (!safe) {
-      const e = new Error('username-invalid');
-      e.code = 'username-invalid';
-      throw e;
-    }
-    return `${safe}@${BRAND.accountsDomain}`;
-  };
-
   const assertSanePassword = (password) => {
     // Supabase only enforces min length; an all-spaces password would pass.
     // Require at least one non-whitespace character (idiot-proofing).
@@ -262,7 +219,7 @@ export function AuthProvider({ children }) {
 
   const signUp = useCallback(async (email, password, username) => {
     assertSanePassword(password);
-    const cloudEmail = toCloudEmail(email);
+    const cloudEmail = loginIdToEmail(email);
     const displayName = username || (email.includes('@') ? email.split('@')[0] : email.trim()) || 'user';
     explicitAuthRef.current = true;
     try {
@@ -286,7 +243,7 @@ export function AuthProvider({ children }) {
   const signIn = useCallback(async (email, password) => {
     explicitAuthRef.current = true;
     try {
-      const { user: u } = await backend.auth.signIn({ email: toCloudEmail(email), password });
+      const { user: u } = await backend.auth.signIn({ email: loginIdToEmail(email), password });
       // Do NOT setUser yet: run the access check first so a blocked account
       // never flashes the desktop. runAccessCheck signs out and sets the block
       // message on failure; we only setUser if access is granted.

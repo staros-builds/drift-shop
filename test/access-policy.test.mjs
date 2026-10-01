@@ -45,7 +45,8 @@ check('paid standard account is granted', () => {
 check('unpaid standard account is blocked as unpaid', () => {
   const b = evaluateAccess({ role: 'user', is_paid: false, is_locked: false, disabled_until: null, is_guest: false });
   assert.equal(b.kind, 'unpaid');
-  assert.match(b.message, /marked as paid/);
+  assert.equal(b.titleKey, 'login.blockUnpaidTitle');
+  assert.equal(b.messageKey, 'login.blockUnpaidMsg');
 });
 
 check('active guest trial is granted', () => {
@@ -93,7 +94,28 @@ check('temporarily disabled account is blocked with a countdown', () => {
     disabled_until: future(4 * 60 * 1000), is_guest: false,
   });
   assert.equal(b.kind, 'disabled');
-  assert.match(b.message, /4 minutes/);
+  assert.equal(b.titleKey, 'login.blockDisabledTitle');
+  assert.equal(b.messageKey, 'login.blockDisabledMsg');
+  assert.equal(b.messageParams.mins, 4);
+  assert.equal(b.messageParams.plural, 's');
+});
+
+check('temporary disable under a minute uses the singular', () => {
+  const b = evaluateAccess({
+    role: 'user', is_paid: true, is_locked: false,
+    disabled_until: future(30 * 1000), is_guest: false,
+  });
+  assert.equal(b.kind, 'disabled');
+  assert.equal(b.messageParams.mins, 1);
+  assert.equal(b.messageParams.plural, '');
+});
+
+check('malformed disabled_until never throws and does not block', () => {
+  const b = evaluateAccess({
+    role: 'user', is_paid: true, is_locked: false,
+    disabled_until: 'not-a-date', is_guest: false,
+  });
+  assert.equal(b, null);
 });
 
 check('lapsed temporary disable no longer blocks', () => {

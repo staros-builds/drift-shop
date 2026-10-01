@@ -6,11 +6,12 @@
  *
  * Usage (node):
  *   import { runConformance } from './tests/conformance.js';
- *   import { createLocalBackend } from './src/lib/backend/local.js';
- *   const summary = await runConformance(createLocalBackend, {
- *     label: 'local',
- *     auth: { mode: 'signup', email: 'conf@test.dev', password: 'password123', username: 'conf' },
- *   });
+ *   import { createBackend, BackendKinds } from './src/lib/backend/index.js';
+ *   const summary = await runConformance(
+ *     () => createBackend(BackendKinds.SUPABASE),
+ *     { label: 'supabase', auth: { mode: 'signin', email, password } },
+ *   );
+ * (See tests/run-supabase.js for the full runner — it needs a live project.)
  *
  * For adapters whose signup needs email confirmation (supabase), create the
  * user out-of-band and pass { mode: 'signin', email, password } instead.
