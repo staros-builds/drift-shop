@@ -120,6 +120,13 @@
  *       listProducts(storeId) -> [product]
  *       saveProduct(storeId, product) -> product            // manager+
  *       deleteProduct(storeId, id) -> void                  // manager+
+ *       // storefront (migration 063): the shop's public web page.
+ *       // product.publicVisible defaults TRUE (new POS products appear
+ *       // on the published storefront automatically); the anonymous
+ *       // public_storefront() RPC serves exactly these rows.
+ *       getStorefrontProfile(storeId) -> profile|null       // member
+ *       saveStorefrontProfile(storeId, profile) -> profile  // manager+
+ *       setProductPublicVisible(storeId, id, visible) -> product
  *       listSales(storeId, { limit }) -> [sale]             // newest first
  *       recordSale(storeId, sale) -> sale                   // any member
  *       voidSale(storeId, id) -> void                       // manager+

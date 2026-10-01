@@ -1925,6 +1925,10 @@ export function createSupabaseBackend() {
     priceCents: Number(r.price_cents),
     category: r.category ?? '',
     active: !!r.active,
+    // migration 063: public-storefront visibility. The column defaults
+    // TRUE so a product created in the POS flows to the shop's published
+    // storefront automatically; absent on pre-063 databases (treat as on).
+    publicVisible: r.public_visible == null ? true : !!r.public_visible,
     createdAt: r.created_at,
     // migration 004 fields — defaulted so pre-004 databases keep working
     costCents: Number(r.cost_cents ?? 0),
@@ -2152,7 +2156,7 @@ export function createSupabaseBackend() {
   // known columns so a backup from a newer/older schema (or another
   // backend's shape) can never inject unknown columns into an insert.
   const POS_IMPORT_COLUMNS = {
-    pos_products: ['id', 'store_id', 'name', 'sku', 'price_cents', 'category', 'active', 'cost_cents', 'track_stock', 'stock', 'low_stock_threshold', 'image_url', 'variants', 'created_at'],
+    pos_products: ['id', 'store_id', 'name', 'sku', 'price_cents', 'category', 'active', 'public_visible', 'cost_cents', 'track_stock', 'stock', 'low_stock_threshold', 'image_url', 'variants', 'created_at'],
     pos_sales: ['id', 'store_id', 'number', 'items', 'subtotal_cents', 'discount_cents', 'tax_cents', 'total_cents', 'method', 'tendered_cents', 'change_cents', 'created_by', 'created_at', 'voided', 'voided_at', 'voided_by', 'tax_lines', 'org_id', 'org_name', 'org_type', 'org_tax_exempt'],
     pos_customers: ['id', 'store_id', 'name', 'phone', 'email', 'notes', 'created_at'],
     pos_staff: ['id', 'store_id', 'name', 'pin_hash', 'role', 'active', 'created_at'],
@@ -2647,6 +2651,69 @@ export function createSupabaseBackend() {
         await client.from('pos_products').delete().eq('id', id).eq('store_id', storeId),
         'Deleting product'
       );
+    },
+
+    // ---- storefront (migration 063): the shop's public web page ----
+    // The storefront reads THIS database: the profile edited here and the
+    // products' public_visible flags are exactly what the
+    // public_storefront() RPC serves to anonymous visitors once the shop
+    // publishes its page. Products default to visible, so a product
+    // created in the POS appears on the website with no extra step.
+
+    async getStorefrontProfile(storeId) {
+      const rows = check(
+        await client
+          .from('storefront_profiles')
+          .select('*')
+          .eq('store_id', storeId)
+          .limit(1),
+        'Loading storefront'
+      );
+      return rows[0] || null;
+    },
+
+    async saveStorefrontProfile(storeId, p) {
+      const clean = {
+        store_id: storeId,
+        slug: String(p.slug ?? '').trim().toLowerCase(),
+        display_name: String(p.displayName ?? '').trim() || null,
+        tagline: String(p.tagline ?? '').trim() || null,
+        about: String(p.about ?? '').trim() || null,
+        hours: String(p.hours ?? '').trim() || null,
+        contact_email: String(p.contactEmail ?? '').trim() || null,
+        contact_phone: String(p.contactPhone ?? '').trim() || null,
+        accent_color: String(p.accentColor ?? '').trim() || null,
+        published: !!p.published,
+        show_prices: p.showPrices !== false,
+      };
+      if (!/^[a-z0-9][a-z0-9-]{0,62}$/.test(clean.slug)) {
+        throw new Error(
+          'Storefront address must use lowercase letters, numbers and dashes only.'
+        );
+      }
+      const row = check(
+        await client
+          .from('storefront_profiles')
+          .upsert(clean, { onConflict: 'store_id' })
+          .select('*')
+          .single(),
+        'Saving storefront'
+      );
+      return row;
+    },
+
+    async setProductPublicVisible(storeId, productId, visible) {
+      const row = check(
+        await client
+          .from('pos_products')
+          .update({ public_visible: !!visible })
+          .eq('id', productId)
+          .eq('store_id', storeId)
+          .select('*')
+          .single(),
+        'Updating product visibility'
+      );
+      return mapPosProduct(row);
     },
 
     async listSales(storeId, { limit = 200 } = {}) {

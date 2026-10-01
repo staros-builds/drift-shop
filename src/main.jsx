@@ -236,7 +236,29 @@ function bootApp() {
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+// Public storefront: #/store/<slug> renders the shop's customer-facing
+// page INSTEAD of the desktop — no login, no self-check gate. Checked
+// before the app boot flow; the component renders its own honest
+// loading / not-found states, and its only data door is the
+// public_storefront() RPC (migration 063).
+const storefrontMatch =
+  typeof window !== 'undefined'
+    ? window.location.hash.match(/^#\/store\/([^/?#]+)\/?$/)
+    : null;
+
+if (storefrontMatch && SUPABASE_URL && SUPABASE_ANON_KEY) {
+  let slug = storefrontMatch[1];
+  try { slug = decodeURIComponent(slug); } catch { /* keep the raw slug */ }
+  import('./apps/StorefrontPublic.jsx')
+    .then(({ default: StorefrontPublic }) => {
+      root.render(
+        <React.StrictMode>
+          <StorefrontPublic slug={slug} />
+        </React.StrictMode>,
+      );
+    })
+    .catch(renderBootError);
+} else if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   // Honest not-configured screen — unchanged behavior, composed with the
   // new self-check flow below.
   renderBootError(new Error('VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY not configured'));
