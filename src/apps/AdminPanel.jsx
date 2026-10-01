@@ -1471,7 +1471,7 @@ function DangerSection() {
     setBusy(true);
     setError('');
     try {
-      // Pre-reset safety net (Jesse's requirement): attempt a full account
+      // Pre-reset safety net: attempt a full account
       // backup BEFORE the wipe, using the exact same export mechanism as
       // Settings → Backup, and auto-download it. If the backup attempt
       // fails, ABORT the reset with a loud bilingual error — fail-safe
