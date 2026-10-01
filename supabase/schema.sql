@@ -20,6 +20,10 @@ create table public.profiles (
   disabled_until   timestamptz,
   trial_started_at timestamptz,
   trial_ends_at    timestamptz,
+  -- Forced first-login password change (see migration 056_master_admin.sql).
+  -- Deliberately NOT guarded by protect_profile_fields(): the owner must be
+  -- able to clear their own flag after choosing a new password.
+  must_change_password boolean not null default false,
   avatar_url   text,
   created_at   timestamptz not null default now()
 );

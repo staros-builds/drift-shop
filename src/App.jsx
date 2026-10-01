@@ -11,7 +11,7 @@ import { WindowsProvider } from './os/WindowsContext.jsx';
 import Spotlight from './components/os/Spotlight.jsx';
 import GlobalShortcuts from './components/os/GlobalShortcuts.jsx';
 import BootScreen from './components/os/BootScreen.jsx';
-import LoginScreen, { SetNewPasswordScreen } from './components/os/LoginScreen.jsx';
+import LoginScreen, { SetNewPasswordScreen, ForcePasswordChangeModal } from './components/os/LoginScreen.jsx';
 import Desktop from './components/os/Desktop.jsx';
 import { PunchKiosk, POSKiosk } from './components/os/DeviceKiosks.jsx';
 import Window from './components/os/Window.jsx';
@@ -116,6 +116,13 @@ function Shell() {
     );
   }
   const accountType = profile?.account_type || 'full';
+  // Forced first-login password change (master account seeded by migration
+  // 056, or any account an admin flags): blocking, non-dismissible. The
+  // modal clears the flag through the auth context on success, so the
+  // shell simply proceeds past this gate.
+  if (profile?.must_change_password) {
+    return <ForcePasswordChangeModal onDone={() => {}} />;
+  }
   if (accountType === 'punch') {
     return <PunchKiosk />;
   }

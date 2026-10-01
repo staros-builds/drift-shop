@@ -627,7 +627,7 @@ export function createSupabaseBackend() {
       const uid = uidOverride || requireUid();
       const { data, error } = await client
         .from('profiles')
-        .select('id, username, role, is_guest, is_paid, is_locked, disabled_until, trial_started_at, trial_ends_at, created_at, account_type, device_store_id')
+        .select('id, username, role, is_guest, is_paid, is_locked, disabled_until, trial_started_at, trial_ends_at, created_at, account_type, device_store_id, must_change_password')
         .eq('id', uid)
         .maybeSingle();
       if (error) throw new Error(`Loading account status failed: ${error.message}`);
@@ -844,6 +844,20 @@ export function createSupabaseBackend() {
       if (!/\S/.test(pw)) throw new Error('Password cannot be blank.');
       const { error } = await client.auth.updateUser({ password: pw });
       if (error) throw new Error(`Could not set new password: ${error.message}`);
+    },
+
+    // Clear the forced first-login password-change flag after the user has
+    // chosen a new password (migration 056 seeds it true for the master
+    // account). RLS + the protect_profile_fields trigger intentionally allow
+    // a user to clear their OWN flag: it only gates a client-side prompt,
+    // never a privilege.
+    async clearMustChangePassword() {
+      const uid = requireUid();
+      const { error } = await client
+        .from('profiles')
+        .update({ must_change_password: false })
+        .eq('id', uid);
+      if (error) throw new Error(`Could not clear password-change flag: ${error.message}`);
     },
   };
 

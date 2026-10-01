@@ -139,6 +139,96 @@ export function SetNewPasswordScreen({ onDone }) {
 }
 
 /**
+ * Blocking, NON-DISMISSIBLE "change your password" gate shown by the app
+ * shell right after sign-in when the profile's must_change_password flag is
+ * set (the master account seeded by migration 056, or any account an admin
+ * flags). There is deliberately no close/back button: the user cannot reach
+ * the desktop until a new password is chosen. On success the auth context
+ * clears the flag and the shell proceeds. Same password rules as signup
+ * (min length, no all-spaces, no common/repeating passwords).
+ */
+export function ForcePasswordChangeModal({ onDone }) {
+  const { t } = useLang();
+  const { completePasswordChange } = useAuth();
+  const [pw, setPw] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setError('');
+    if (pw !== confirm) {
+      setError(t('login.forceChangeMismatch'));
+      return;
+    }
+    setBusy(true);
+    try {
+      await completePasswordChange(pw);
+      onDone();
+    } catch (err) {
+      const byCode = {
+        'weak-password': 'login.errPassword',
+        'common-password': 'login.errPasswordCommon',
+        'repeating-password': 'login.errPasswordRepeating',
+      };
+      if (err && err.code && byCode[err.code]) {
+        setError(t(byCode[err.code]));
+      } else {
+        setError(err.message || t('login.errGeneric'));
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 overflow-y-auto bg-paper" role="dialog" aria-modal="true" aria-label={t('login.forceChangeTitle')}>
+      <div className="flex min-h-full items-center justify-center p-4">
+        <div className="w-full max-w-sm rounded-os border border-osborder bg-surface p-5 shadow-os sm:p-8">
+          <div className="flex flex-col items-center">
+            <span className="text-accent"><DriftMark size={36} /></span>
+            <h1 className="mt-2 text-xl font-light tracking-tight text-ink">{t('login.forceChangeTitle')}</h1>
+            <p className="mt-2 text-center text-sm text-muted">{t('login.forceChangeBody')}</p>
+          </div>
+          <form onSubmit={submit} className="mt-4 space-y-2">
+            <Field
+              label={t('login.newPasswordLabel')}
+              type="password"
+              value={pw}
+              onChange={setPw}
+              autoComplete="new-password"
+            />
+            <Field
+              label={t('login.forceChangeConfirm')}
+              type="password"
+              value={confirm}
+              onChange={setConfirm}
+              autoComplete="new-password"
+            />
+            {error && (
+              <div role="alert" className="flex items-start gap-2 rounded-os border border-osborder bg-paper px-3 py-2 text-sm text-ink">
+                <AlertCircle size={16} className="mt-0.5 shrink-0 text-accent" />
+                <span>{error}</span>
+              </div>
+            )}
+            <button
+              type="submit"
+              disabled={busy || pw.length < 8 || confirm.length < 8}
+              className="flex w-full items-center justify-center gap-2 rounded-os bg-accent px-4 py-2 text-sm font-semibold text-accentink duration-160 hover:opacity-90 disabled:opacity-50"
+            >
+              <KeyRound size={16} />
+              {busy ? t('common.working') : t('login.newPasswordSet')}
+            </button>
+          </form>
+          <p className="mt-4 text-center text-xs text-muted">© {new Date().getFullYear()} {t('brand.name')}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
  * "Forgot password?" dialog with two paths:
  *  1. Email reset link — for accounts that have a real email address.
  *  2. Help ticket — for username-only accounts with no email; the shop

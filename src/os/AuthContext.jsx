@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { backend } from '../lib/backend/current.js';
 import { evaluateAccess, ACCESS_CHECK_MS, TRIAL_USED_KEY } from './accessPolicy.js';
 import { loginIdToEmail } from '../lib/loginId.js';
+import { assertSanePassword } from '../lib/passwordPolicy.js';
 
 const AuthContext = createContext(null);
 
@@ -153,44 +154,8 @@ export function AuthProvider({ children }) {
     };
   }, [userId, runAccessCheck]);
 
-  const assertSanePassword = (password) => {
-    // Supabase only enforces min length; an all-spaces password would pass.
-    // Require at least one non-whitespace character (idiot-proofing).
-    if (!password || !/\S/.test(password)) {
-      const e = new Error('weak-password');
-      e.code = 'weak-password';
-      throw e;
-    }
-    // Reject common weak passwords that meet length but are trivially guessable.
-    const weak = [
-      'password', 'password123', '12345678', 'qwerty123', 'letmein123',
-      'welcome123', 'admin123', 'abc12345', 'password1', '123456789',
-    ];
-    if (weak.includes(password.toLowerCase())) {
-      const e = new Error('common-password');
-      e.code = 'common-password';
-      throw e;
-    }
-    // Reject low-entropy passwords: all same character ("aaaaaaaa"), or a
-    // short pattern repeated ("abcabcabc", "123123123"). These pass length
-    // checks but are trivially guessable.
-    const lower = password.toLowerCase();
-    if (/^(.)\1+$/.test(lower)) {
-      const e = new Error('repeating-password');
-      e.code = 'repeating-password';
-      throw e;
-    }
-    // Check for repeated patterns of length 1-4 covering the whole password.
-    for (let len = 1; len <= 4; len++) {
-      if (lower.length % len !== 0) continue;
-      const pattern = lower.slice(0, len);
-      if (pattern.repeat(lower.length / len) === lower && lower.length / len >= 3) {
-        const e = new Error('repeating-password');
-        e.code = 'repeating-password';
-        throw e;
-      }
-    }
-  };
+  // Password-strength policy lives in src/lib/passwordPolicy.js (shared with
+  // the forced first-login password change). Imported above as assertSanePassword.
 
   // The profile row is created by a database trigger when the auth user is
   // inserted. It should exist by the time signup returns, but if the read
@@ -294,7 +259,23 @@ export function AuthProvider({ children }) {
     setAuthEpoch((e) => e + 1);
   }, []);
 
-  const value = { user, loading, signUp, signIn, signInGuest, signOut, accessBlock, clearAccessBlock, isAdmin, profile, accessChecked, authEpoch };
+  // Forced first-login password change (master account seeded by migration
+  // 056, or any account an admin flags with must_change_password). Enforces
+  // the shared password policy, updates the auth password, then clears the
+  // flag and merges the profile so the shell gate opens. Throws coded
+  // Errors (same codes as signup) — the modal localizes them.
+  const completePasswordChange = useCallback(async (newPassword) => {
+    assertSanePassword(newPassword);
+    if (typeof backend.auth.updateOwnPassword !== 'function'
+        || typeof backend.auth.clearMustChangePassword !== 'function') {
+      throw new Error('Password change is not available with this backend.');
+    }
+    await backend.auth.updateOwnPassword(newPassword);
+    await backend.auth.clearMustChangePassword();
+    setProfile((p) => (p ? { ...p, must_change_password: false } : p));
+  }, []);
+
+  const value = { user, loading, signUp, signIn, signInGuest, signOut, completePasswordChange, accessBlock, clearAccessBlock, isAdmin, profile, accessChecked, authEpoch };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

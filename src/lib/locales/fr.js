@@ -157,6 +157,10 @@ export const fr = {
     newPasswordDone: 'Mot de passe mis à jour — vous pouvez vous connecter.',
     errTicket: "Impossible d'envoyer la demande. Réessayez.",
     backToSignIn: 'Retour à la connexion',
+    forceChangeTitle: 'Changez votre mot de passe',
+    forceChangeBody: "Ce compte utilise encore son mot de passe temporaire d'installation. Choisissez un nouveau mot de passe pour continuer — vous ne pouvez pas utiliser l'appli avant de le faire.",
+    forceChangeConfirm: 'Confirmez le nouveau mot de passe',
+    forceChangeMismatch: 'Les deux mots de passe ne correspondent pas.',
   },
   welcome: {
     title: `Bienvenue à ${BRAND.name}`,

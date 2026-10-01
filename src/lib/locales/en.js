@@ -159,6 +159,10 @@ export const en = {
     newPasswordDone: 'Password updated — you can sign in now.',
     errTicket: 'Could not send the request. Try again.',
     backToSignIn: 'Back to sign in',
+    forceChangeTitle: 'Change your password',
+    forceChangeBody: 'This account is still using its temporary setup password. Choose a new password to continue — you cannot use the app until you do.',
+    forceChangeConfirm: 'Confirm new password',
+    forceChangeMismatch: 'The two passwords do not match.',
   },
   welcome: {
     title: `Welcome to ${BRAND.name}`,

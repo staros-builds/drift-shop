@@ -54,6 +54,39 @@ def section(en_title, fr_title, blocks):
         else:
             story.append(P(text))
 
+section('First-run setup', 'Premi\u00e8re installation', [
+    ('p', f'This page is for the person installing <b>{PRODUCT}</b> on their own backend. The app is cloud-only: '
+          'it needs a Supabase project before anyone can sign in.'),
+    ('h2', '1. Create the database / 1. Cr\u00e9er la base de donn\u00e9es'),
+    ('b', 'Create a free project at supabase.com \\u2014 Dashboard \\u2014 New project.'),
+    ('b', 'Open the SQL editor and run every file in supabase/migrations/ in order, from 001 to 056. '
+          'The last one (056_master_admin.sql) creates the built-in master admin account.'),
+    ('b', 'Cr\\u00e9ez un projet gratuit sur supabase.com, puis ex\\u00e9cutez dans l\\u2019\\u00e9diteur SQL '
+          'chaque fichier de supabase/migrations/ dans l\\u2019ordre, de 001 \\u00e0 056. '
+          'Le dernier (056_master_admin.sql) cr\\u00e9e le compte administrateur int\\u00e9gr\\u00e9.'),
+    ('h2', '2. Connect and build / 2. Connecter et compiler'),
+    ('b', 'Copy your project\\u2019s URL and anon key (Project Settings \\u2014 API) into a .env file '
+          'as VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY (see .env.example).'),
+    ('b', 'Run: npm install, then npm run build. Deploy the dist/ folder to any static host.'),
+    ('b', 'Copiez l\\u2019URL du projet et la cl\\u00e9 anon (R\\u00e9glages du projet \\u2014 API) dans un fichier .env '
+          '(VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY, voir .env.example), puis : npm install, npm run build. '
+          'D\\u00e9ployez le dossier dist/ sur n\\u2019importe quel h\\u00e9bergeur statique.'),
+    ('h2', '3. First sign-in \\u2014 the master account / 3. Premi\\u00e8re connexion \\u2014 le compte ma\\u00eetre'),
+    ('b', 'Sign in with username \\u201cadmin\\u201d and password \\u201cadmin123\\u201d. '
+          'On first sign-in the app REQUIRES you to choose a new password before the desktop opens \\u2014 '
+          'the default password is temporary. Change it immediately and pick something strong '
+          '(at least 8 characters, not a common or repeating password).'),
+    ('b', 'Connectez-vous avec le nom d\\u2019utilisateur \\u00ab admin \\u00bb et le mot de passe \\u00ab admin123 \\u00bb. '
+          '\\u00c0 la premi\\u00e8re connexion, l\\u2019appli EXIGE un nouveau mot de passe avant d\\u2019ouvrir le bureau \\u2014 '
+          'le mot de passe par d\\u00e9faut est temporaire. Changez-le aussit\\u00f4t (8 caract\\u00e8res minimum, '
+          '\\u00e9vitez les mots de passe courants ou r\\u00e9p\\u00e9titifs).'),
+    ('b', 'Rebranding note: the master email must match BRAND.accountsDomain in src/lib/brand.js. '
+          'If you change the domain, update the email in migration 056 before running it '
+          '(bare usernames are mapped to <username>@<domain> at sign-in).'),
+    ('b', 'Note : le courriel du compte ma\\u00eetre doit correspondre \\u00e0 BRAND.accountsDomain dans src/lib/brand.js. '
+          'Si vous changez de domaine, mettez \\u00e0 jour le courriel dans la migration 056 avant de l\\u2019ex\\u00e9cuter.'),
+])
+
 section('Welcome', 'Bienvenue', [
     ('p', f'<b>{PRODUCT}</b> is a small-business hub that runs in your browser: a point of sale, '
           'a product catalogue with ISBN/barcode lookup, appointments, files, a staff time clock '
