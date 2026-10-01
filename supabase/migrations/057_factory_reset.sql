@@ -143,22 +143,33 @@ begin
   delete from auth.users;
 
   -- ---- reseed: the master account, exactly as migration 056 seeds it ----
-  -- instance_id identifies the GoTrue instance; auth.users is empty now, so
-  -- fall back to auth.instances (never wiped).
-  select i.id into v_instance_id from auth.instances i limit 1;
+  -- instance_id identifies the GoTrue instance. GoTrue's password grant
+  -- filters users with "instance_id = uuid.Nil" (see supabase/auth
+  -- internal/models/user.go: FindUserByEmailAndAudience), so the reseeded
+  -- user MUST carry the nil UUID 00000000-0000-0000-0000-000000000000.
+  -- auth.instances is normally EMPTY on Supabase (even on healthy
+  -- projects), so it cannot be used to discover the value — reading it
+  -- here would reseed with NULL and break master sign-in after reset.
+  v_instance_id := '00000000-0000-0000-0000-000000000000'::uuid;
 
   -- The on_auth_user_created -> handle_new_user() trigger builds the
   -- profile (username 'admin', role 'admin' while profiles is empty) plus
   -- the factory-fresh user_settings, vfs_folders and spaces rows — the
   -- same canonical path as a normal signup (see 020).
   insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
-                          raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+                          raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+                          confirmation_token, recovery_token,
+                          email_change_token_current, email_change_token_new, email_change,
+                          phone_change_token, phone_change, reauthentication_token)
   values (v_instance_id, v_id, 'authenticated', 'authenticated', c_master_email,
           extensions.crypt(c_default_pw, extensions.gen_salt('bf')),
           now(),
           '{"provider":"email","providers":["email"]}'::jsonb,
           jsonb_build_object('username', 'admin', 'is_guest', false),
-          now(), now());
+          now(), now(),
+          '', '',
+          '', '', '',
+          '', '', '');
 
   -- NOTE: auth.identities.email is GENERATED ALWAYS as
   -- lower(identity_data->>'email') — it must NOT appear in the INSERT
