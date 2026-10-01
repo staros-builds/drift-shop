@@ -29,7 +29,13 @@ BEGIN
   );
 
   IF v_new = v_def THEN
-    RAISE EXCEPTION 'Target expression not found in function definition';
+    -- Target not found: the function may already carry the fixed expression
+    -- (e.g. installed by 046 on fresh installs). Only raise when neither the
+    -- old nor the fixed expression is present.
+    IF position('btrim(coalesce(p_reason, ''''))' in v_def) = 0 THEN
+      RAISE EXCEPTION 'Target expression not found in function definition';
+    END IF;
+    RETURN;
   END IF;
 
   EXECUTE v_new;

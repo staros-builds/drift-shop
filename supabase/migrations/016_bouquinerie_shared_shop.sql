@@ -37,10 +37,24 @@ alter table public.bq_special_orders
 
 -- ================= 2. backfill existing rows =================
 -- Every pre-existing row belongs to the shop's store (earliest created).
+-- Fresh installs have no bq rows yet, so the backfill is skipped entirely
+-- instead of raising on the empty pos_stores table.
 do $$
 declare
   sid uuid;
+  orphans int;
 begin
+  select count(*) into orphans from (
+    select 1 from public.bq_items          where store_id is null union all
+    select 1 from public.bq_donations      where store_id is null union all
+    select 1 from public.bq_donation_items where store_id is null union all
+    select 1 from public.bq_fairs          where store_id is null union all
+    select 1 from public.bq_fair_sales     where store_id is null union all
+    select 1 from public.bq_special_orders where store_id is null
+  ) o;
+  if orphans = 0 then
+    return;
+  end if;
   select id into sid from public.pos_stores order by created_at asc limit 1;
   if sid is null then
     raise exception '016: no pos_stores row found — create the shop store first';
