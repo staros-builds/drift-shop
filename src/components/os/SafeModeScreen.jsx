@@ -27,7 +27,7 @@ export default function SafeModeScreen() {
     let crashCount = 0;
     try {
       crashCount = getCrashCount();
-      lastOk = localStorage.getItem('lfdd_last_boot_ok');
+      lastOk = localStorage.getItem('driftshop_last_boot_ok');
     } catch {}
     return {
       crashCount,
@@ -52,9 +52,9 @@ export default function SafeModeScreen() {
     }
     // Wipe localStorage (but keep the crash counter reset so we boot normally).
     try {
-      const keepLang = localStorage.getItem('lfdd_lang');
+      const keepLang = localStorage.getItem('driftshop_lang');
       localStorage.clear();
-      if (keepLang) localStorage.setItem('lfdd_lang', keepLang);
+      if (keepLang) localStorage.setItem('driftshop_lang', keepLang);
     } catch {}
     // Wipe caches (service worker, etc.)
     try {

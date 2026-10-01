@@ -25,7 +25,7 @@ class WindowErrorBoundary extends React.Component {
       return (
         <div className="flex h-full flex-col items-center justify-center gap-2 bg-surface p-6 text-center">
           <p className="text-sm font-medium text-ink">{lang === 'fr' ? 'Cette fenêtre a rencontré un problème.' : 'This window ran into a problem.'}</p>
-          <p className="text-xs text-muted">{lang === 'fr' ? 'Elle a été arrêtée pour que le reste de LFDD continue de fonctionner.' : 'It has been stopped so the rest of LFDD keeps working.'}</p>
+          <p className="text-xs text-muted">{lang === 'fr' ? 'Elle a été arrêtée pour que le reste de Drift Shop continue de fonctionner.' : 'It has been stopped so the rest of Drift Shop keeps working.'}</p>
         </div>
       );
     }

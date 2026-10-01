@@ -1,6 +1,6 @@
-/* LFDD offline service worker.
+/* Drift Shop offline service worker.
  *
- * Caches the app shell (same-origin GETs) so LFDD keeps opening with no
+ * Caches the app shell (same-origin GETs) so Drift Shop keeps opening with no
  * connection. Offline, the app runs in This-device mode — Cloud (Supabase)
  * data needs the network and the app says so honestly instead of failing
  * silently.
@@ -10,10 +10,10 @@
  * requests (media streaming), and non-GETs always go to the network.
  */
 
-const CACHE_VERSION = 'lfdd-__BUILD_ID__';
+const CACHE_VERSION = 'driftshop-__BUILD_ID__';
 // Derive shell paths from the service worker's own scope so the app works
-// when hosted under a subpath (e.g. /lfdd/) instead of the domain root.
-// self.registration.scope is like "https://host/lfdd/" — strip the origin
+// when hosted under a subpath (e.g. /drift-shop/) instead of the domain root.
+// self.registration.scope is like "https://host/drift-shop/" — strip the origin
 // to get the base path.
 const SCOPE_PATH = (() => {
   try {
@@ -54,7 +54,7 @@ self.addEventListener('activate', (event) => {
     caches
       .keys()
       .then((keys) =>
-        Promise.all(keys.filter((k) => (k.startsWith('lfdd-') || k.startsWith('drift-')) && k !== CACHE_VERSION).map((k) => caches.delete(k)))
+        Promise.all(keys.filter((k) => (k.startsWith('driftshop-') || k.startsWith('drift-')) && k !== CACHE_VERSION).map((k) => caches.delete(k)))
       )
       .then(() => self.clients.claim())
   );
@@ -74,7 +74,7 @@ self.addEventListener('fetch', (event) => {
 
   // Navigations: try the network first so a fresh index.html wins when
   // online; fall back to the cached shell when offline. The cache key must
-  // include the scope path — under /lfdd/ the shell lives at /lfdd/index.html,
+  // include the scope path — under /drift-shop/ the shell lives at /drift-shop/index.html,
   // not the domain root.
   if (request.mode === 'navigate') {
     const shellKey = SCOPE_PATH + 'index.html';
@@ -91,9 +91,9 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Static assets: cache-first, populate on miss. The app-update probe
-  // (index.html?__lfdd_build=…) must never be cached — it exists precisely
+  // (index.html?__driftshop_build=…) must never be cached — it exists precisely
   // to bypass every cache and see the live bundle name.
-  if (url.searchParams.has('__lfdd_build')) return;
+  if (url.searchParams.has('__driftshop_build')) return;
   event.respondWith(
     caches.match(request, { cacheName: CACHE_VERSION }).then((hit) => {
       if (hit) return hit;

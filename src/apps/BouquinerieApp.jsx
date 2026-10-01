@@ -8,7 +8,7 @@ import { backend } from '../lib/backend/current.js';
 import { useLang, localeTag } from '../lib/i18n.jsx';
 
 /* ------------------------------------------------------------------ */
-/* Bouquinerie — bookstore + thrift inventory for LFDD (FR/EN).         */
+/* Catalogue — book-oriented retail inventory (FR/EN).         */
 /* Catalogue (books & thrift items), donation intake, sorting triage,  */
 /* Foire du livre sales, special orders, CSV import/export bridge.     */
 /* Shared-shop model (migration 016): one pos_store per shop; roles    */
@@ -527,7 +527,7 @@ function CatalogTab() {
       const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = `bouquinerie-catalogue-${todayYMD()}.csv`;
+      a.download = `catalogue-${todayYMD()}.csv`;
       document.body.appendChild(a);
       a.click();
       a.remove();

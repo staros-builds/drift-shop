@@ -3,11 +3,11 @@ import { fr } from './locales/fr.js';
 import { en } from './locales/en.js';
 
 /* ------------------------------------------------------------------ */
-/* Bilingual system (FR/EN toggle) for the LFDD build.                  */
+/* Bilingual system (FR/EN toggle) for the Drift Shop build.                  */
 /*                                                                      */
 /* - LanguageProvider wraps the whole app; setLang() re-renders the     */
 /*   tree so every surface updates instantly.                           */
-/* - Choice persists in localStorage ('lfdd:lang'), default French.     */
+/* - Choice persists in localStorage ('driftshop:lang'), default French.     */
 /* - getLang() is the imperative escape hatch for non-component code    */
 /*   (e.g. appTitle() used at window-open time).                        */
 /* ------------------------------------------------------------------ */

@@ -23,8 +23,8 @@ const PRESETS = {
   Vocal: [-2, -1, 1, 3, 4, 4, 3, 1, 0, -1],
 };
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
-const VOL_KEY = 'lfdd:music:volume';
-const EQ_KEY = 'lfdd:music:eq';
+const VOL_KEY = 'driftshop:music:volume';
+const EQ_KEY = 'driftshop:music:eq';
 const VOL_KEY_LEGACY = 'drift:music:volume';
 const EQ_KEY_LEGACY = 'drift:music:eq';
 
@@ -372,7 +372,7 @@ export default function MusicApp({ windowApi, path: initialPath }) {
   useEffect(() => {
     if (!('mediaSession' in navigator) || !current) return;
     try {
-      navigator.mediaSession.metadata = new MediaMetadata({ title: current.name, artist: 'LFDD Music' });
+      navigator.mediaSession.metadata = new MediaMetadata({ title: current.name, artist: 'Drift Shop Music' });
       navigator.mediaSession.setActionHandler('play', togglePlay);
       navigator.mediaSession.setActionHandler('pause', togglePlay);
       navigator.mediaSession.setActionHandler('previoustrack', prev);

@@ -65,7 +65,7 @@ export async function syncQueue(handler) {
         // Don't block the whole queue on one bad item.
         markFailed(item.id, err?.message || 'Sync failed');
         notify({ syncing: true, depth: getQueue().length, lastError: err?.message });
-        console.error('[lfdd] queue sync failed for item', item.id, err);
+        console.error('[driftshop] queue sync failed for item', item.id, err);
       }
     }
   } finally {
@@ -104,7 +104,7 @@ export function startAutoSync(handler) {
   window.addEventListener('online', trySync);
 
   // Sync when a new item is queued (if we're online, process immediately).
-  window.addEventListener('lfdd:queue-changed', trySync);
+  window.addEventListener('driftshop:queue-changed', trySync);
 
   // Periodic retry: every 60s, try to drain (catches items that failed).
   const retryTimer = setInterval(trySync, 60000);
@@ -113,7 +113,7 @@ export function startAutoSync(handler) {
     clearTimeout(bootTimer);
     clearInterval(retryTimer);
     window.removeEventListener('online', trySync);
-    window.removeEventListener('lfdd:queue-changed', trySync);
+    window.removeEventListener('driftshop:queue-changed', trySync);
     autoSyncStarted = false;
     autoSyncStop = null;
   };

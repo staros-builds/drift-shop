@@ -131,7 +131,7 @@ export function SetNewPasswordScreen({ onDone }) {
               {t('login.backToSignIn')}
             </button>
           </form>
-          <p className="mt-4 text-center text-xs text-muted">© {new Date().getFullYear()} Librairie Louis-Fréchette</p>
+          <p className="mt-4 text-center text-xs text-muted">© {new Date().getFullYear()} {t('brand.name')}</p>
         </div>
       </div>
     </div>
@@ -560,7 +560,7 @@ export default function LoginScreen() {
           </>
         )}
 
-        <p className="mt-4 text-center text-xs text-muted">© {new Date().getFullYear()} Librairie Louis-Fréchette</p>
+        <p className="mt-4 text-center text-xs text-muted">© {new Date().getFullYear()} {t('brand.name')}</p>
       </div>
       </div>
       {forgotOpen && <ForgotPasswordDialog onClose={() => setForgotOpen(false)} />}

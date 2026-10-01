@@ -104,7 +104,7 @@ function checkQueue() {
 // recovery and offline queue are broken — that's a critical failure.
 function checkStorage() {
   try {
-    const key = 'lfdd_health_probe';
+    const key = 'driftshop_health_probe';
     localStorage.setItem(key, '1');
     localStorage.removeItem(key);
     return { ok: true };

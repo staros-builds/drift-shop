@@ -10,6 +10,7 @@ import { useWindows } from '../os/WindowsContext.jsx';
 import { SHORTCUTS, availableShortcuts } from '../os/shortcuts.js';
 import { backend } from '../lib/backend/current.js';
 import { localeTag, useLang } from '../lib/i18n.jsx';
+import { BRAND } from '../lib/brand.js';
 
 /* ------------------------------------------------------------------ */
 /* Content blocks: { t:'p'|'steps'|'tip'|'warn'|'shortcuts', text|items } */
@@ -29,7 +30,7 @@ const SECTIONS = [
         id: 'accounts', title: 'Sign in, create an account, or try as a guest',
         keywords: 'sign in login account guest password trial username email',
         blocks: [
-          { t: 'p', text: 'LFDD uses one cloud login — your username or email works on every device.' },
+          { t: 'p', text: `${BRAND.name} uses one cloud login — your username or email works on every device.` },
           { t: 'steps', items: [
             'Sign in: enter your username or email and your password.',
             'Create account: pick this once — your files, notes, and settings then follow you to any device.',
@@ -176,7 +177,7 @@ const SECTIONS = [
         id: 'g-helm', title: 'Helm (your assistant)', appId: 'helm',
         keywords: 'helm assistant ai help ask chat',
         blocks: [
-          { t: 'p', text: 'Helm is the assistant built into LFDD. Ask it to open apps, find things, look things up, and get work done.' },
+          { t: 'p', text: `Helm is the assistant built into ${BRAND.name}. Ask it to open apps, find things, look things up, and get work done.` },
           { t: 'steps', items: [
             'Type what you want: "open Files", "turn on dark mode", "remember that I like tea".',
             'Local mode answers from your device; Cloud smart mode can look things up online.',
@@ -189,7 +190,7 @@ const SECTIONS = [
         id: 'g-store', title: 'App Store', appId: 'store',
         keywords: 'app store install web apps add remove uninstall',
         blocks: [
-          { t: 'p', text: 'Add web apps — drawing tools, maps, music, and more — as first-class LFDD apps.' },
+          { t: 'p', text: `Add web apps — drawing tools, maps, music, and more — as first-class ${BRAND.name} apps.` },
           { t: 'steps', items: [
             'Browse or search the catalog, then click Install.',
             'Installed apps appear in your Start menu and desktop, and open in their own windows.',
@@ -212,8 +213,8 @@ const SECTIONS = [
         ],
       },
       {
-        id: 'g-punch', title: 'Poinçon (time clock)', appId: 'punch',
-        keywords: 'poincon punch time clock staff hours payroll schedule shifts breaks',
+        id: 'g-punch', title: 'Certificates (time clock)', appId: 'punch',
+        keywords: 'certificates attestations punch time clock staff hours payroll schedule shifts breaks',
         blocks: [
           { t: 'p', text: 'Staff punch in and out with their PIN; managers handle schedules, corrections, and payroll.' },
           { t: 'steps', items: [
@@ -226,10 +227,10 @@ const SECTIONS = [
         ],
       },
       {
-        id: 'g-bouquinerie', title: 'Bouquinerie (bookshop)', appId: 'bouquinerie',
-        keywords: 'bouquinerie bookshop catalogue books donations fairs special orders',
+        id: 'g-catalogue', title: 'Catalogue', appId: 'bouquinerie',
+        keywords: 'catalogue inventory items isbn barcode books donations fairs special orders',
         blocks: [
-          { t: 'p', text: 'The second-hand bookshop: catalogue, donations, fair days, and special orders.' },
+          { t: 'p', text: 'The shop catalogue: items with ISBN/barcode lookup, donations, fair days, and special orders.' },
           { t: 'steps', items: [
             'Catalogue: add books with price, quantity, and shelf location; import many at once from CSV.',
             'Donations: record donated books and where they go.',
@@ -242,7 +243,7 @@ const SECTIONS = [
         id: 'g-settings', title: 'Settings', appId: 'settings',
         keywords: 'settings personalize theme wallpaper appearance apps',
         blocks: [
-          { t: 'p', text: 'Make LFDD yours.' },
+          { t: 'p', text: `Make ${BRAND.name} yours.` },
           { t: 'steps', items: [
             'Appearance: light/dark mode, accent color, wallpaper, interface style, taskbar position, touch mode.',
             'Apps: choose which apps show on the desktop and in the Start menu.',
@@ -284,10 +285,10 @@ const SECTIONS = [
     id: 'touch', title: 'Touch mode', icon: Smartphone,
     articles: [
       {
-        id: 'touch-mode', title: 'Using LFDD on a phone or tablet',
+        id: 'touch-mode', title: `Using ${BRAND.name} on a phone or tablet`,
         keywords: 'touch mobile phone tablet ios android fullscreen',
         blocks: [
-          { t: 'p', text: 'Touch mode turns LFDD into a phone-style home screen: big icons, swipeable pages, a dock, and full-screen apps.' },
+          { t: 'p', text: `Touch mode turns ${BRAND.name} into a phone-style home screen: big icons, swipeable pages, a dock, and full-screen apps.` },
           { t: 'steps', items: [
             'Turn it on in Settings → Appearance → Touch mode (it switches on automatically on small touch screens).',
             'Tap an icon to open the app full-screen.',
@@ -302,12 +303,12 @@ const SECTIONS = [
     id: 'styles', title: 'Interface styles', icon: Palette,
     articles: [
       {
-        id: 'ui-style', title: 'LFDD, Windows 11, or Mac OS X 10.6 looks',
+        id: 'ui-style', title: `${BRAND.name}, Windows 11, or Mac OS X 10.6 looks`,
         keywords: 'interface style theme windows mac dock taskbar appearance',
         blocks: [
           { t: 'p', text: 'Pick the look you like in Settings → Appearance → Interface style. Everything keeps working — only the chrome changes.' },
           { t: 'steps', items: [
-            'LFDD: the classic calm paper-and-ink desktop.',
+            `${BRAND.name}: the classic calm paper-and-ink desktop.`,
             'Windows 11: centered taskbar and familiar window buttons.',
             'Mac OS X 10.6: top menu bar, glass Dock with magnification, and traffic-light window buttons.',
           ] },
@@ -381,16 +382,16 @@ const SECTIONS = [
     keywords: 'manual guide pdf documentation booklet handbook',
     articles: [
       {
-        id: 'manual-pdf', title: 'The complete user manual (PDF)',
+        id: 'manual-pdf', title: 'The getting-started guide (PDF)',
         keywords: 'manual pdf guide download print booklet full documentation',
         blocks: [
-          { t: 'p', text: 'The full bilingual user manual ships inside LFDD — the same complete guide, covering every app from Point of Sale to Bouquinerie.' },
+          { t: 'p', text: `The getting-started guide ships inside ${BRAND.name} — a short tour of every app from Point of Sale to Catalogue.` },
           { t: 'steps', items: [
             'Click the button below to open the manual as a PDF in a new tab.',
             'Use your browser\'s find-in-page (Ctrl+F / ⌘F) to search inside the PDF.',
             'Or just type in the search box at the top of this Help app — it searches the manual\'s full text too, and each result opens the PDF at the right page.',
           ] },
-          { t: 'pdf', text: 'Open the full user manual (PDF)' },
+          { t: 'pdf', text: 'Open the getting-started guide (PDF)' },
           { t: 'tip', text: 'The manual works offline once opened — your browser keeps a copy.' },
         ],
       },
@@ -467,10 +468,10 @@ function Block({ block, shortcuts }) {
       <div className="mb-3">
         <button
           type="button"
-          onClick={() => window.open('manual/lfdd-user-manual.pdf', '_blank', 'noopener')}
+          onClick={() => window.open('manual/drift-shop-manual.pdf', '_blank', 'noopener')}
           className="flex items-center gap-2 rounded-os bg-accent px-4 py-2 text-sm font-semibold text-white duration-160 hover:opacity-90"
         >
-          <FileText size={16} /> {block.text || 'Open the user manual (PDF)'}
+          <FileText size={16} /> {block.text || 'Open the getting-started guide (PDF)'}
         </button>
       </div>
     );
@@ -811,7 +812,7 @@ export default function HelpApp({ windowApi }) {
                   sub={a.manual ? `User manual · page ${a.page}` : null}
                   onOpen={() => {
                     if (a.manual) {
-                      window.open(`manual/lfdd-user-manual.pdf#page=${a.page}`, '_blank', 'noopener');
+                      window.open(`manual/drift-shop-manual.pdf#page=${a.page}`, '_blank', 'noopener');
                     } else {
                       setSectionId(s.id); setOpenArticle(a.id); setQuery('');
                     }

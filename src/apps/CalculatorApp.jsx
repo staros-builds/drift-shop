@@ -45,11 +45,11 @@ function exprString(tokens, errLabel) {
   return tokens.map((t) => (t.t === 'n' ? fmt(parseFloat(t.v), errLabel) : ` ${t.v} `)).join('');
 }
 
-const HIST_KEY = 'lfdd:calculator:history:v1';
+const HIST_KEY = 'driftshop:calculator:history:v1';
 const HIST_KEY_LEGACY = 'drift:calculator:history:v1';
 function readHist() {
   try {
-    // Migrate legacy drift: key once, then use lfdd: going forward.
+    // Migrate legacy drift: key once, then use driftshop: going forward.
     let raw = localStorage.getItem(HIST_KEY);
     if (raw == null) {
       raw = localStorage.getItem(HIST_KEY_LEGACY);

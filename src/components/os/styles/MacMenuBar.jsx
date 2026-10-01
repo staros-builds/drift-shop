@@ -50,7 +50,7 @@ export default function MacMenuBar({ onSpotlight }) {
   const activeWin = spaceWindows
     .filter((w) => !w.minimized)
     .reduce((a, b) => (!a || b.z > a.z ? b : a), null);
-  let activeAppName = 'LFDD';
+  let activeAppName = 'Drift Shop';
   if (activeWin) {
     try {
       activeAppName = getApp(activeWin.appId).title || activeWin.title;
@@ -83,9 +83,9 @@ export default function MacMenuBar({ onSpotlight }) {
       {
         id: 'drift',
         label: <DriftMark size={15} />,
-        aria: 'LFDD menu',
+        aria: 'Drift Shop menu',
         items: [
-          { label: 'About This LFDD', fn: () => openApp('settings') },
+          { label: 'About This Drift Shop', fn: () => openApp('settings') },
           { label: 'Settings…', fn: () => openApp('settings') },
           { sep: true },
           {
@@ -133,7 +133,7 @@ export default function MacMenuBar({ onSpotlight }) {
         label: 'Help',
         items: [
           {
-            label: 'LFDD Guide',
+            label: 'Drift Shop Guide',
             fn: () => {
               setOpenMenu(null);
               window.dispatchEvent(new Event('drift:show-welcome'));

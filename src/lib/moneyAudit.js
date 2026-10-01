@@ -16,7 +16,7 @@
  * independent cross-check. If they disagree, that's a red flag.
  */
 
-const LEDGER_KEY = 'lfdd_money_audit';
+const LEDGER_KEY = 'driftshop_money_audit';
 const MAX_ENTRIES = 1000;
 
 /**
@@ -48,7 +48,7 @@ function saveLedger(entries) {
     const trimmed = entries.slice(-MAX_ENTRIES);
     localStorage.setItem(LEDGER_KEY, JSON.stringify(trimmed));
   } catch (e) {
-    console.error('[lfdd] audit ledger save failed', e);
+    console.error('[driftshop] audit ledger save failed', e);
   }
 }
 
@@ -89,7 +89,7 @@ export function logMoneyMovement(type, details = {}) {
 
   // Notify UI (for live audit viewers).
   try {
-    window.dispatchEvent(new CustomEvent('lfdd:audit-logged', { detail: entry }));
+    window.dispatchEvent(new CustomEvent('driftshop:audit-logged', { detail: entry }));
   } catch {}
 
   return entry;

@@ -11,11 +11,11 @@ import { DriftMark } from './BootScreen.jsx';
  * diagnostics and recovery options. The user is never stuck.
  *
  * Counters in localStorage:
- * - lfdd_crash_count: incremented on every caught crash, reset on clean boot
- * - lfdd_last_boot_ok: timestamp of last successful boot
+ * - driftshop_crash_count: incremented on every caught crash, reset on clean boot
+ * - driftshop_last_boot_ok: timestamp of last successful boot
  */
 const CRASH_THRESHOLD = 3;
-const CRASH_KEY = 'lfdd_crash_count';
+const CRASH_KEY = 'driftshop_crash_count';
 
 export function getCrashCount() {
   try {
@@ -38,7 +38,7 @@ export function recordCrash() {
 export function recordCleanBoot() {
   try {
     localStorage.setItem(CRASH_KEY, '0');
-    localStorage.setItem('lfdd_last_boot_ok', String(Date.now()));
+    localStorage.setItem('driftshop_last_boot_ok', String(Date.now()));
   } catch {}
 }
 
@@ -49,7 +49,7 @@ export function resetCrashCount() {
 }
 
 /**
- * Top-level crash catcher for the entire LFDD shell.
+ * Top-level crash catcher for the entire Drift Shop shell.
  *
  * If ANY uncaught error is thrown during render (login screen, desktop,
  * auth state transitions), React would otherwise unmount the whole tree
@@ -72,7 +72,7 @@ class RootErrorBoundaryInner extends React.Component {
 
   componentDidCatch(error, info) {
     // Log for diagnostics; never show raw internals to the user.
-    console.error('[lfdd] uncaught render error:', error, info?.componentStack);
+    console.error('[driftshop] uncaught render error:', error, info?.componentStack);
     // SCRAM counter: track consecutive crashes for safe-mode tripping.
     const n = recordCrash();
     this.setState({ crashCount: n });

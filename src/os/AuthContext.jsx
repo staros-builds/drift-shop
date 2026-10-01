@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { backend } from '../lib/backend/current.js';
 import { evaluateAccess, ACCESS_CHECK_MS, TRIAL_USED_KEY } from './accessPolicy.js';
+import { BRAND } from '../lib/brand.js';
 
 const AuthContext = createContext(null);
 
@@ -153,9 +154,10 @@ export function AuthProvider({ children }) {
   }, [userId, runAccessCheck]);
 
   // Cloud mode accepts usernames too: we map a bare username to a synthetic
-  // email on a reserved domain so Supabase auth works unchanged. The user
-  // only ever sees their username. Note: @lfdd.local is rejected by Supabase's
-  // email validation on signup, so we use @lfdd.app (passes validation).
+  // email on the brand's reserved accounts domain (see src/lib/brand.js) so
+  // Supabase auth works unchanged. The user only ever sees their username.
+  // Note: a `.local` domain is rejected by Supabase's email validation on
+  // signup, so the domain must be a real-looking one (it never receives mail).
   const toCloudEmail = (identifier) => {
     const id = identifier.trim();
     if (!id) {
@@ -191,7 +193,7 @@ export function AuthProvider({ children }) {
       e.code = 'username-invalid';
       throw e;
     }
-    return `${safe}@lfdd.app`;
+    return `${safe}@${BRAND.accountsDomain}`;
   };
 
   const assertSanePassword = (password) => {

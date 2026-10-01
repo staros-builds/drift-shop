@@ -1,4 +1,4 @@
-// Shared Bouquinerie validation + CSV helpers (no DOM, no React).
+// Shared catalogue validation + CSV helpers (no DOM, no React).
 // Used by both the local JSON backend and the Supabase adapter so the two
 // stay byte-identical on validation, duplicate detection, and CSV shape.
 

@@ -2,7 +2,7 @@ import { createBackend } from './index.js';
 
 // Singleton backend for the whole app.
 //
-// LFDD is cloud-only: the app always boots against the Supabase adapter.
+// Drift Shop is cloud-only: the app always boots against the Supabase adapter.
 // The old Cloud / This device toggle has been removed — there is one login,
 // one user list, and data follows the account on every device.
 //

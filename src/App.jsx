@@ -128,7 +128,7 @@ function Shell() {
   return <Desktop />;
 }
 
-// AppUpdateCheck: LFDD is a static deploy — a new publish only changes the
+// AppUpdateCheck: Drift Shop is a static deploy — a new publish only changes the
 // bundle filename referenced by index.html. Poll the freshly-served
 // index.html (cache-busted so the service worker can't hand back a stale
 // copy) and toast when the live bundle differs from the booted one, so
@@ -144,7 +144,7 @@ function AppUpdateCheck() {
     const currentFile = currentScript?.getAttribute('src')?.split('/').pop() || '';
     const check = async () => {
       try {
-        const res = await fetch(`index.html?__lfdd_build=${Date.now()}`, { cache: 'no-store' });
+        const res = await fetch(`index.html?__driftshop_build=${Date.now()}`, { cache: 'no-store' });
         if (!res.ok || cancelled) return;
         const html = await res.text();
         const m = html.match(/assets\/index-([A-Za-z0-9_-]+)\.js/);

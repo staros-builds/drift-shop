@@ -14,9 +14,8 @@ function swCacheBust() {
       const buildId = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '');
       const swPath = path.join(options.dir, 'sw.js');
       try {
-        // NOTE: the placeholder prefix changed from drift- to lfdd- when the
-        // app was forked; match either so the stamp actually lands.
-        const src = fs.readFileSync(swPath, 'utf8').replace(/(drift|lfdd)-__BUILD_ID__/g, `lfdd-${buildId}`);
+        // Stamp the driftshop- placeholder with the build id.
+        const src = fs.readFileSync(swPath, 'utf8').replace(/(driftshop|drift|lfdd)-__BUILD_ID__/g, `driftshop-${buildId}`);
         fs.writeFileSync(swPath, src);
       } catch {
         /* sw.js absent — nothing to stamp */
@@ -27,9 +26,9 @@ function swCacheBust() {
 
 export default defineConfig({
   plugins: [react(), swCacheBust()],
-  // GitHub Pages serves this build from the /lfdd/ subdirectory, so all
+  // GitHub Pages serves this build from the /drift-shop/ subdirectory, so all
   // asset URLs must be relative to that base or the app loads blank.
-  base: '/lfdd/',
+  base: '/drift-shop/',
   server: {
     host: '0.0.0.0',
     port: 5173,

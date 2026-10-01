@@ -812,7 +812,7 @@ export function createSupabaseBackend() {
         if (!data?.session) return false;
       }
       try {
-        localStorage.setItem('lfdd_recovery_pending', '1');
+        localStorage.setItem('driftshop_recovery_pending', '1');
       } catch {
         /* non-fatal */
       }
@@ -823,7 +823,7 @@ export function createSupabaseBackend() {
     // user to choose a new password.
     recoveryPending() {
       try {
-        return localStorage.getItem('lfdd_recovery_pending') === '1';
+        return localStorage.getItem('driftshop_recovery_pending') === '1';
       } catch {
         return false;
       }
@@ -831,7 +831,7 @@ export function createSupabaseBackend() {
 
     async clearRecoveryPending() {
       try {
-        localStorage.removeItem('lfdd_recovery_pending');
+        localStorage.removeItem('driftshop_recovery_pending');
       } catch {
         /* non-fatal */
       }
@@ -2136,7 +2136,7 @@ export function createSupabaseBackend() {
     // generic sanitizer still normalizes rows before the RPC call.
     pos_gift_cards: ['id', 'store_id', 'code', 'initial_cents', 'balance_cents', 'note', 'status', 'sold_at', 'sold_by', 'created_at'],
     pos_gift_card_events: ['id', 'store_id', 'card_id', 'kind', 'amount_cents', 'balance_after_cents', 'sale_id', 'actor', 'created_at'],
-    // Bouquinerie à Dédé catalogue (migration 013/016): the whole-account
+    // Catalogue (book-oriented inventory, migration 013/016): the whole-account
     // backup promise covers these too. owner_id is re-attributed to the
     // importer via POS_IMPORT_USER_COLS.
     bq_items: ['id', 'store_id', 'owner_id', 'kind', 'title', 'author', 'isbn', 'category', 'is_new', 'condition', 'qty', 'price', 'shelf', 'source', 'status', 'abe_ref', 'abe_status', 'notes', 'created_at', 'updated_at'],
@@ -2390,7 +2390,7 @@ export function createSupabaseBackend() {
     async deleteStore(storeId) {
       const uid = requireUid();
       check(await client.from('pos_stores').delete().eq('id', storeId), 'Deleting store');
-      // If this was the active Bouquinerie shop, forget it so the next
+      // If this was the active catalogue shop, forget it so the next
       // resolve picks a shop the user still belongs to.
       try {
         if (typeof localStorage !== 'undefined' && localStorage.getItem(bqActiveStoreKey(uid)) === storeId) {
@@ -4206,7 +4206,7 @@ export function createSupabaseBackend() {
           for (const u of POS_IMPORT_USER_COLS) {
             if (picked[u] === undefined) continue;
             if (picked[u] === uid) continue;
-            // owner_id is NOT NULL on Bouquinerie tables: re-attribute the
+            // owner_id is NOT NULL on catalogue tables: re-attribute the
             // catalogue to the importer instead of nulling (which would
             // violate the constraint and drop the row). All other user
             // columns are nullable, so nulling is safe for them.
@@ -4444,7 +4444,7 @@ export function createSupabaseBackend() {
     },
   };
 
-  /* ---------------- Bouquinerie à Dédé inventory (cloud, migration 013) ---------------- */
+  /* ---------------- Catalogue inventory (cloud, migration 013) ---------------- */
   let bqReady = null;
   async function bqHasTables() {
     if (bqReady !== null) return bqReady;
@@ -4457,11 +4457,11 @@ export function createSupabaseBackend() {
     return bqReady;
   }
   function bqNeed() {
-    throw new Error('Bouquinerie needs migration 013 — ask a manager to apply it.');
+    throw new Error('The catalogue needs migration 013 — ask a manager to apply it.');
   }
 
   /* ---------------- Shared shop (migration 016) ----------------
-   * Bouquinerie data belongs to a pos_store; store membership
+   * Catalogue data belongs to a pos_store; store membership
    * (pos_store_members, roles owner/manager/cashier) governs access.
    * Active-shop context: a user in several shops works in exactly one at
    * a time. The choice persists per account on this device; every query
@@ -4473,7 +4473,7 @@ export function createSupabaseBackend() {
     bqStoresPromise = null;
   }
   function bqActiveStoreKey(uid) {
-    return 'lfdd:bq:active_store:' + uid;
+    return 'driftshop:bq:active_store:' + uid;
   }
   function bqMyStores() {
     if (bqStoresCache !== null || bqStoresPromise) return bqStoresPromise || Promise.resolve(bqStoresCache);
@@ -4747,7 +4747,7 @@ export function createSupabaseBackend() {
       const payload = {
         owner_id: ownerId,
         store_id: storeId,
-        name: String(o.name ?? '').trim().slice(0, 200) || 'Foire du livre à Dédé',
+        name: String(o.name ?? '').trim().slice(0, 200) || 'Foire du livre',
         fair_date: o.fairDate || new Date().toISOString().slice(0, 10),
         beneficiary: String(o.beneficiary ?? '').trim().slice(0, 300) || null,
         notes: String(o.notes ?? '').trim().slice(0, 2000) || null,
@@ -5000,7 +5000,7 @@ export function createSupabaseBackend() {
       // Cheap device-side rate limit against ticket spam (server can't
       // throttle anonymous callers by identity).
       try {
-        const last = Number(localStorage.getItem('lfdd_ticket_last') || 0);
+        const last = Number(localStorage.getItem('driftshop_ticket_last') || 0);
         if (Date.now() - last < 120000) {
           throw new Error('Please wait a couple of minutes before sending another request.');
         }
@@ -5015,7 +5015,7 @@ export function createSupabaseBackend() {
       });
       if (error) throw new Error(`Sending failed: ${error.message}`);
       try {
-        localStorage.setItem('lfdd_ticket_last', String(Date.now()));
+        localStorage.setItem('driftshop_ticket_last', String(Date.now()));
       } catch {
         /* non-fatal */
       }

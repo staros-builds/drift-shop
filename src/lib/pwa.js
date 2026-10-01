@@ -83,7 +83,7 @@ export function registerServiceWorker() {
     try {
       if (typeof window === 'undefined' || !('serviceWorker' in window.navigator)) return null;
       // Use import.meta.env.BASE_URL so the SW registers correctly when the
-      // app is served from a subpath (e.g. /lfdd/ on GitHub Pages).
+      // app is served from a subpath (e.g. /driftshop/ on GitHub Pages).
       const base = import.meta.env.BASE_URL || '/';
       const swUrl = base.endsWith('/') ? `${base}sw.js` : `${base}/sw.js`;
       const reg = await window.navigator.serviceWorker.register(swUrl);

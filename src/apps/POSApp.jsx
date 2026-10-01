@@ -57,11 +57,9 @@ const canManage = (role) => role === 'owner' || role === 'manager';
 // legacy tax_rate when no stacked rates are configured.
 //
 // A row may set compound: true, meaning it is calculated on the running total
-// *including* the taxes above it. No Canadian province/territory compounds its
-// provincial tax on GST/HST — e.g. Revenu Québec calculates QST 9.975% on the
-// selling price *excluding* GST — so all Canadian presets below are stacked
-// (each rate applies to the original taxable amount). The compound flag stays
-// available for jurisdictions that genuinely compound.
+// *including* the taxes above it. Plain rows are always calculated on the
+// original taxable amount (stacked) — the compound flag stays available for
+// jurisdictions that genuinely compound one tax on another.
 function taxLinesFor(store, taxableCents) {
   // An empty/missing stacked list falls back to the legacy single default
   // rate (that's what the settings page documents: "No stacked rates — the
@@ -87,62 +85,36 @@ function taxLinesFor(store, taxableCents) {
     });
 }
 
-// Jurisdiction presets — one tap sets the exact stacked rates. Rates below
-// are the standard provincial/territorial rates (GST/HST federal + PST/QST/RST
-// provincial). Anything else (US states vary by county/city) uses custom rows.
-// Bilingual presets: labelFr/nameFr used when the UI language is French.
-// Quebec: TPS 5% + TVQ 9.975%, both on the selling price (TVQ is calculated
-// on the price *excluding* GST — Revenu Québec, "Basic Rules for Applying
-// the GST/HST and QST"). Corrected Oct 2026: v1 wrongly compounded TVQ on
-// the GST-included price; v2 stacks both on the selling price.
+// Tax presets — one tap fills in the tax rows. Rates are per-store settings:
+// nothing here is a default; a new store starts with the generic Tax 1 /
+// Tax 2 slots at 0% (see the store-creation flow below) and the owner edits
+// names and rates to match local rules. Bilingual presets: labelFr/nameFr
+// used when the UI language is French.
 const TAX_PRESETS = [
-  { id: 'custom', label: 'Custom rates…', labelFr: 'Taux personnalisés…', rates: null },
+  { id: 'custom', label: 'Custom rates\u2026', labelFr: 'Taux personnalis\u00e9s\u2026', rates: null },
   { id: 'none', label: 'No tax', labelFr: 'Aucune taxe', rates: [] },
   {
-    id: 'qc', version: 2, label: 'Quebec — GST 5% + QST 9.975%', labelFr: 'Québec — TPS 5 % + TVQ 9,975 %',
-    rates: [{ name: 'GST', nameFr: 'TPS', rate: 5 }, { name: 'QST', nameFr: 'TVQ', rate: 9.975 }],
-  },
-  { id: 'on', label: 'Ontario — HST 13%', labelFr: 'Ontario — TVH 13 %', rates: [{ name: 'HST', nameFr: 'TVH', rate: 13 }] },
-  { id: 'nb', label: 'New Brunswick — HST 15%', labelFr: 'Nouveau-Brunswick — TVH 15 %', rates: [{ name: 'HST', nameFr: 'TVH', rate: 15 }] },
-  { id: 'nl', label: 'Newfoundland and Labrador — HST 15%', labelFr: 'Terre-Neuve-et-Labrador — TVH 15 %', rates: [{ name: 'HST', nameFr: 'TVH', rate: 15 }] },
-  { id: 'ns', label: 'Nova Scotia — HST 15%', labelFr: 'Nouvelle-Écosse — TVH 15 %', rates: [{ name: 'HST', nameFr: 'TVH', rate: 15 }] },
-  { id: 'pe', label: 'Prince Edward Island — HST 15%', labelFr: 'Île-du-Prince-Édouard — TVH 15 %', rates: [{ name: 'HST', nameFr: 'TVH', rate: 15 }] },
-  {
-    id: 'bc', label: 'British Columbia — GST 5% + PST 7%', labelFr: 'Colombie-Britannique — TPS 5 % + TVP 7 %',
-    rates: [{ name: 'GST', nameFr: 'TPS', rate: 5 }, { name: 'PST', nameFr: 'TVP', rate: 7 }],
-  },
-  { id: 'ab', label: 'Alberta — GST 5%', labelFr: 'Alberta — TPS 5 %', rates: [{ name: 'GST', nameFr: 'TPS', rate: 5 }] },
-  {
-    id: 'sk', label: 'Saskatchewan — GST 5% + PST 6%', labelFr: 'Saskatchewan — TPS 5 % + TVP 6 %',
-    rates: [{ name: 'GST', nameFr: 'TPS', rate: 5 }, { name: 'PST', nameFr: 'TVP', rate: 6 }],
+    id: 'single', label: 'Single tax', labelFr: 'Taxe unique',
+    rates: [{ name: 'Tax 1', nameFr: 'Taxe 1', rate: 0 }],
   },
   {
-    id: 'mb', label: 'Manitoba — GST 5% + RST 7%', labelFr: 'Manitoba — TPS 5 % + TVD 7 %',
-    rates: [{ name: 'GST', nameFr: 'TPS', rate: 5 }, { name: 'RST', nameFr: 'TVD', rate: 7 }],
+    id: 'stacked2', label: 'Two stacked taxes (each on the pre-tax subtotal)', labelFr: 'Deux taxes cumul\u00e9es (chacune sur le sous-total avant taxes)',
+    rates: [{ name: 'Tax 1', nameFr: 'Taxe 1', rate: 0 }, { name: 'Tax 2', nameFr: 'Taxe 2', rate: 0 }],
   },
-  { id: 'nt', label: 'Northwest Territories — GST 5%', labelFr: 'Territoires du Nord-Ouest — TPS 5 %', rates: [{ name: 'GST', nameFr: 'TPS', rate: 5 }] },
-  { id: 'nu', label: 'Nunavut — GST 5%', labelFr: 'Nunavut — TPS 5 %', rates: [{ name: 'GST', nameFr: 'TPS', rate: 5 }] },
-  { id: 'yt', label: 'Yukon — GST 5%', labelFr: 'Yukon — TPS 5 %', rates: [{ name: 'GST', nameFr: 'TPS', rate: 5 }] },
 ];
 // ---------------------------------------------------------------------------
 // Preset update process. When a preset's correct definition changes — a rate
-// changes, or (as with Quebec in Oct 2026) the *calculation method* is
-// corrected — bump that preset's `version` above and add an entry here with
-// the superseded definition's signature ([rate, compound][]). Shops whose
-// stored rates still match an outdated signature get a banner in POS Settings
-// (owner/manager) showing old vs new and the effective date; applying the
-// corrected rates requires an explicit Save. A preset change NEVER rewrites a
-// shop's stored rates silently.
+// changes or the *calculation method* is corrected — bump that preset's
+// `version` above and add an entry here with the superseded definition's
+// signature ([rate, compound][]). Shops whose stored rates still match an
+// outdated signature get a banner in POS Settings (owner/manager) showing old
+// vs new and the effective date; applying the corrected rates requires an
+// explicit Save. A preset change NEVER rewrites a shop's stored rates
+// silently.
 // ---------------------------------------------------------------------------
 const OUTDATED_PRESETS = [
-  {
-    id: 'qc',
-    // v1 (before Oct 2026) wrongly compounded QST on the GST-included price.
-    // Revenu Québec: QST 9.975% is calculated on the selling price EXCLUDING
-    // GST ("Basic Rules for Applying the GST/HST and QST"). v2 stacks both.
-    oldSig: [[5, false], [9.975, true]],
-    noteKey: 'pos.tabs2.taxPresetQcFix',
-  },
+  // No superseded presets ship with the generic build. Entries look like:
+  // { id: 'preset-id', oldSig: [[5, false], [9.975, true]], noteKey: 'pos.tabs2.taxPresetOldNote' },
 ];
 const outdatedPresetFor = (rows) => {
   const sig = JSON.stringify(
@@ -352,11 +324,11 @@ function SellTab({ products, store, v4, customers, customerId, onCustomerChange,
     };
     update();
     const handler = () => update();
-    window.addEventListener('lfdd:queue-changed', handler);
+    window.addEventListener('driftshop:queue-changed', handler);
     window.addEventListener('online', handler);
     window.addEventListener('offline', handler);
     return () => {
-      window.removeEventListener('lfdd:queue-changed', handler);
+      window.removeEventListener('driftshop:queue-changed', handler);
       window.removeEventListener('online', handler);
       window.removeEventListener('offline', handler);
     };
@@ -376,7 +348,7 @@ function SellTab({ products, store, v4, customers, customerId, onCustomerChange,
   // closes, or the network dies mid-sale, the in-progress cart is recovered
   // on next POS open. A sale in progress is NEVER lost.
   const [draftAvailable, setDraftAvailable] = useState(null); // null = checking, {cart, discount, ...} = recoverable
-  const DRAFT_KEY = 'lfdd_pos_draft';
+  const DRAFT_KEY = 'driftshop_pos_draft';
   const DRAFT_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24h: older drafts are stale
 
   // On mount: check for a recoverable draft (from crash/close).
@@ -458,7 +430,7 @@ function SellTab({ products, store, v4, customers, customerId, onCustomerChange,
   const [depositOpen, setDepositOpen] = useState(false);
   const [schoolOpen, setSchoolOpen] = useState(false);
   const [presetAdjustments, setPresetAdjustments] = useState([]);
-  // Bouquinerie catalogue as a product source (Comelin replacement): when
+  // Catalogue as a product source: when
   // bqMode is on, the grid searches the bookstore catalogue instead of POS
   // products, and completed sales decrement catalogue stock.
   const [bqMode, setBqMode] = useState(false);
@@ -584,7 +556,7 @@ function SellTab({ products, store, v4, customers, customerId, onCustomerChange,
   };
 
   // Barcode/sku scanners type the code and hit Enter — jump straight to the cart.
-  // Falls back to a Bouquinerie ISBN lookup so bookstore stock scans at the till.
+  // Falls back to a Catalogue ISBN lookup so catalogued stock scans at the till.
   const quickAddSku = async () => {
     const q = query.trim().toLowerCase();
     if (!q) return;
@@ -659,7 +631,7 @@ function SellTab({ products, store, v4, customers, customerId, onCustomerChange,
   }, [promo, cart, discount, extras]);
   const taxable = Math.max(0, taxableBase - promoDiscountCents);
   // Tax-exempt organizations (e.g. non-profits) are billed tax-free —
-  // GST/QST are only charged on regular sales. Ticket-level exemption.
+  // Taxes are only charged on regular sales. Ticket-level exemption.
   const activeOrg = (orgs || []).find((o) => o.id === orgId) || null;
   const taxLines = activeOrg?.taxExempt ? [] : taxLinesFor(store, taxable);
   const taxCents = taxLines.reduce((s, l) => s + l.cents, 0);
@@ -851,10 +823,10 @@ function SellTab({ products, store, v4, customers, customerId, onCustomerChange,
           setPromoError('');
           setPresetAdjustments([]);
           // Clear the draft (the sale is now in the offline queue, not a draft).
-          try { localStorage.removeItem('lfdd_pos_draft'); } catch {}
+          try { localStorage.removeItem('driftshop_pos_draft'); } catch {}
           return; // Don't throw — the sale was captured.
         } catch (queueErr) {
-          console.error('[lfdd] offline queue failed:', queueErr);
+          console.error('[driftshop] offline queue failed:', queueErr);
           // Fall through to the normal error path.
         }
       }
@@ -882,7 +854,7 @@ function SellTab({ products, store, v4, customers, customerId, onCustomerChange,
     } else if (loyaltyRedeemed > 0 && onCustomersChanged) {
       onCustomersChanged();
     }
-    // Stock (POS products AND Bouquinerie items) was decremented atomically
+    // Stock (POS products AND catalogue items) was decremented atomically
     // on the server inside recordSale. Anything the server flagged —
     // oversold lines, lines it could not update — is reported on the
     // receipt so staff reconcile instead of inventory silently drifting.
@@ -1915,7 +1887,7 @@ function GiftCardsModal({ store, cashier, onSaleComplete, onClose }) {
     let card = null;
     try {
       card = await backend.pos.sellGiftCard(store.id, { amountCents: cents, note: note.trim() });
-      // Gift cards are sold tax-free in Québec — tax applies at redemption.
+      // Gift cards are sold tax-free — tax applies at redemption.
       const recorded = await onSaleComplete({
         items: [{
           productId: `giftcard:${card.id}`,
@@ -5354,7 +5326,7 @@ function SettingsTabPane({ store, v4, onSave, extras }) {
         return (rows || []).filter((r) => Number(r.rate) > 0).length === 0 && Number(defaultRate) === 0;
       // Accept the preset's names in either UI language — the rows are stored
       // with the names of whichever language was active when the preset was
-      // applied (e.g. TPS/TVQ in French mode, GST/QST in English).
+      // applied.
       const known = new Set();
       p.rates.forEach((r) => {
         known.add(String(r.name || '').trim().toUpperCase());
@@ -7004,18 +6976,18 @@ export default function POSApp({
           onCreated={async (s) => {
             setShowCreate(false);
             try {
-              // LFDD default: Québec GST 5% + QST 9.975%, both on the selling
-              // price (QST excludes GST — Revenu Québec). The Settings tab
-              // preset picker can change this afterwards.
+              // Generic default: two editable tax slots at 0%. The owner sets
+              // the real names and rates in the Settings tab afterwards —
+              // taxes are per-store settings, never hardcoded.
               await backend.pos.updateStore(s.id, {
                 taxRates: [
-                  { name: 'GST', rate: 5 },
-                  { name: 'QST', rate: 9.975 },
+                  { name: 'Tax 1', rate: 0 },
+                  { name: 'Tax 2', rate: 0 },
                 ],
               });
             } catch (err) {
               // Non-fatal: the store exists, taxes can be set in Settings.
-              console.warn('Could not apply default Quebec tax rates:', err);
+              console.warn('Could not apply default tax rates:', err);
             }
             try {
               await refreshStores(s.id);

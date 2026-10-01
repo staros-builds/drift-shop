@@ -760,7 +760,7 @@ export default function SettingsApp({ windowApi }) {
         (data.posStores === undefined || Array.isArray(data.posStores)) &&
         (data.support === undefined || (data.support && typeof data.support === 'object'));
       if (!valid) {
-        throw new Error('Not a LFDD backup file — expected settings, spaces, files, pins, and helmThreads.');
+        throw new Error('Not a Drift Shop backup file — expected settings, spaces, files, pins, and helmThreads.');
       }
 
       if (await hasExistingData()) {
@@ -815,7 +815,7 @@ export default function SettingsApp({ windowApi }) {
       try {
         window.localStorage.removeItem('drift:welcome_tour_seen');
       } catch { /* ignore */ }
-      push('Data erased', 'All LFDD data was permanently deleted.');
+      push('Data erased', 'All Drift Shop data was permanently deleted.');
       setStorageBytes(0);
     } catch (err) {
       push('Error', `Could not erase data: ${err?.message || err}`);
@@ -993,7 +993,7 @@ export default function SettingsApp({ windowApi }) {
           <p className="mb-2 mt-4 text-sm font-medium">{t('settings.fields.interfaceStyle')}</p>
           <div className="grid grid-cols-3 gap-2">
             {[
-              { id: 'drift', label: 'LFDD', blurb: t('settings.fields.styleDriftBlurb') },
+              { id: 'drift', label: t('brand.name'), blurb: t('settings.fields.styleDriftBlurb') },
               { id: 'windows11', label: 'Windows 11', blurb: t('settings.fields.styleWinBlurb') },
               { id: 'macosx', label: 'Mac OS X', blurb: t('settings.fields.styleMacBlurb') },
             ].map((s) => {
@@ -1374,7 +1374,7 @@ export default function SettingsApp({ windowApi }) {
             </div>
             <div className="flex justify-between border-b border-osborder px-3 py-2">
               <dt className="text-muted">{t('settings.fields.copyright')}</dt>
-              <dd>© {new Date().getFullYear()} Librairie Louis-Fréchette</dd>
+              <dd>© {new Date().getFullYear()} {t('brand.name')}</dd>
             </div>
             <div className="flex justify-between border-b border-osborder px-3 py-2">
               <dt className="text-muted">{t('settings.sections.backend')}</dt>

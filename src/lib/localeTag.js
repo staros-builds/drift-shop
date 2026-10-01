@@ -1,6 +1,6 @@
 // Standalone locale helpers — no React, safe for pure modules
 // (receipt printers, helm, QR, etc.).
-export const LANG_KEY = 'lfdd:lang';
+export const LANG_KEY = 'driftshop:lang';
 
 export function getLang() {
   try {

@@ -13,7 +13,7 @@
  * is captured locally and synced when connectivity returns.
  */
 
-const QUEUE_KEY = 'lfdd_offline_queue';
+const QUEUE_KEY = 'driftshop_offline_queue';
 const MAX_QUEUE_SIZE = 100; // sanity bound: more than this is a sync problem, not a queue problem
 
 function loadQueue() {
@@ -33,7 +33,7 @@ function saveQueue(queue) {
   } catch {
     // Storage full — log and continue. The in-memory queue still works
     // for this session, but won't survive a reload.
-    console.error('[lfdd] offline queue: localStorage write failed');
+    console.error('[driftshop] offline queue: localStorage write failed');
   }
 }
 
@@ -67,7 +67,7 @@ export function enqueue(type, payload) {
   saveQueue(queue);
   // Notify listeners (the UI updates the queue badge).
   try {
-    window.dispatchEvent(new CustomEvent('lfdd:queue-changed', { detail: { depth: queue.length } }));
+    window.dispatchEvent(new CustomEvent('driftshop:queue-changed', { detail: { depth: queue.length } }));
   } catch {}
   return item;
 }
@@ -77,7 +77,7 @@ export function dequeue(id) {
   const queue = loadQueue().filter((item) => item.id !== id);
   saveQueue(queue);
   try {
-    window.dispatchEvent(new CustomEvent('lfdd:queue-changed', { detail: { depth: queue.length } }));
+    window.dispatchEvent(new CustomEvent('driftshop:queue-changed', { detail: { depth: queue.length } }));
   } catch {}
   return queue;
 }
@@ -109,7 +109,7 @@ export function markFailed(id, errorMessage) {
 export function clearQueue() {
   saveQueue([]);
   try {
-    window.dispatchEvent(new CustomEvent('lfdd:queue-changed', { detail: { depth: 0 } }));
+    window.dispatchEvent(new CustomEvent('driftshop:queue-changed', { detail: { depth: 0 } }));
   } catch {}
 }
 

@@ -154,8 +154,8 @@ export default function WebAppViewer({ appEntry }) {
               <h3 className="text-base font-semibold">{site.title}</h3>
               <p className="mt-2 text-sm text-muted">
                 {status === 'stalled'
-                  ? 'This page is taking too long to appear — it may be refusing to load inside LFDD, or your connection may be down.'
-                  : 'This site doesn\u2019t allow itself to be shown inside LFDD.'}
+                  ? 'This page is taking too long to appear — it may be refusing to load inside Drift Shop, or your connection may be down.'
+                  : 'This site doesn\u2019t allow itself to be shown inside Drift Shop.'}
               </p>
               <p className="mt-1 text-xs text-muted">
                 That&apos;s the site&apos;s choice — Drift can&apos;t override it. The full site works fine in a regular browser tab.

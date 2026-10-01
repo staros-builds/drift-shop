@@ -1,7 +1,7 @@
 /**
  * Drift backend adapter layer — interface docs + factory.
  *
- * LFDD is cloud-only: the only adapter is Supabase. The old localStorage
+ * Drift Shop is cloud-only: the only adapter is Supabase. The old localStorage
  * ("This device") and Replit adapters have been removed.
  *
  * Every adapter exposes the SAME shape:
@@ -194,10 +194,10 @@ export function createBackend(kind) {
     if (!url || !key) {
       throw new Error(
         'Supabase is not configured (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY missing). ' +
-        'LFDD needs its cloud backend to sign in.'
+        'Drift Shop needs its cloud backend to sign in.'
       );
     }
     return createSupabaseBackend();
   }
-  throw new Error(`Unknown backend kind "${kind}" — LFDD only supports Supabase.`);
+  throw new Error(`Unknown backend kind "${kind}" — Drift Shop only supports Supabase.`);
 }
