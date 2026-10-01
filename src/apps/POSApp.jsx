@@ -725,6 +725,15 @@ function SellTab({ products, store, v4, customers, customerId, onCustomerChange,
     };
     let recorded;
     try {
+      // NUCLEAR FAILSAFE (fast-path): when the browser already knows it's
+      // offline, skip the doomed save attempt (its capability probes burn
+      // ~15s on failing requests with zero user feedback) and drop straight
+      // to the offline queue via the catch block below. Safe even if
+      // navigator.onLine lies: the queue is persistent and auto-syncs, so a
+      // false offline only delays the sale, never loses it.
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+        throw new Error('network offline (navigator.onLine === false) — routing to offline queue');
+      }
       recorded = await onSaleComplete(sale);
     } catch (err) {
       // NUCLEAR FAILSAFE: if the sale failed due to a network error (offline),
@@ -3319,7 +3328,7 @@ function HistoryTab({ store, sales, memberName, onVoid, onRefund, onExchange, se
                       {s.voided && <span className="ml-2 rounded-os bg-osborder/50 px-2 py-0.5 text-xs font-medium text-muted">{t('pos.tabs2.voided')}</span>}
                       {refundsOk && !s.voided && refundedOf(s) > 0 && (
                         <span className="ml-2 rounded-os bg-accent/15 px-2 py-0.5 text-xs font-medium text-accent">
-                          {s.fullyRefunded ? t('pos.refund.refundedBadge') : t('pos.refund.partialBadge')} −{fmt(refundedOf(s), store.currency)}
+                          {refundedOf(s) >= s.totalCents ? t('pos.refund.refundedBadge') : t('pos.refund.partialBadge')} −{fmt(refundedOf(s), store.currency)}
                         </span>
                       )}
                       {(orgsOk || extras) && s.taxExempt && (
