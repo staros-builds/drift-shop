@@ -266,6 +266,25 @@ export function AuthProvider({ children }) {
     }
   }, [runAccessCheck]);
 
+  // Social sign-in (Google/GitHub): saves the pending flow first so the
+  // provider round trip lands in the right place (owner → desktop,
+  // customer → their shop), then hands off to the backend. The browser
+  // normally navigates away; a refusal (provider not enabled yet) clears
+  // the pending record and throws a coded error for the UI.
+  const signInOAuth = useCallback(async ({ provider, kind, slug }) => {
+    const accountKind = kind === 'customer' ? 'customer' : 'owner';
+    savePendingFlow({ kind: accountKind, slug });
+    explicitAuthRef.current = true;
+    try {
+      return await backend.auth.signInWithOAuth({ provider, kind: accountKind, slug });
+    } catch (e) {
+      clearPendingFlow();
+      throw e;
+    } finally {
+      explicitAuthRef.current = false;
+    }
+  }, []);
+
   const signInGuest = useCallback(async () => {
     if (typeof backend.auth.signInGuest !== 'function') {
       throw new Error('Guest sign-in is not available with this backend.');
@@ -317,7 +336,7 @@ export function AuthProvider({ children }) {
     setProfile((p) => (p ? { ...p, must_change_password: false } : p));
   }, []);
 
-  const value = { user, loading, signUp, signUpEmail, signIn, signInGuest, signOut, completePasswordChange, accessBlock, clearAccessBlock, isAdmin, profile, accessChecked, authEpoch };
+  const value = { user, loading, signUp, signUpEmail, signIn, signInOAuth, signInGuest, signOut, completePasswordChange, accessBlock, clearAccessBlock, isAdmin, profile, accessChecked, authEpoch };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

@@ -8,6 +8,9 @@ import {
   resendCooldownRemaining,
   RESEND_COOLDOWN_MS,
   buildSignupRedirectTo,
+  OAUTH_PROVIDERS,
+  normalizeOAuthProvider,
+  classifyAccountKind,
   parseAuthCallbackUrl,
   resolveConfirmedFlow,
   savePendingFlow,
@@ -102,6 +105,39 @@ check('signup redirect URL normalizes the base path', () => {
     buildSignupRedirectTo({ origin: 'https://a.b/', basePath: '/drift-shop', kind: 'owner' }),
     'https://a.b/drift-shop/?authflow=owner'
   );
+});
+
+check('OAuth providers: google + github only, normalized', () => {
+  assert.deepEqual(OAUTH_PROVIDERS.map((p) => p.id), ['google', 'github']);
+  assert.equal(normalizeOAuthProvider('Google'), 'google');
+  assert.equal(normalizeOAuthProvider(' github '), 'github');
+  assert.equal(normalizeOAuthProvider('facebook'), null);
+  assert.equal(normalizeOAuthProvider(''), null);
+  assert.equal(normalizeOAuthProvider(null), null);
+  // The OAuth round trip reuses the signup redirect builder, so the
+  // callback routing (authflow + shop) is identical for both doors.
+  assert.equal(
+    buildSignupRedirectTo({ origin: 'https://a.b', basePath: '/', kind: 'customer', slug: 'heavy-test' }),
+    'https://a.b/?authflow=customer&shop=heavy-test'
+  );
+});
+
+check('post-OAuth account classification: stamp once, never overwrite', () => {
+  // Fresh OAuth users arrive with account_kind NULL -> stamp the flow kind.
+  assert.equal(classifyAccountKind(null, 'owner'), 'owner');
+  assert.equal(classifyAccountKind(null, 'customer'), 'customer');
+  assert.equal(classifyAccountKind(undefined, 'owner'), 'owner');
+  // Already classified -> never touch, even for the "same" kind (no-op) and
+  // especially never a customer->owner promotion or owner->customer demotion.
+  assert.equal(classifyAccountKind('owner', 'owner'), null);
+  assert.equal(classifyAccountKind('customer', 'customer'), null);
+  assert.equal(classifyAccountKind('customer', 'owner'), null);
+  assert.equal(classifyAccountKind('owner', 'customer'), null);
+  // Unknown flow kinds stamp nothing.
+  assert.equal(classifyAccountKind(null, 'recovery'), null);
+  assert.equal(classifyAccountKind(null, 'admin'), null);
+  assert.equal(classifyAccountKind(null, null), null);
+  assert.equal(classifyAccountKind(null, undefined), null);
 });
 
 check('pending flow round-trips and expires', () => {

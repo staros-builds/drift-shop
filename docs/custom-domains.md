@@ -37,6 +37,11 @@ Worker **routes** accept wildcard patterns (`*.<apex>/*`); a tiny Worker
 fetches the Pages origin and returns its bytes. The browser still sees
 `<shop>.<apex>` in the address bar, and the app reads
 `window.location.hostname` client-side — which is all the app needs.
+The Worker code now lives in `cloudflare/front-door-worker.js` (with
+`cloudflare/wrangler.example.toml`); it is implemented and unit-tested
+locally, but not deployed until the apex and Cloudflare account exist.
+It retries only idempotent GET/HEAD requests on network failure or 5xx,
+never retries 4xx as another origin, and never retries a POST.
 (Worker *custom domains* are exact-hostname only; routes are the wildcard
 mechanism: https://github.com/sagargupta16/deploy-guide/blob/HEAD/guides/cloudflare-workers.md)
 
@@ -116,9 +121,11 @@ apex, which only the Cloudflare front serves.
    `vite build --base=/`** for the domain-fronted deployment: the
    `/drift-shop/` base path exists for the GitHub Pages project site,
    and asset URLs must sit at the domain root instead.
-3. DNS: proxied wildcard record `*` → the Pages hostname, plus a Worker
-   with route `*.<apex>/*` that fetches the Pages origin (and the apex
-   routed to the same origin). Set `BRAND.apexDomain` and
+3. DNS: proxied wildcard record `*` → the Pages hostname, plus the Worker
+   in `cloudflare/front-door-worker.js` deployed with route `*.<apex>/*`
+   fetching the Pages origin (and the apex routed to the same origin).
+   Copy `cloudflare/wrangler.example.toml` to `wrangler.toml` and set
+   `ORIGIN_HOST` to the Pages hostname. Set `BRAND.apexDomain` and
    `BRAND.hostCnameTarget` (the Pages hostname buyers point CNAMEs at),
    rebuild, redeploy.
 4. That's it. Every future shop subdomain works with zero further setup.

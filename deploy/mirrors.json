@@ -31,7 +31,7 @@
       "signupCheck": "Existing account (staros-builds) \u2014 no new signup."
     },
     {
-      "address": "https://<project>.pages.dev",
+      "address": "https://vendra-1f2.pages.dev",
       "basePathNote": "Domain root \u2014 relative base './' handles it.",
       "deploy": {
         "codeChanges": "none",
@@ -41,7 +41,7 @@
       "headersNote": "Can send REAL headers via a public/_headers file later; meta CSP works today. Direct Upload project (not git-connected) so the fan-out ships the exact same dist.",
       "id": "cloudflare-pages",
       "limitsNote": "Free: 500 builds/mo; static requests/bandwidth unlimited; 20,000 files/site; 25 MiB max file. Verified 2026-10-01.",
-      "oneTimeSetup": "Create Cloudflare account (owner email, no card); Pages -> Create -> Direct Upload project named in CLOUDFLARE_PAGES_PROJECT; API token with Pages:Edit; add secrets CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID.",
+      "oneTimeSetup": "Done 2026-10-02: Cloudflare account reached via the already signed-in GitHub route (no phone/card/CAPTCHA); Direct Upload Pages project `vendra` created and verified at vendra-1f2.pages.dev. API-token automation (CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID + CLOUDFLARE_PAGES_PROJECT) is still pending for hands-off fan-out.",
       "provider": "Cloudflare Pages",
       "requiredSecrets": [
         "CLOUDFLARE_API_TOKEN",
@@ -51,8 +51,8 @@
         "CLOUDFLARE_PAGES_PROJECT"
       ],
       "role": "primary commercial door",
-      "status": "pending-account",
-      "signupCheck": "Email + password signup, confirmation email to click. No phone or card required. Cloudflare sometimes shows a human-check challenge on signup or first sign-in \u2014 if one appears, Jesse clicks through it on camera; everything after is API tokens, no further checks."
+      "status": "live",
+      "signupCheck": "Verified live 2026-10-02: Continue with GitHub (staros-builds) reached the dashboard with only read-only email/profile authorization. No phone, card, password, or CAPTCHA was required."
     },
     {
       "address": "https://<project>.web.app",
@@ -102,7 +102,7 @@
       "signupCheck": "Email + password from the command line (surge login). Historically one of the lowest-friction signups \u2014 no phone, no card, no known challenge gauntlet."
     },
     {
-      "address": "https://<site>.netlify.app",
+      "address": "https://vendra-shop.netlify.app",
       "basePathNote": "Domain root \u2014 relative base './' handles it.",
       "deploy": {
         "codeChanges": "none",
@@ -112,7 +112,7 @@
       "headersNote": "Real response headers already declared in netlify.toml (nosniff, frame deny, HSTS).",
       "id": "netlify",
       "limitsNote": "CAUTION \u2014 new accounts (created on/after 2025-09-04) get 300 credits/mo: a production deploy burns 15 credits, bandwidth 20 credits/GB \u2014 roughly ~15 GB bandwidth OR ~20 deploys per month, then the project pauses until next cycle. Tight quota; keep as a backup door, not a primary. Verified 2026-10-01.",
-      "oneTimeSetup": "Create Netlify account (owner email, no card); create an empty site; add secrets NETLIFY_AUTH_TOKEN (user token) + NETLIFY_SITE_ID (site API ID).",
+      "oneTimeSetup": "Done 2026-10-02: Netlify account reached via GitHub (Cooper Assistant / Vendra team); site `vendra-shop` deployed by manual upload of the verified dist and set Public (a private-by-default visibility toggle initially blocked visitors). NETLIFY_AUTH_TOKEN + NETLIFY_SITE_ID are still pending for CLI fan-out automation.",
       "provider": "Netlify",
       "requiredSecrets": [
         "NETLIFY_AUTH_TOKEN",
@@ -120,8 +120,8 @@
       ],
       "requiredVars": [],
       "role": "backup door (quota-tight)",
-      "status": "pending-account",
-      "signupCheck": "Email + password, or sign up with the existing GitHub account (no new password, no phone). Confirmation email to click. If a challenge appears at signup, Jesse passes it once."
+      "status": "live",
+      "signupCheck": "Verified live 2026-10-02: Log in with GitHub (staros-builds) reached onboarding with no phone, card, password, or CAPTCHA; onboarding answers were Cooper Assistant / Vendra / Work / Web app."
     },
     {
       "address": "https://<site>.onrender.com",

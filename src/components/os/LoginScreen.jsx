@@ -9,6 +9,7 @@ import {
   validateSignupEmail,
   resendCooldownRemaining,
   readAndClearAuthNotice,
+  OAUTH_PROVIDERS,
 } from '../../lib/authFlow.js';
 import { DriftMark } from './BootScreen.jsx';
 
@@ -388,7 +389,7 @@ function ForgotPasswordDialog({ onClose }) {
  * in with a username or an email address.
  */
 export default function LoginScreen() {
-  const { signIn, signUpEmail, signInGuest, accessBlock, clearAccessBlock } = useAuth();
+  const { signIn, signUpEmail, signInOAuth, signInGuest, accessBlock, clearAccessBlock } = useAuth();
   const { t, lang } = useLang();
   const [mode, setMode] = useState('signin'); // 'signin' | 'signup'
   // Single identifier field: accepts a username OR an email address.
@@ -598,6 +599,8 @@ export default function LoginScreen() {
       'username-required': 'login.errUsernameRequired',
       'username-invalid': 'login.errUsernameInvalid',
       'profile-missing': 'login.errProfileMissing',
+      'oauth-not-enabled': 'login.errOAuthNotEnabled',
+      'oauth-provider-unsupported': 'login.errOAuthUnsupported',
       'email-taken': 'login.errEmailTaken',
       'username-taken': 'login.errUsernameTaken',
       'invalid-credentials': 'login.errInvalidCreds',
@@ -646,6 +649,24 @@ export default function LoginScreen() {
       } else {
         setError(err.message || t('login.errGuest'));
       }
+    } finally {
+      setBusy(false);
+      busyRef.current = false;
+    }
+  };
+
+  // Social sign-in: the browser leaves for the provider and returns
+  // through the auth callback. Only a refusal (provider not enabled yet)
+  // comes back here as an error.
+  const oauth = async (provider) => {
+    if (busyRef.current) return;
+    setError('');
+    setBusy(true);
+    busyRef.current = true;
+    try {
+      await signInOAuth({ provider, kind: 'owner' });
+    } catch (err) {
+      setError(friendlyAuthError(err));
     } finally {
       setBusy(false);
       busyRef.current = false;
@@ -856,6 +877,29 @@ export default function LoginScreen() {
             {busy ? t('common.working') : mode === 'signup' ? t('login.createAccount') : t('login.signIn')}
           </button>
         </form>
+        )}
+
+        {!checkEmail && (
+          <>
+            <div className="my-3 flex items-center gap-3 text-xs text-muted">
+              <span className="h-px flex-1 bg-osborder" />
+              {t('login.oauthOrContinue')}
+              <span className="h-px flex-1 bg-osborder" />
+            </div>
+            <div className="space-y-2">
+              {OAUTH_PROVIDERS.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => oauth(p.id)}
+                  disabled={busy}
+                  className="flex w-full items-center justify-center gap-2 rounded-os border border-osborder bg-paper px-4 py-2 text-sm font-medium text-ink duration-160 hover:border-accent disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+                >
+                  {t(p.labelKey)}
+                </button>
+              ))}
+            </div>
+          </>
         )}
 
         {trialAvailable && (

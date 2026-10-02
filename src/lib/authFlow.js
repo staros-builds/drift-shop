@@ -36,6 +36,52 @@ export const PENDING_FLOW_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// Social sign-in providers (Jesse, 2026-10-01): email + password stays,
+// but users may also continue with another service. Only providers that
+// Supabase can enable for free and that we wire end-to-end belong here —
+// the UI renders exactly this list, and the backend rejects anything else
+// before calling Supabase.
+export const OAUTH_PROVIDERS = [
+  { id: 'google', labelKey: 'login.oauthGoogle' },
+  { id: 'github', labelKey: 'login.oauthGithub' },
+];
+
+/** Normalize a provider id to a supported OAuth provider, or null. */
+export function normalizeOAuthProvider(provider) {
+  const p = String(provider || '').trim().toLowerCase();
+  return OAUTH_PROVIDERS.some((entry) => entry.id === p) ? p : null;
+}
+
+/**
+ * Decide the account_kind to stamp after an OAuth callback.
+ *
+ * Supabase's signInWithOAuth cannot carry signup metadata, so fresh OAuth
+ * users arrive with profiles.account_kind = NULL (migration 070's trigger).
+ * The callback knows which flow the user started (?authflow=owner|customer
+ * rides the redirect URL, with the pending-flow record as fallback) — this
+ * helper turns that into a stamp decision:
+ *
+ *   returns 'owner' | 'customer' — stamp it (profile is unclassified);
+ *   returns null                 — leave the profile alone.
+ *
+ * Rules, all deliberate:
+ *  - an already-classified profile ('owner' | 'customer') is NEVER
+ *    overwritten — an email owner who links Google stays an owner, a
+ *    customer can never self-promote to owner via a crafted callback;
+ *  - an unknown flow kind stamps nothing;
+ *  - stamping 'owner' from the OAuth landing is not a privilege escalation:
+ *    email signup as an owner is a public flow, so OAuth owners get exactly
+ *    what email owners get (setup access; the shop licensing/trial gate
+ *    still applies afterwards).
+ */
+export function classifyAccountKind(currentKind, flowKind) {
+  const want =
+    flowKind === 'owner' ? 'owner' : flowKind === 'customer' ? 'customer' : null;
+  if (!want) return null;
+  if (currentKind === 'owner' || currentKind === 'customer') return null;
+  return want;
+}
+
 /**
  * Validate an email for SIGNUP. Returns { ok: true, email } or
  * { ok: false, code } where code is one of:
@@ -123,7 +169,8 @@ export function clearPendingFlow(store) {
 }
 
 /**
- * Build the emailRedirectTo for a signup confirmation email:
+ * Build the redirect target for an email-confirmation link OR an OAuth
+ * provider round trip:
  *   <origin><basePath>?authflow=<kind>[&shop=<slug>]
  * Query-only (no hash): GoTrue merges ?code= into it on the way back, and
  * the callback parser routes from the authflow param. Must be covered by

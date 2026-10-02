@@ -30,6 +30,7 @@ import {
   cancelOrder,
   newIdempotencyKey,
 } from '../lib/onlineOrders.js';
+import { OAUTH_PROVIDERS, savePendingFlow, clearPendingFlow } from '../lib/authFlow.js';
 
 /**
  * Public storefront page (#/store/<slug>) — the customer-facing web page
@@ -632,6 +633,22 @@ export default function StorefrontPublic({ slug, configError = null, appHome = n
     setModal(null);
   };
 
+  // Social sign-in for customers: same one-login rule as owners. The
+  // pending flow routes the provider round trip back to this shop, and
+  // the shop link is stamped on landing (linkShopCustomer above).
+  const doOAuth = async (provider) => {
+    setAuthBusy(true);
+    setAuthError('');
+    savePendingFlow({ kind: 'customer', slug });
+    try {
+      await backend.auth.signInWithOAuth({ provider, kind: 'customer', slug });
+    } catch (e) {
+      clearPendingFlow();
+      setAuthError(e.code === 'oauth-not-enabled' ? oo('oauthNotEnabled') : oo('signInFail'));
+      setAuthBusy(false);
+    }
+  };
+
   const doPlaceOrder = async () => {
     if (placing) return;
     const problem = validateCartForOrder(cart);
@@ -775,6 +792,22 @@ export default function StorefrontPublic({ slug, configError = null, appHome = n
             >
               {authBusy ? '…' : authMode === 'signup' ? oo('signUpBtn') : oo('signInBtn')}
             </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, color: '#8a7f72', fontSize: 12 }}>
+              <span style={{ flex: 1, height: 1, background: '#e5ddd2' }} />
+              {oo('oauthOrContinue')}
+              <span style={{ flex: 1, height: 1, background: '#e5ddd2' }} />
+            </div>
+            {OAUTH_PROVIDERS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                disabled={authBusy}
+                style={{ ...styles.ghostBtn, width: '100%', marginTop: 8, opacity: authBusy ? 0.6 : 1 }}
+                onClick={() => doOAuth(p.id)}
+              >
+                {oo(p.id === 'google' ? 'oauthGoogle' : 'oauthGithub')}
+              </button>
+            ))}
             <div style={{ textAlign: 'center', marginTop: 6 }}>
               <button
                 type="button"

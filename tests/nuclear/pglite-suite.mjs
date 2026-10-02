@@ -217,6 +217,30 @@ const masterRow = await q(`select id from public.profiles where is_master = true
 const MASTER = masterRow.rows[0]?.id;
 rec(!!MASTER ? 'PASS' : 'FAIL', 'platform master seeded by migration 056', MASTER ? MASTER.slice(0, 8) : 'none');
 
+// ---------- OAuth account classification (migration 080) ----------
+// Actor A signed up with no account_kind metadata (like a fresh OAuth user:
+// the 070 trigger records NULL). The client stamps it once after the
+// OAuth callback via classify_oauth_profile().
+await asUser(A);
+await q(`select public.classify_oauth_profile('owner')`);
+const kindA = (await q(`select account_kind from public.profiles where id = $1`, [A])).rows[0]?.account_kind;
+rec(kindA === 'owner' ? 'PASS' : 'FAIL',
+  'classify_oauth_profile stamps NULL -> owner for a fresh OAuth user', String(kindA));
+// A second call with a different kind must NOT overwrite the first stamp.
+await q(`select public.classify_oauth_profile('customer')`);
+const kindA2 = (await q(`select account_kind from public.profiles where id = $1`, [A])).rows[0]?.account_kind;
+rec(kindA2 === 'owner' ? 'PASS' : 'FAIL',
+  'classify_oauth_profile never overwrites an existing classification', String(kindA2));
+let badKind = '';
+try { await q(`select public.classify_oauth_profile('admin')`); } catch (e) { badKind = e.message; }
+rec(/owner.*customer/i.test(badKind) ? 'PASS' : 'FAIL',
+  'classify_oauth_profile rejects invalid kinds', badKind.slice(0, 80));
+await asAnon();
+let anonKind = '';
+try { await q(`select public.classify_oauth_profile('owner')`); } catch (e) { anonKind = e.message; }
+rec(/sign in required/i.test(anonKind) ? 'PASS' : 'FAIL',
+  'classify_oauth_profile requires a signed-in user', anonKind.slice(0, 80));
+
 // ---------- shops ----------
 await asUser(A);
 const SA = (await q(`insert into public.pos_stores (name, created_by) values ('NUCLEARQA Shop A', $1) returning id`, [A])).rows[0].id;
@@ -424,6 +448,62 @@ await expectRefused('A cannot apply stock in B shop',
   await q(`delete from public.pos_products where id = $1`, [r.rows[0].id]);
   await expectRefused('$0 product rejected (price_cents > 0 CHECK)',
     `insert into public.pos_products (store_id, name, price_cents) values ($1, 'free', 0)`, [SA]);
+}
+
+// ---------- online ordering (migration 071) ----------
+{
+  const asJson = (v) => (typeof v === 'string' ? JSON.parse(v) : v);
+  await asUser(A);
+  await setStock(5);
+  await q(`insert into public.storefront_profiles (store_id, slug, display_name, published, online_ordering)
+    values ($1, 'nuclearqa-a', 'NUCLEARQA Shop A', true, true)
+    on conflict (store_id) do update set slug = excluded.slug, display_name = excluded.display_name,
+      published = excluded.published, online_ordering = excluded.online_ordering`, [SA]);
+
+  await asUser(C);
+  const placed = await q(`select public.online_order_place($1, $2::jsonb, $3, $4, $5, $6) as res`,
+    ['nuclearqa-a', JSON.stringify([{ product_id: PA, qty: 2 }]), 'pickup note', 'Customer C', '', 'nq-online-1']);
+  const order = asJson(placed.rows[0].res);
+  rec(order && order.status === 'received' && order.total_cents === 2500 ? 'PASS' : 'FAIL',
+    'customer places online order with server-derived total', JSON.stringify(order).slice(0, 140));
+  const replay = await q(`select public.online_order_place($1, $2::jsonb, $3, $4, $5, $6) as res`,
+    ['nuclearqa-a', JSON.stringify([{ product_id: PA, qty: 2 }]), 'pickup note', 'Customer C', '', 'nq-online-1']);
+  const replayOrder = asJson(replay.rows[0].res);
+  rec(replayOrder && replayOrder.id === order.id ? 'PASS' : 'FAIL',
+    'online order idempotency key replays original order', `first=${order.id?.slice(0, 8)} replay=${replayOrder?.id?.slice(0, 8)}`);
+  await expectRefused('online order beyond tracked stock rejected',
+    `select public.online_order_place($1, $2::jsonb, $3, $4, $5, $6)`,
+    ['nuclearqa-a', JSON.stringify([{ product_id: PA, qty: 6 }]), '', 'Customer C', '', 'nq-online-oos']);
+
+  await asUser(B);
+  await expectEmpty('other customer cannot read C online order items via RLS',
+    `select id from public.online_order_items where order_id = $1`, [order.id]);
+  await expectRefused('non-member cannot read shop online order inbox',
+    `select public.online_orders_inbox($1)`, [SA]);
+  const bOrders = asJson((await q(`select public.online_order_my_orders($1) as res`, ['nuclearqa-a'])).rows[0].res);
+  rec(Array.isArray(bOrders) && bOrders.length === 0 ? 'PASS' : 'FAIL',
+    'other customer sees only own online orders (none)', `n=${Array.isArray(bOrders) ? bOrders.length : '?'}`);
+
+  await asUser(A);
+  const inbox = asJson((await q(`select public.online_orders_inbox($1) as res`, [SA])).rows[0].res);
+  rec(Array.isArray(inbox) && inbox.some((o) => o.id === order.id) ? 'PASS' : 'FAIL',
+    'shop inbox receives customer order', `orders=${Array.isArray(inbox) ? inbox.length : '?'}`);
+  await q(`select public.online_order_set_status($1, 'preparing')`, [order.id]);
+  await q(`select public.online_order_set_status($1, 'ready')`, [order.id]);
+  const converted = asJson((await q(`select public.online_order_convert($1, 'cash', $2) as res`, [order.id, order.total_cents])).rows[0].res);
+  rec(converted && converted.sale_id && converted.already === false ? 'PASS' : 'FAIL',
+    'ready online order converts to POS sale', JSON.stringify(converted).slice(0, 140));
+  const stockAfterConvert = await getStock();
+  rec(stockAfterConvert === 3 ? 'PASS' : 'FAIL', 'online conversion decrements stock once', `stock=${stockAfterConvert}`);
+  const convertedAgain = asJson((await q(`select public.online_order_convert($1, 'cash', $2) as res`, [order.id, order.total_cents])).rows[0].res);
+  const stockAfterReplay = await getStock();
+  const onlineSales = await q(`select count(*)::int as n from public.pos_sales where store_id = $1 and channel = 'online'`, [SA]);
+  rec(convertedAgain && convertedAgain.already === true && stockAfterReplay === 3 && onlineSales.rows[0].n === 1 ? 'PASS' : 'FAIL',
+    'online conversion replay returns existing sale without double stock/sale', `stock=${stockAfterReplay} sales=${onlineSales.rows[0].n}`);
+  await asUser(C);
+  await expectRefused('customer cannot cancel a completed online order',
+    `select public.online_order_cancel($1)`, [order.id]);
+  await asUser(A);
 }
 
 // ---------- factory reset as master (LAST: wipes everything) ----------

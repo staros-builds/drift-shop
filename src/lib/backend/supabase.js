@@ -22,6 +22,8 @@ import { BRAND } from '../brand.js';
 import {
   validateSignupEmail,
   buildSignupRedirectTo,
+  normalizeOAuthProvider,
+  classifyAccountKind,
   parseAuthCallbackUrl,
   resolveConfirmedFlow,
   readPendingFlow,
@@ -729,6 +731,43 @@ export function createSupabaseBackend(config = null) {
       return { user: { ...cachedUser } };
     },
 
+    // Social sign-in (Jesse, 2026-10-01): email + password stays, and users
+    // may also continue with Google or GitHub. This starts the provider
+    // round trip; the browser leaves for the provider and returns through
+    // consumeAuthCallback() with the same ?authflow= routing as an email
+    // confirmation link, so an owner lands on the desktop and a customer
+    // lands back on their shop. The provider must be enabled in Supabase
+    // Auth → Providers; when it is not, Supabase's refusal is mapped to the
+    // coded 'oauth-not-enabled' error so the UI can say so plainly.
+    async signInWithOAuth({ provider, kind, slug }) {
+      const p = normalizeOAuthProvider(provider);
+      if (!p) {
+        const e = new Error('oauth-provider-unsupported');
+        e.code = 'oauth-provider-unsupported';
+        throw e;
+      }
+      const accountKind = kind === 'customer' ? 'customer' : 'owner';
+      const redirectTo = buildSignupRedirectTo({
+        origin: window.location.origin,
+        basePath: import.meta.env?.BASE_URL || '/',
+        kind: accountKind,
+        slug,
+      });
+      const { error } = await client.auth.signInWithOAuth({
+        provider: p,
+        options: { redirectTo },
+      });
+      if (error) {
+        if (/provider is not enabled|not enabled|unsupported provider/i.test(error.message || '')) {
+          const e = new Error('oauth-not-enabled');
+          e.code = 'oauth-not-enabled';
+          throw e;
+        }
+        throw authFailure('Social sign in failed', error);
+      }
+      return { status: 'redirect' };
+    },
+
     // Guest trial via Supabase anonymous sign-in: a real auth user (real UID, so
     // RLS applies normally) flagged is_guest. Needs "Allow anonymous sign-ins"
     // enabled in Supabase Auth settings. (The old guest-xxx@drift.local sign-up
@@ -1071,6 +1110,30 @@ export function createSupabaseBackend(config = null) {
             }
           } catch {
             /* best-effort */
+          }
+        }
+        if (flow.kind === 'owner' || flow.kind === 'customer') {
+          // Post-OAuth classification (2026-10-01): signInWithOAuth cannot
+          // carry signup metadata, so fresh OAuth users land with
+          // profiles.account_kind = NULL. Stamp it from the flow exactly
+          // once; classifyAccountKind() + the RPC's WHERE account_kind IS
+          // NULL guard make this a strict no-op for email signups (trigger
+          // already stamped) and for already-classified accounts. Customer
+          // shop routing (flow.slug) is untouched — the storefront still
+          // links via linkShopCustomer after this returns.
+          // Best-effort: the landing must never break because classification
+          // failed; accessPolicy re-evaluates on the next profile load.
+          try {
+            const { data: sess } = await client.auth.getSession();
+            const uid = sess?.session?.user?.id;
+            if (uid) {
+              const p = await auth.getAccessProfile(uid);
+              if (classifyAccountKind(p?.account_kind, flow.kind)) {
+                await client.rpc('classify_oauth_profile', { p_kind: flow.kind });
+              }
+            }
+          } catch {
+            /* best-effort: login proceeds, profile check happens on load */
           }
         }
         clearPendingFlow();

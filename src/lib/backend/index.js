@@ -27,6 +27,9 @@
  *       signUpWithEmail({ email, password, displayName, kind, slug })
  *         -> { status: 'signed-in', user } | { status: 'needs-confirmation', email }
  *       resendConfirmation({ email, kind, slug }) -> void
+ *       signInWithOAuth({ provider, kind, slug })  // 'google' | 'github'
+ *         -> { status: 'redirect' }   // browser leaves for the provider;
+ *                                     // lands via consumeAuthCallback
  *       consumeAuthCallback()                 // email-link landing router
  *         -> { kind: 'confirmed', flow } | { kind: 'recovery' }
  *          | { kind: 'error', errorCode } | { kind: 'none' }

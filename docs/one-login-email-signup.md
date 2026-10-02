@@ -137,3 +137,38 @@ parity test fails.
 6. Password-reset flow still forces the new-password screen (regression).
 7. Factory reset on a scratch project → master reseeds, `shop_customers`
    empty, no leftover rows.
+
+## Social sign-in (added 2026-10-01, Jesse's direction)
+
+Email + password stays, but the login and storefront account sheets also
+offer **Continue with Google** and **Continue with GitHub**. The app side
+is done: `signInWithOAuth({ provider, kind, slug })` starts the provider
+round trip with the same `?authflow=owner|customer[&shop=<slug>]` redirect
+as an email confirmation, so owners land on the desktop and customers land
+back on their shop; a provider that is not enabled yet surfaces the plain
+"isn't switched on yet" message instead of a raw error.
+
+Operator steps to switch a provider ON (Supabase dashboard, per provider):
+
+1. **Google:** Google Cloud Console → create an OAuth client (Web) for the
+   project. Authorized redirect URI is the Supabase callback:
+   `https://<project-ref>.supabase.co/auth/v1/callback`. Put the client ID
+   + secret into Supabase → Authentication → Providers → Google → enable.
+2. **GitHub:** GitHub → Settings → Developer settings → OAuth Apps → New.
+   Homepage = the primary app address; Authorization callback URL = the
+   same Supabase callback above. Put the client ID + secret into Supabase →
+   Authentication → Providers → GitHub → enable.
+3. The app's own Redirect URLs allowlist (step 4 above) already covers the
+   return trip — every live mirror pattern must be present or the user
+   lands on an error after the provider.
+4. Test once per provider: sign up fresh, confirm you land signed-in, sign
+   out, sign back in with the same service. An OAuth-created profile has
+   `account_kind = NULL` (no signup metadata) and is treated as a legacy
+   account by the access gate; the customer shop link is stamped by the
+   storefront visit, exactly like email customers.
+
+Apple/Microsoft/Facebook are intentionally not wired: Apple needs a paid
+developer account, and the others add app-review/tenant setup that breaks
+the $0 rule. The provider list lives in one place
+(`OAUTH_PROVIDERS` in `src/lib/authFlow.js`) so adding one later is a
+list entry plus its dashboard switch.
