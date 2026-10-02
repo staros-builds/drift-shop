@@ -35,6 +35,7 @@ const PLATFORM_SUFFIXES = [
   '.netlify.app',
   '.workers.dev',
   '.vercel.app',
+  '.onrender.com',
 ];
 
 /**
