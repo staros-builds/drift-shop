@@ -2552,4 +2552,344 @@ export const en = {
     needsMigration: 'Online ordering is not available on this page yet.',
   },
 
+  helpContent: {
+    sections: {
+      start: {
+        title: 'Getting started',
+        articles: {
+          accounts: {
+            title: 'Sign in, create an account, or try as a guest',
+            keywords: 'sign in login account guest password trial username email',
+            b0: '{brand} uses one cloud login — your username or email works on every device.',
+            b1: [
+              'Sign in: enter your username or email and your password.',
+              'Create account: pick this once — your files, notes, and settings then follow you to any device.',
+              'Try free for 30 minutes: full access for half an hour, no account needed — one trial per device.'
+            ],
+            b2: 'Forgot your password? Choose “Forgot password?” on the login screen to get a reset link by email.'
+          },
+          cloud: {
+            title: 'Your cloud account',
+            keywords: 'cloud sync account storage',
+            b0: 'Everything lives in your cloud account. Sign in on any device and your desktop — files, apps, sales — is waiting for you.',
+            b1: [
+              'One login, one account: your username or email works everywhere.',
+              'Your data follows you: start a sale on the shop computer, finish it on your phone.'
+            ],
+            b2: 'One account per person — your sales, files, and settings follow you to any device you sign in on.'
+          }
+        }
+      },
+      desktop: {
+        title: 'Tour of the desktop',
+        articles: {
+          icons: {
+            title: 'Desktop icons',
+            keywords: 'icons desktop double click open drag arrange remove',
+            b0: 'Every app lives on your desktop as an icon.',
+            b1: [
+              'Single-click an icon to select it.',
+              'Double-click (or double-tap) to open the app.',
+              'Drag icons to rearrange them — your layout is remembered.',
+              'Right-click an icon and choose "Remove from desktop" to hide it. Nothing is deleted; bring it back any time from Settings → Apps.'
+            ]
+          },
+          taskbar: {
+            title: 'Taskbar, dock & Start menu',
+            keywords: 'taskbar dock start menu search pinned launch',
+            b0: 'The bar at the screen edge is your command center.',
+            b1: [
+              'Open the Start menu from the start button to search and launch any app.',
+              'Pinned apps sit in the Start menu for one-click access.',
+              'Open apps appear on the taskbar — click one to bring its window forward.',
+              'In Settings → Appearance you can move the taskbar to any screen edge, or switch the whole look to Windows 11 or Mac OS X 10.6 style.'
+            ]
+          },
+          windows: {
+            title: 'Windows',
+            keywords: 'window resize drag minimize maximize close snap',
+            b0: 'Apps open in windows you fully control.',
+            b1: [
+              'Drag the title bar to move a window.',
+              'Drag any edge or corner to resize it.',
+              'Use the title-bar buttons to minimize, maximize, or close.'
+            ],
+            b2: 'On a phone or tablet, turn on Touch screen optimization in Settings → Appearance: apps go full-screen with big touch targets.'
+          },
+          spaces: {
+            title: 'Spaces (virtual desktops)',
+            keywords: 'spaces virtual desktops workspaces switch organize',
+            b0: 'Spaces are separate desktops for different parts of your life — e.g. Work, School, Play.',
+            b1: [
+              'Open Spaces to create, rename, and delete spaces.',
+              'Each space keeps its own open windows.',
+              'Switch spaces from the Spaces app or the taskbar.'
+            ]
+          }
+        }
+      },
+      apps: {
+        title: 'Apps guide',
+        articles: {
+          'g-files': {
+            title: 'Files',
+            keywords: 'files upload download folder documents storage',
+            b0: 'Your documents, uploads, and folders. The same files on every device when you use the Cloud.',
+            b1: [
+              'Upload: click Upload (or drag files in) — documents, photos, PDFs, anything.',
+              'Double-click a file to preview it; use Download to save a copy.',
+              'New folder / Rename / Delete are in the toolbar. Deleted files ask first.',
+              'Office files (Writer, Sheets, Slides) save straight into Files.'
+            ]
+          },
+          'g-writer': {
+            title: 'Writer',
+            keywords: 'writer documents word text formatting',
+            b0: 'Documents with rich formatting — headings, bold, lists, and more.',
+            b1: [
+              'Type to write; format with the toolbar.',
+              'Save stores the document in Files. Save As creates a copy under a new name.',
+              'If you try to close with unsaved changes, you will be asked first.'
+            ]
+          },
+          'g-sheets': {
+            title: 'Sheets',
+            keywords: 'sheets spreadsheet excel formulas cells',
+            b0: 'Spreadsheets with real formulas, saved to your Files.',
+            b1: [
+              'Click a cell and type. Start with = for a formula, e.g. =SUM(A1:A5).',
+              'Save stores the sheet; Save As makes a copy under a new name.'
+            ]
+          },
+          'g-slides': {
+            title: 'Slides',
+            keywords: 'slides presentation powerpoint present',
+            b0: 'Presentations with a full-screen present mode.',
+            b1: [
+              'Add slides, pick layouts, and type your content.',
+              'Present plays the slideshow full-screen.',
+              'Save As keeps a copy under a new name without touching the original.'
+            ]
+          },
+          'g-pinboard': {
+            title: 'Pinboard',
+            keywords: 'pinboard notes capture quick search',
+            b0: 'Your capture tray: quick notes, links, and files with full-text search.',
+            b1: [
+              'Pin anything in seconds — it is saved instantly.',
+              'Search finds text inside your pins.',
+              'Helm can also save things here for you.'
+            ]
+          },
+          'g-helm': {
+            title: 'Helm (your assistant)',
+            keywords: 'helm assistant ai help ask chat',
+            b0: 'Helm is the assistant built into {brand}. Ask it to open apps, find things, look things up, and get work done.',
+            b1: [
+              'Type what you want: "open Files", "turn on dark mode", "remember that I like tea".',
+              'Local mode answers from your device; Cloud smart mode can look things up online.',
+              'Helm remembers things you tell it and can recall them later.'
+            ],
+            b2: 'Cloud smart mode uses a free public service — never send passwords or private data there.'
+          },
+          'g-store': {
+            title: 'App Store',
+            keywords: 'app store install web apps add remove uninstall',
+            b0: 'Add web apps — drawing tools, maps, music, and more — as first-class {brand} apps.',
+            b1: [
+              'Browse or search the catalog, then click Install.',
+              'Installed apps appear in your Start menu and desktop, and open in their own windows.',
+              'Uninstall any time from the store or Settings → Apps.'
+            ],
+            b2: 'Every app in the store is checked to actually work. If one misbehaves, uninstall it and try another.'
+          },
+          'g-pos': {
+            title: 'Point of Sale',
+            keywords: 'pos point of sale shop store checkout products inventory',
+            b0: 'A complete shop till: products, checkout, receipts, and reports.',
+            b1: [
+              'Set up your store, then add products with prices and stock.',
+              'Ring up sales in Checkout — cash and card, with change calculated.',
+              'Refunds, staff PINs, and daily sales reports are built in.'
+            ],
+            b2: 'Staff sign in on different devices and share the same store.'
+          },
+          'g-punch': {
+            title: 'Certificates (time clock)',
+            keywords: 'certificates attestations punch time clock staff hours payroll schedule shifts breaks',
+            b0: 'Staff punch in and out with their PIN; managers handle schedules, corrections, and payroll.',
+            b1: [
+              'Punch in/out from the time clock with your staff PIN; add breaks as needed.',
+              'Managers build the weekly schedule — overlapping shifts for the same person are blocked.',
+              'Corrections fix mistakes (wrong time, missed punch) and are logged.',
+              'Payroll approval reviews the hours before they count.'
+            ],
+            b2: 'Community-service hours are tracked separately from paid hours, with printable attestations.'
+          },
+          'g-catalogue': {
+            title: 'Catalogue',
+            keywords: 'catalogue inventory items isbn barcode books donations fairs special orders',
+            b0: 'The shop catalogue: items with ISBN/barcode lookup, donations, fair days, and special orders.',
+            b1: [
+              'Catalogue: add books with price, quantity, and shelf location; import many at once from CSV.',
+              'Donations: record donated books and where they go.',
+              'Fair days: track sales made at book fairs separately from the shop.',
+              'Special orders: note down what a customer is looking for.'
+            ]
+          },
+          'g-settings': {
+            title: 'Settings',
+            keywords: 'settings personalize theme wallpaper appearance apps',
+            b0: 'Make {brand} yours.',
+            b1: [
+              'Appearance: light/dark mode, accent color, wallpaper, interface style, taskbar position, touch mode.',
+              'Apps: choose which apps show on the desktop and in the Start menu.',
+              'Your data: import, export, or erase everything.'
+            ]
+          }
+        }
+      },
+      shortcuts: {
+        title: 'Shortcuts & search',
+        articles: {
+          'kb-shortcuts': {
+            title: 'Keyboard shortcuts',
+            keywords: 'keyboard shortcuts hotkeys keys snap window',
+            b0: 'These shortcuts work anywhere on the desktop. Shortcuts never steal keystrokes while you are typing.',
+            b2: 'Already-used combos are never claimed: Ctrl+1…8 switches spaces, Ctrl+Alt+Left/Right cycles spaces, and Ctrl+Shift+P opens the Pinboard composer.'
+          },
+          'kb-search': {
+            title: 'Search: Spotlight and the Start menu',
+            keywords: 'search spotlight find file pin global',
+            b0: 'Press {spotlight} anywhere to open Spotlight, the global search overlay. It searches your apps, your files, and your pins at once.',
+            b1: [
+              'Type to search — results appear grouped as Apps, Files, and Pins.',
+              'Use ↑ and ↓ to move, Enter to open, Esc to close.',
+              'Opening a file launches the right app for it (photos in Pictures, documents in Writer, and so on). Opening a pin takes you to the Pinboard.'
+            ],
+            b2: 'The Start menu search box does the same: matching apps appear first, with matching Files and Pins grouped underneath.',
+            b3: 'Apps you hid in Settings → Apps are left out of search results too.'
+          }
+        }
+      },
+      touch: {
+        title: 'Touch screen optimization',
+        articles: {
+          'touch-mode': {
+            title: 'Using {brand} on a phone or tablet',
+            keywords: 'touch mobile phone tablet ios android fullscreen',
+            b0: 'Touch screen optimization turns {brand} into a phone-style home screen: big icons, swipeable pages, a dock, and full-screen apps.',
+            b1: [
+              'Turn it on in Settings → Appearance → Touch screen optimization.',
+              'Tap an icon to open the app full-screen.',
+              'Tap the X or the home bar at the bottom to go back to the home screen.',
+              'Turn it off any time to get the desktop back.'
+            ]
+          }
+        }
+      },
+      styles: {
+        title: 'Interface styles',
+        articles: {
+          'ui-style': {
+            title: '{brand}, Windows 11, or Mac OS X 10.6 looks',
+            keywords: 'interface style theme windows mac dock taskbar appearance',
+            b0: 'Pick the look you like in Settings → Appearance → Interface style. Everything keeps working — only the chrome changes.',
+            b1: [
+              '{brand}: the classic calm paper-and-ink desktop.',
+              'Windows 11: centered taskbar and familiar window buttons.',
+              'Mac OS X 10.6: top menu bar, glass Dock with magnification, and traffic-light window buttons.'
+            ]
+          }
+        }
+      },
+      faq: {
+        title: 'FAQ & troubleshooting',
+        articles: {
+          'faq-website': {
+            title: 'A website will not load in a web app',
+            keywords: 'website won\'t load blank blocked embed iframe',
+            b0: 'Some websites refuse to be shown inside other pages. That is the site\'s own security setting.',
+            b1: [
+              'Try the "simplified view" or "text view" fallback if one is offered.',
+              'Otherwise use "Open in new tab" — the site always works in its own tab.'
+            ]
+          },
+          'faq-save': {
+            title: 'I forgot to save my document',
+            keywords: 'forgot save unsaved lost document',
+            b0: 'Writer, Sheets, and Slides warn you before closing with unsaved changes, so just re-open the app — your work is usually still there.',
+            b1: [
+              'Reopen the app from the desktop or Start menu.',
+              'Save (or Save As) right away to keep it.'
+            ],
+            b2: 'Get in the habit of pressing Save after big edits — it only takes a second.'
+          },
+          'faq-find': {
+            title: 'I cannot find my file',
+            keywords: 'find file lost search where',
+            b0: [
+              'Open Files and check each folder — new uploads land in the main folder.',
+              'Use the Pinboard search if it was a note or link.',
+              'Ask Helm: "find my budget spreadsheet".'
+            ]
+          },
+          'faq-slow': {
+            title: 'Something feels slow or stuck',
+            keywords: 'slow stuck frozen reload refresh',
+            b0: [
+              'Close windows you are not using.',
+              'Reload the page in your browser — in the Cloud, everything is saved and comes back.',
+              'If one app misbehaves, close just that window and reopen it.'
+            ]
+          },
+          'faq-tour': {
+            title: 'Replay the welcome tour',
+            keywords: 'tour welcome replay help start over',
+            b0: 'Want the guided tour again? You can replay it any time.',
+            b1: [
+              'Click the button below to replay the welcome tour.'
+            ],
+            b2: 'This Help app is always here too — open it from the Start menu whenever you need it.'
+          }
+        }
+      },
+      manual: {
+        title: 'User manual',
+        keywords: '',
+        articles: {
+          'manual-pdf': {
+            title: 'The getting-started guide (PDF)',
+            keywords: 'manual pdf guide download print booklet full documentation',
+            b0: 'The getting-started guide ships inside {brand} — a short tour of every app from Point of Sale to Catalogue.',
+            b1: [
+              'Click the button below to open the manual as a PDF in a new tab.',
+              'Use your browser\'s find-in-page (Ctrl+F / ⌘F) to search inside the PDF.',
+              'Or just type in the search box at the top of this Help app — it searches the manual\'s full text too, and each result opens the PDF at the right page.'
+            ],
+            b2: 'Open the getting-started guide (PDF)',
+            b3: 'Vendra is cloud-only: you need an internet connection, and everything is stored in the one cloud database shared by every app.'
+          }
+        }
+      },
+      contact: {
+        title: 'Contact & feedback',
+        keywords: '',
+        articles: {}
+      }
+    },
+    appTitles: {
+      files: 'Files',
+      spaces: 'Spaces',
+      writer: 'Writer',
+      sheets: 'Sheets',
+      slides: 'Slides',
+      pinboard: 'Pinboard',
+      helm: 'Helm',
+      store: 'App Store',
+      pos: 'Point of Sale',
+      settings: 'Settings'
+    }
+  },
+
 };

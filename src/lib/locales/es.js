@@ -2549,4 +2549,344 @@ export const es = {
     needsMigration: 'Los pedidos en línea aún no están disponibles en esta página.',
   },
 
+  helpContent: {
+    sections: {
+      start: {
+        title: 'Primeros pasos',
+        articles: {
+          accounts: {
+            title: 'Iniciar sesión, crear una cuenta o probar como invitado',
+            keywords: 'iniciar sesión login cuenta invitado contraseña prueba nombre de usuario correo',
+            b0: '{brand} usa un solo inicio de sesión en la nube: tu nombre de usuario o tu correo electrónico funciona en todos tus dispositivos.',
+            b1: [
+              'Iniciar sesión: escribe tu nombre de usuario o correo electrónico y tu contraseña.',
+              'Crear una cuenta: elígela una sola vez: tus archivos, notas y ajustes te seguirán a cualquier dispositivo.',
+              'Probar gratis por 30 minutos: acceso completo durante media hora, sin cuenta: una prueba por dispositivo.'
+            ],
+            b2: '¿Olvidaste tu contraseña? Elige «¿Olvidaste tu contraseña?» en la pantalla de inicio de sesión para recibir un enlace de restablecimiento por correo electrónico.'
+          },
+          cloud: {
+            title: 'Tu cuenta en la nube',
+            keywords: 'nube sincronización cuenta almacenamiento',
+            b0: 'Todo vive en tu cuenta en la nube. Inicia sesión en cualquier dispositivo y tu escritorio — archivos, apps, ventas — te estará esperando.',
+            b1: [
+              'Un inicio de sesión, una cuenta: tu nombre de usuario o correo electrónico funciona en todas partes.',
+              'Tus datos te siguen: empieza una venta en la computadora de la tienda y termínala en tu teléfono.'
+            ],
+            b2: 'Una cuenta por persona: tus ventas, archivos y ajustes te siguen a cualquier dispositivo en el que inicies sesión.'
+          }
+        }
+      },
+      desktop: {
+        title: 'Recorrido por el escritorio',
+        articles: {
+          icons: {
+            title: 'Iconos del escritorio',
+            keywords: 'iconos escritorio doble clic abrir arrastrar ordenar quitar',
+            b0: 'Cada app vive en tu escritorio como un icono.',
+            b1: [
+              'Haz un solo clic en un icono para seleccionarlo.',
+              'Haz doble clic (o toca dos veces) para abrir la app.',
+              'Arrastra los iconos para ordenarlos: tu disposición se recuerda.',
+              'Haz clic derecho en un icono y elige «Quitar del escritorio» para ocultarlo. Nada se elimina; recupéralo cuando quieras desde Configuración → Aplicaciones.'
+            ]
+          },
+          taskbar: {
+            title: 'Barra de tareas, dock y menú Inicio',
+            keywords: 'barra de tareas dock menú inicio búsqueda fijado abrir',
+            b0: 'La barra al borde de la pantalla es tu centro de comando.',
+            b1: [
+              'Abre el menú Inicio desde el botón de inicio para buscar y abrir cualquier app.',
+              'Las apps fijadas están en el menú Inicio para acceder con un solo clic.',
+              'Las apps abiertas aparecen en la barra de tareas: haz clic en una para traer su ventana al frente.',
+              'En Configuración → Apariencia puedes mover la barra de tareas a cualquier borde de la pantalla, o cambiar todo el estilo a Windows 11 o Mac OS X 10.6.'
+            ]
+          },
+          windows: {
+            title: 'Ventanas',
+            keywords: 'ventana cambiar tamaño arrastrar minimizar maximizar cerrar',
+            b0: 'Las apps se abren en ventanas que controlas por completo.',
+            b1: [
+              'Arrastra la barra de título para mover una ventana.',
+              'Arrastra cualquier borde o esquina para cambiar su tamaño.',
+              'Usa los botones de la barra de título para minimizar, maximizar o cerrar.'
+            ],
+            b2: 'En un teléfono o tableta, activa la Optimización para pantalla táctil en Configuración → Apariencia: las apps pasan a pantalla completa con botones grandes.'
+          },
+          spaces: {
+            title: 'Espacios (escritorios virtuales)',
+            keywords: 'espacios escritorios virtuales cambiar organizar',
+            b0: 'Los espacios son escritorios separados para las distintas partes de tu vida: por ejemplo, Trabajo, Escuela, Juegos.',
+            b1: [
+              'Abre Espacios para crear, renombrar y eliminar espacios.',
+              'Cada espacio conserva sus propias ventanas abiertas.',
+              'Cambia de espacio desde la app Espacios o la barra de tareas.'
+            ]
+          }
+        }
+      },
+      apps: {
+        title: 'Guía de apps',
+        articles: {
+          'g-files': {
+            title: 'Archivos',
+            keywords: 'archivos subir descargar carpeta documentos almacenamiento',
+            b0: 'Tus documentos, subidas y carpetas. Los mismos archivos en todos los dispositivos cuando usas la Nube.',
+            b1: [
+              'Subir: haz clic en Subir (o arrastra archivos): documentos, fotos, PDF, lo que sea.',
+              'Haz doble clic en un archivo para verlo; usa Descargar para guardar una copia.',
+              'Nuevo carpeta / Renombrar / Eliminar están en la barra de herramientas. Los archivos eliminados piden confirmación primero.',
+              'Los archivos de oficina (Documentos, Hojas de cálculo, Presentaciones) se guardan directamente en Archivos.'
+            ]
+          },
+          'g-writer': {
+            title: 'Documentos',
+            keywords: 'documentos texto formato procesador',
+            b0: 'Documentos con formato enriquecido: títulos, negritas, listas y más.',
+            b1: [
+              'Escribe para redactar; da formato con la barra de herramientas.',
+              'Guardar almacena el documento en Archivos. Guardar como crea una copia con un nombre nuevo.',
+              'Si intentas cerrar con cambios sin guardar, se te preguntará primero.'
+            ]
+          },
+          'g-sheets': {
+            title: 'Hojas de cálculo',
+            keywords: 'hojas cálculo fórmulas celdas',
+            b0: 'Hojas de cálculo con fórmulas reales, guardadas en tus Archivos.',
+            b1: [
+              'Haz clic en una celda y escribe. Empieza con = para una fórmula, por ej. =SUMA(A1:A5).',
+              'Guardar almacena la hoja; Guardar como hace una copia con un nombre nuevo.'
+            ]
+          },
+          'g-slides': {
+            title: 'Presentaciones',
+            keywords: 'presentaciones diapositivas presentar',
+            b0: 'Presentaciones con modo de presentación a pantalla completa.',
+            b1: [
+              'Agrega diapositivas, elige diseños y escribe tu contenido.',
+              'Presentar reproduce la presentación a pantalla completa.',
+              'Guardar como conserva una copia con un nombre nuevo sin tocar el original.'
+            ]
+          },
+          'g-pinboard': {
+            title: 'Notas rápidas',
+            keywords: 'notas rápidas captura búsqueda',
+            b0: 'Tu bandeja de captura: notas rápidas, enlaces y archivos con búsqueda de texto completo.',
+            b1: [
+              'Fija lo que sea en segundos: se guarda al instante.',
+              'La búsqueda encuentra texto dentro de tus notas.',
+              'Helm también puede guardar cosas aquí por ti.'
+            ]
+          },
+          'g-helm': {
+            title: 'Helm (tu asistente)',
+            keywords: 'helm asistente ayuda preguntar chat',
+            b0: 'Helm es el asistente integrado en {brand}. Pídele que abra apps, encuentre cosas, busque información y te ayude a trabajar.',
+            b1: [
+              'Escribe lo que quieras: «abre Archivos», «activa el modo oscuro», «recuerda que me gusta el té».',
+              'El modo local responde desde tu dispositivo; el modo inteligente en la nube puede buscar información en línea.',
+              'Helm recuerda lo que le dices y puede recordarlo después.'
+            ],
+            b2: 'El modo inteligente en la nube usa un servicio público gratuito: nunca envíes contraseñas ni datos privados allí.'
+          },
+          'g-store': {
+            title: 'Tienda de apps',
+            keywords: 'tienda apps instalar agregar quitar desinstalar',
+            b0: 'Agrega apps web — herramientas de dibujo, mapas, música y más — como apps {brand} de primera clase.',
+            b1: [
+              'Explora o busca en el catálogo y luego haz clic en Instalar.',
+              'Las apps instaladas aparecen en tu menú Inicio y escritorio, y se abren en sus propias ventanas.',
+              'Desinstala cuando quieras desde la tienda o Configuración → Aplicaciones.'
+            ],
+            b2: 'Cada app de la tienda se verifica que funcione de verdad. Si una falla, desinstálala y prueba otra.'
+          },
+          'g-pos': {
+            title: 'Punto de venta',
+            keywords: 'caja punto de venta tienda pago productos inventario',
+            b0: 'Una caja de tienda completa: productos, cobro, recibos e informes.',
+            b1: [
+              'Configura tu tienda y luego agrega productos con precios y existencias.',
+              'Cobra las ventas en Cobro: efectivo y tarjeta, con el cambio calculado.',
+              'Reembolsos, PIN del personal e informes diarios de ventas están integrados.'
+            ],
+            b2: 'El personal inicia sesión en distintos dispositivos y comparte la misma tienda.'
+          },
+          'g-punch': {
+            title: 'Asistencia (control de horario)',
+            keywords: 'certificados asistencia fichar personal horas nómina horario turnos descansos',
+            b0: 'El personal ficha la entrada y la salida con su PIN; los encargados gestionan los horarios, las correcciones y la nómina.',
+            b1: [
+              'Ficha la entrada/salida en el control de horario con tu PIN de personal; agrega descansos según necesites.',
+              'Los encargados arman el horario semanal: los turnos superpuestos para la misma persona se bloquean.',
+              'Las correcciones reparan errores (hora incorrecta, fichaje olvidado) y quedan registradas.',
+              'La aprobación de la nómina revisa las horas antes de que cuenten.'
+            ],
+            b2: 'Las horas de servicio comunitario se registran por separado de las horas pagadas, con certificados imprimibles.'
+          },
+          'g-catalogue': {
+            title: 'Catálogo',
+            keywords: 'catálogo inventario artículos isbn código de barras libros donaciones ferias pedidos especiales',
+            b0: 'El catálogo de la tienda: artículos con búsqueda por ISBN/código de barras, donaciones, días de feria y pedidos especiales.',
+            b1: [
+              'Catálogo: agrega libros con precio, cantidad y ubicación en el estante; importa muchos a la vez desde un CSV.',
+              'Donaciones: registra los libros donados y a dónde van.',
+              'Días de feria: registra las ventas hechas en ferias del libro por separado de la tienda.',
+              'Pedidos especiales: anota lo que busca un cliente.'
+            ]
+          },
+          'g-settings': {
+            title: 'Configuración',
+            keywords: 'configuración personalizar tema fondo de pantalla apariencia apps',
+            b0: 'Haz {brand} tuyo.',
+            b1: [
+              'Apariencia: modo claro/oscuro, color de acento, fondo de pantalla, estilo de interfaz, posición de la barra de tareas, modo táctil.',
+              'Aplicaciones: elige qué apps se muestran en el escritorio y en el menú Inicio.',
+              'Tus datos: importa, exporta o borra todo.'
+            ]
+          }
+        }
+      },
+      shortcuts: {
+        title: 'Atajos y búsqueda',
+        articles: {
+          'kb-shortcuts': {
+            title: 'Atajos de teclado',
+            keywords: 'teclado atajos teclas ventana',
+            b0: 'Estos atajos funcionan en cualquier parte del escritorio. Los atajos nunca te roban teclas mientras escribes.',
+            b2: 'Las combinaciones ya usadas nunca se reutilizan: Ctrl+1…8 cambia de espacio, Ctrl+Alt+Izquierda/Derecha recorre los espacios, y Ctrl+Mayús+P abre el editor de Notas rápidas.'
+          },
+          'kb-search': {
+            title: 'Búsqueda: Spotlight y el menú Inicio',
+            keywords: 'búsqueda spotlight encontrar archivo nota global',
+            b0: 'Pulsa {spotlight} en cualquier parte para abrir Spotlight, la búsqueda global. Busca en tus apps, tus archivos y tus notas a la vez.',
+            b1: [
+              'Escribe para buscar: los resultados aparecen agrupados en Apps, Archivos y Notas.',
+              'Usa ↑ y ↓ para moverte, Enter para abrir, Esc para cerrar.',
+              'Abrir un archivo lanza la app adecuada (fotos en Imágenes, documentos en Documentos, etc.). Abrir una nota te lleva a Notas rápidas.'
+            ],
+            b2: 'El cuadro de búsqueda del menú Inicio hace lo mismo: las apps coincidentes aparecen primero, con los Archivos y Notas coincidentes agrupados debajo.',
+            b3: 'Las apps que ocultaste en Configuración → Aplicaciones también quedan fuera de los resultados de búsqueda.'
+          }
+        }
+      },
+      touch: {
+        title: 'Optimización para pantalla táctil',
+        articles: {
+          'touch-mode': {
+            title: 'Usar {brand} en un teléfono o tableta',
+            keywords: 'táctil móvil teléfono tableta pantalla completa',
+            b0: 'La optimización para pantalla táctil convierte {brand} en una pantalla de inicio estilo teléfono: iconos grandes, páginas deslizables, un dock y apps a pantalla completa.',
+            b1: [
+              'Actívala en Configuración → Apariencia → Optimización para pantalla táctil.',
+              'Toca un icono para abrir la app a pantalla completa.',
+              'Toca la X o la barra de inicio de abajo para volver a la pantalla de inicio.',
+              'Desactívala cuando quieras para recuperar el escritorio.'
+            ]
+          }
+        }
+      },
+      styles: {
+        title: 'Estilos de interfaz',
+        articles: {
+          'ui-style': {
+            title: 'Aspectos {brand}, Windows 11 o Mac OS X 10.6',
+            keywords: 'interfaz estilo tema windows mac dock barra de tareas apariencia',
+            b0: 'Elige el aspecto que te guste en Configuración → Apariencia → Estilo de interfaz. Todo sigue funcionando: solo cambia la decoración.',
+            b1: [
+              '{brand}: el clásico escritorio tranquilo de papel y tinta.',
+              'Windows 11: barra de tareas centrada y botones de ventana familiares.',
+              'Mac OS X 10.6: barra de menús arriba, Dock de cristal con ampliación y botones de ventana tipo semáforo.'
+            ]
+          }
+        }
+      },
+      faq: {
+        title: 'Preguntas frecuentes y solución de problemas',
+        articles: {
+          'faq-website': {
+            title: 'Un sitio web no carga en una app web',
+            keywords: 'sitio web no carga en blanco bloqueado incrustado',
+            b0: 'Algunos sitios web se niegan a mostrarse dentro de otras páginas. Es la propia configuración de seguridad del sitio.',
+            b1: [
+              'Prueba la alternativa de «vista simplificada» o «vista de texto» si se ofrece.',
+              'Si no, usa «Abrir en una pestaña nueva»: el sitio siempre funciona en su propia pestaña.'
+            ]
+          },
+          'faq-save': {
+            title: 'Olvidé guardar mi documento',
+            keywords: 'olvidé guardar sin guardar perdido documento',
+            b0: 'Documentos, Hojas de cálculo y Presentaciones te avisan antes de cerrar con cambios sin guardar: simplemente vuelve a abrir la app; tu trabajo suele seguir ahí.',
+            b1: [
+              'Vuelve a abrir la app desde el escritorio o el menú Inicio.',
+              'Guarda (o Guardar como) de inmediato para conservarlo.'
+            ],
+            b2: 'Acostúmbrate a pulsar Guardar después de cambios grandes: solo toma un segundo.'
+          },
+          'faq-find': {
+            title: 'No encuentro mi archivo',
+            keywords: 'encontrar archivo perdido buscar dónde',
+            b0: [
+              'Abre Archivos y revisa cada carpeta: las subidas nuevas llegan a la carpeta principal.',
+              'Usa la búsqueda de Notas rápidas si era una nota o un enlace.',
+              'Pregúntale a Helm: «encuentra mi hoja de presupuesto».'
+            ]
+          },
+          'faq-slow': {
+            title: 'Algo se siente lento o atascado',
+            keywords: 'lento atascado congelado recargar actualizar',
+            b0: [
+              'Cierra las ventanas que no estés usando.',
+              'Recarga la página en tu navegador: en la Nube, todo está guardado y vuelve.',
+              'Si una app falla, cierra solo esa ventana y vuelve a abrirla.'
+            ]
+          },
+          'faq-tour': {
+            title: 'Repetir el recorrido de bienvenida',
+            keywords: 'recorrido bienvenida repetir ayuda empezar de nuevo',
+            b0: '¿Quieres ver el recorrido guiado otra vez? Puedes repetirlo cuando quieras.',
+            b1: [
+              'Haz clic en el botón de abajo para repetir el recorrido de bienvenida.'
+            ],
+            b2: 'Esta app de ayuda también está siempre aquí: ábrela desde el menú Inicio cuando la necesites.'
+          }
+        }
+      },
+      manual: {
+        title: 'Manual de usuario',
+        keywords: '',
+        articles: {
+          'manual-pdf': {
+            title: 'La guía de inicio (PDF)',
+            keywords: 'manual pdf guía descargar imprimir folleto documentación completa',
+            b0: 'La guía de inicio viene incluida en {brand}: un breve recorrido por cada app, desde el Punto de venta hasta el Catálogo.',
+            b1: [
+              'Haz clic en el botón de abajo para abrir el manual como PDF en una pestaña nueva.',
+              'Usa la búsqueda en la página de tu navegador (Ctrl+F / ⌘F) para buscar dentro del PDF.',
+              'O simplemente escribe en el cuadro de búsqueda en la parte superior de esta app de ayuda: también busca en el texto completo del manual, y cada resultado abre el PDF en la página correcta.'
+            ],
+            b2: 'Abrir la guía de inicio (PDF)',
+            b3: 'Vendra es solo en la nube: necesitas conexión a Internet, y todo se almacena en la única base de datos en la nube que comparten todas las apps.'
+          }
+        }
+      },
+      contact: {
+        title: 'Contacto y comentarios',
+        keywords: '',
+        articles: {}
+      }
+    },
+    appTitles: {
+      files: 'Archivos',
+      spaces: 'Espacios',
+      writer: 'Documentos',
+      sheets: 'Hojas de cálculo',
+      slides: 'Presentaciones',
+      pinboard: 'Notas rápidas',
+      helm: 'Helm',
+      store: 'Tienda de apps',
+      pos: 'Punto de venta',
+      settings: 'Configuración'
+    }
+  },
+
 };

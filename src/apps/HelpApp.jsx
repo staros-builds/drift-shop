@@ -22,389 +22,464 @@ const SPOTLIGHT_KEYS = (() => {
   return s ? `${s.keys} (${s.keysMac} on Mac)` : 'Ctrl+K';
 })();
 
-const SECTIONS = [
-  {
-    id: 'start', title: 'Getting started', icon: Rocket,
-    articles: [
-      {
-        id: 'accounts', title: 'Sign in, create an account, or try as a guest',
-        keywords: 'sign in login account guest password trial username email',
-        blocks: [
-          { t: 'p', text: `${BRAND.name} uses one cloud login — your username or email works on every device.` },
-          { t: 'steps', items: [
-            'Sign in: enter your username or email and your password.',
-            'Create account: pick this once — your files, notes, and settings then follow you to any device.',
-            'Try free for 30 minutes: full access for half an hour, no account needed — one trial per device.',
-          ] },
-          { t: 'tip', text: 'Forgot your password? Choose “Forgot password?” on the login screen to get a reset link by email.' },
-        ],
-      },
-      {
-        id: 'cloud', title: 'Your cloud account',
-        keywords: 'cloud sync account storage',
-        blocks: [
-          { t: 'p', text: 'Everything lives in your cloud account. Sign in on any device and your desktop — files, apps, sales — is waiting for you.' },
-          { t: 'steps', items: [
-            'One login, one account: your username or email works everywhere.',
-            'Your data follows you: start a sale on the shop computer, finish it on your phone.',
-          ] },
-          { t: 'tip', text: 'One account per person — your sales, files, and settings follow you to any device you sign in on.' },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'desktop', title: 'Tour of the desktop', icon: Monitor,
-    articles: [
-      {
-        id: 'icons', title: 'Desktop icons',
-        keywords: 'icons desktop double click open drag arrange remove',
-        blocks: [
-          { t: 'p', text: 'Every app lives on your desktop as an icon.' },
-          { t: 'steps', items: [
-            'Single-click an icon to select it.',
-            'Double-click (or double-tap) to open the app.',
-            'Drag icons to rearrange them — your layout is remembered.',
-            'Right-click an icon and choose "Remove from desktop" to hide it. Nothing is deleted; bring it back any time from Settings → Apps.',
-          ] },
-        ],
-      },
-      {
-        id: 'taskbar', title: 'Taskbar, dock & Start menu',
-        keywords: 'taskbar dock start menu search pinned launch',
-        blocks: [
-          { t: 'p', text: 'The bar at the screen edge is your command center.' },
-          { t: 'steps', items: [
-            'Open the Start menu from the start button to search and launch any app.',
-            'Pinned apps sit in the Start menu for one-click access.',
-            'Open apps appear on the taskbar — click one to bring its window forward.',
-            'In Settings → Appearance you can move the taskbar to any screen edge, or switch the whole look to Windows 11 or Mac OS X 10.6 style.',
-          ] },
-        ],
-      },
-      {
-        id: 'windows', title: 'Windows',
-        keywords: 'window resize drag minimize maximize close snap',
-        blocks: [
-          { t: 'p', text: 'Apps open in windows you fully control.' },
-          { t: 'steps', items: [
-            'Drag the title bar to move a window.',
-            'Drag any edge or corner to resize it.',
-            'Use the title-bar buttons to minimize, maximize, or close.',
-          ] },
-          { t: 'tip', text: 'On a phone or tablet, turn on Touch screen optimization in Settings → Appearance: apps go full-screen with big touch targets.' },
-        ],
-      },
-      {
-        id: 'spaces', title: 'Spaces (virtual desktops)',
-        keywords: 'spaces virtual desktops workspaces switch organize',
-        appId: 'spaces',
-        blocks: [
-          { t: 'p', text: 'Spaces are separate desktops for different parts of your life — e.g. Work, School, Play.' },
-          { t: 'steps', items: [
-            'Open Spaces to create, rename, and delete spaces.',
-            'Each space keeps its own open windows.',
-            'Switch spaces from the Spaces app or the taskbar.',
-          ] },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'apps', title: 'Apps guide', icon: LayoutGrid,
-    articles: [
-      {
-        id: 'g-files', title: 'Files', appId: 'files',
-        keywords: 'files upload download folder documents storage',
-        blocks: [
-          { t: 'p', text: 'Your documents, uploads, and folders. The same files on every device when you use the Cloud.' },
-          { t: 'steps', items: [
-            'Upload: click Upload (or drag files in) — documents, photos, PDFs, anything.',
-            'Double-click a file to preview it; use Download to save a copy.',
-            'New folder / Rename / Delete are in the toolbar. Deleted files ask first.',
-            'Office files (Writer, Sheets, Slides) save straight into Files.',
-          ] },
-        ],
-      },
-      {
-        id: 'g-writer', title: 'Writer', appId: 'writer',
-        keywords: 'writer documents word text formatting',
-        blocks: [
-          { t: 'p', text: 'Documents with rich formatting — headings, bold, lists, and more.' },
-          { t: 'steps', items: [
-            'Type to write; format with the toolbar.',
-            'Save stores the document in Files. Save As creates a copy under a new name.',
-            'If you try to close with unsaved changes, you will be asked first.',
-          ] },
-        ],
-      },
-      {
-        id: 'g-sheets', title: 'Sheets', appId: 'sheets',
-        keywords: 'sheets spreadsheet excel formulas cells',
-        blocks: [
-          { t: 'p', text: 'Spreadsheets with real formulas, saved to your Files.' },
-          { t: 'steps', items: [
-            'Click a cell and type. Start with = for a formula, e.g. =SUM(A1:A5).',
-            'Save stores the sheet; Save As makes a copy under a new name.',
-          ] },
-        ],
-      },
-      {
-        id: 'g-slides', title: 'Slides', appId: 'slides',
-        keywords: 'slides presentation powerpoint present',
-        blocks: [
-          { t: 'p', text: 'Presentations with a full-screen present mode.' },
-          { t: 'steps', items: [
-            'Add slides, pick layouts, and type your content.',
-            'Present plays the slideshow full-screen.',
-            'Save As keeps a copy under a new name without touching the original.',
-          ] },
-        ],
-      },
-      {
-        id: 'g-pinboard', title: 'Pinboard', appId: 'pinboard',
-        keywords: 'pinboard notes capture quick search',
-        blocks: [
-          { t: 'p', text: 'Your capture tray: quick notes, links, and files with full-text search.' },
-          { t: 'steps', items: [
-            'Pin anything in seconds — it is saved instantly.',
-            'Search finds text inside your pins.',
-            'Helm can also save things here for you.',
-          ] },
-        ],
-      },
-      {
-        id: 'g-helm', title: 'Helm (your assistant)', appId: 'helm',
-        keywords: 'helm assistant ai help ask chat',
-        blocks: [
-          { t: 'p', text: `Helm is the assistant built into ${BRAND.name}. Ask it to open apps, find things, look things up, and get work done.` },
-          { t: 'steps', items: [
-            'Type what you want: "open Files", "turn on dark mode", "remember that I like tea".',
-            'Local mode answers from your device; Cloud smart mode can look things up online.',
-            'Helm remembers things you tell it and can recall them later.',
-          ] },
-          { t: 'warn', text: 'Cloud smart mode uses a free public service — never send passwords or private data there.' },
-        ],
-      },
-      {
-        id: 'g-store', title: 'App Store', appId: 'store',
-        keywords: 'app store install web apps add remove uninstall',
-        blocks: [
-          { t: 'p', text: `Add web apps — drawing tools, maps, music, and more — as first-class ${BRAND.name} apps.` },
-          { t: 'steps', items: [
-            'Browse or search the catalog, then click Install.',
-            'Installed apps appear in your Start menu and desktop, and open in their own windows.',
-            'Uninstall any time from the store or Settings → Apps.',
-          ] },
-          { t: 'tip', text: 'Every app in the store is checked to actually work. If one misbehaves, uninstall it and try another.' },
-        ],
-      },
-      {
-        id: 'g-pos', title: 'Point of Sale', appId: 'pos',
-        keywords: 'pos point of sale shop store checkout products inventory',
-        blocks: [
-          { t: 'p', text: 'A complete shop till: products, checkout, receipts, and reports.' },
-          { t: 'steps', items: [
-            'Set up your store, then add products with prices and stock.',
-            'Ring up sales in Checkout — cash and card, with change calculated.',
-            'Refunds, staff PINs, and daily sales reports are built in.',
-          ] },
-          { t: 'tip', text: 'Staff sign in on different devices and share the same store.' },
-        ],
-      },
-      {
-        id: 'g-punch', title: 'Certificates (time clock)', appId: 'punch',
-        keywords: 'certificates attestations punch time clock staff hours payroll schedule shifts breaks',
-        blocks: [
-          { t: 'p', text: 'Staff punch in and out with their PIN; managers handle schedules, corrections, and payroll.' },
-          { t: 'steps', items: [
-            'Punch in/out from the time clock with your staff PIN; add breaks as needed.',
-            'Managers build the weekly schedule — overlapping shifts for the same person are blocked.',
-            'Corrections fix mistakes (wrong time, missed punch) and are logged.',
-            'Payroll approval reviews the hours before they count.',
-          ] },
-          { t: 'tip', text: 'Community-service hours are tracked separately from paid hours, with printable attestations.' },
-        ],
-      },
-      {
-        id: 'g-catalogue', title: 'Catalogue', appId: 'bouquinerie',
-        keywords: 'catalogue inventory items isbn barcode books donations fairs special orders',
-        blocks: [
-          { t: 'p', text: 'The shop catalogue: items with ISBN/barcode lookup, donations, fair days, and special orders.' },
-          { t: 'steps', items: [
-            'Catalogue: add books with price, quantity, and shelf location; import many at once from CSV.',
-            'Donations: record donated books and where they go.',
-            'Fair days: track sales made at book fairs separately from the shop.',
-            'Special orders: note down what a customer is looking for.',
-          ] },
-        ],
-      },
-      {
-        id: 'g-settings', title: 'Settings', appId: 'settings',
-        keywords: 'settings personalize theme wallpaper appearance apps',
-        blocks: [
-          { t: 'p', text: `Make ${BRAND.name} yours.` },
-          { t: 'steps', items: [
-            'Appearance: light/dark mode, accent color, wallpaper, interface style, taskbar position, touch mode.',
-            'Apps: choose which apps show on the desktop and in the Start menu.',
-            'Your data: import, export, or erase everything.',
-          ] },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'shortcuts', title: 'Shortcuts & search', icon: Keyboard,
-    articles: [
-      {
-        id: 'kb-shortcuts', title: 'Keyboard shortcuts',
-        keywords: 'keyboard shortcuts hotkeys keys snap window',
-        blocks: [
-          { t: 'p', text: 'These shortcuts work anywhere on the desktop. Shortcuts never steal keystrokes while you are typing.' },
-          { t: 'shortcuts' },
-          { t: 'tip', text: 'Already-used combos are never claimed: Ctrl+1…8 switches spaces, Ctrl+Alt+Left/Right cycles spaces, and Ctrl+Shift+P opens the Pinboard composer.' },
-        ],
-      },
-      {
-        id: 'kb-search', title: 'Search: Spotlight and the Start menu',
-        keywords: 'search spotlight find file pin global',
-        blocks: [
-          { t: 'p', text: `Press ${SPOTLIGHT_KEYS} anywhere to open Spotlight, the global search overlay. It searches your apps, your files, and your pins at once.` },
-          { t: 'steps', items: [
-            'Type to search — results appear grouped as Apps, Files, and Pins.',
-            'Use ↑ and ↓ to move, Enter to open, Esc to close.',
-            'Opening a file launches the right app for it (photos in Pictures, documents in Writer, and so on). Opening a pin takes you to the Pinboard.',
-          ] },
-          { t: 'p', text: 'The Start menu search box does the same: matching apps appear first, with matching Files and Pins grouped underneath.' },
-          { t: 'tip', text: 'Apps you hid in Settings → Apps are left out of search results too.' },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'touch', title: 'Touch screen optimization', icon: Smartphone,
-    articles: [
-      {
-        id: 'touch-mode', title: `Using ${BRAND.name} on a phone or tablet`,
-        keywords: 'touch mobile phone tablet ios android fullscreen',
-        blocks: [
-          { t: 'p', text: `Touch screen optimization turns ${BRAND.name} into a phone-style home screen: big icons, swipeable pages, a dock, and full-screen apps.` },
-          { t: 'steps', items: [
-            'Turn it on in Settings → Appearance → Touch screen optimization.',
-            'Tap an icon to open the app full-screen.',
-            'Tap the X or the home bar at the bottom to go back to the home screen.',
-            'Turn it off any time to get the desktop back.',
-          ] },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'styles', title: 'Interface styles', icon: Palette,
-    articles: [
-      {
-        id: 'ui-style', title: `${BRAND.name}, Windows 11, or Mac OS X 10.6 looks`,
-        keywords: 'interface style theme windows mac dock taskbar appearance',
-        blocks: [
-          { t: 'p', text: 'Pick the look you like in Settings → Appearance → Interface style. Everything keeps working — only the chrome changes.' },
-          { t: 'steps', items: [
-            `${BRAND.name}: the classic calm paper-and-ink desktop.`,
-            'Windows 11: centered taskbar and familiar window buttons.',
-            'Mac OS X 10.6: top menu bar, glass Dock with magnification, and traffic-light window buttons.',
-          ] },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'faq', title: 'FAQ & troubleshooting', icon: LifeBuoy,
-    articles: [
-      {
-        id: 'faq-website', title: 'A website will not load in a web app',
-        keywords: 'website won\'t load blank blocked embed iframe',
-        blocks: [
-          { t: 'p', text: 'Some websites refuse to be shown inside other pages. That is the site\'s own security setting.' },
-          { t: 'steps', items: [
-            'Try the "simplified view" or "text view" fallback if one is offered.',
-            'Otherwise use "Open in new tab" — the site always works in its own tab.',
-          ] },
-        ],
-      },
-      {
-        id: 'faq-save', title: 'I forgot to save my document',
-        keywords: 'forgot save unsaved lost document',
-        blocks: [
-          { t: 'p', text: 'Writer, Sheets, and Slides warn you before closing with unsaved changes, so just re-open the app — your work is usually still there.' },
-          { t: 'steps', items: [
-            'Reopen the app from the desktop or Start menu.',
-            'Save (or Save As) right away to keep it.',
-          ] },
-          { t: 'tip', text: 'Get in the habit of pressing Save after big edits — it only takes a second.' },
-        ],
-      },
-      {
-        id: 'faq-find', title: 'I cannot find my file',
-        keywords: 'find file lost search where',
-        blocks: [
-          { t: 'steps', items: [
-            'Open Files and check each folder — new uploads land in the main folder.',
-            'Use the Pinboard search if it was a note or link.',
-            'Ask Helm: "find my budget spreadsheet".',
-          ] },
-        ],
-      },
-      {
-        id: 'faq-slow', title: 'Something feels slow or stuck',
-        keywords: 'slow stuck frozen reload refresh',
-        blocks: [
-          { t: 'steps', items: [
-            'Close windows you are not using.',
-            'Reload the page in your browser — in the Cloud, everything is saved and comes back.',
-            'If one app misbehaves, close just that window and reopen it.',
-          ] },
-        ],
-      },
-      {
-        id: 'faq-tour', title: 'Replay the welcome tour',
-        keywords: 'tour welcome replay help start over',
-        blocks: [
-          { t: 'p', text: 'Want the guided tour again? You can replay it any time.' },
-          { t: 'steps', items: [
-            'Click the button below to replay the welcome tour.',
-          ] },
-          { t: 'tip', text: 'This Help app is always here too — open it from the Start menu whenever you need it.', isTour: true },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'manual', title: 'User manual', icon: BookOpen,
-    keywords: 'manual guide pdf documentation booklet handbook',
-    articles: [
-      {
-        id: 'manual-pdf', title: 'The getting-started guide (PDF)',
-        keywords: 'manual pdf guide download print booklet full documentation',
-        blocks: [
-          { t: 'p', text: `The getting-started guide ships inside ${BRAND.name} — a short tour of every app from Point of Sale to Catalogue.` },
-          { t: 'steps', items: [
-            'Click the button below to open the manual as a PDF in a new tab.',
-            'Use your browser\'s find-in-page (Ctrl+F / ⌘F) to search inside the PDF.',
-            'Or just type in the search box at the top of this Help app — it searches the manual\'s full text too, and each result opens the PDF at the right page.',
-          ] },
-          { t: 'pdf', text: 'Open the getting-started guide (PDF)' },
-          { t: 'tip', text: 'Vendra is cloud-only: you need an internet connection, and everything is stored in the one cloud database shared by every app.' },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'contact', title: 'Contact & feedback', icon: MessageCircleQuestion,
-    keywords: 'contact support help buy pay purchase feedback message owner',
-    custom: 'contact', articles: [],
-  },
-];
+/* ------------------------------------------------------------------ */
+/* Help content — localized. Text lives in the locale files under      */
+/* `helpContent`; this builds the SECTIONS structure from t().        */
+/* `{brand}` / `{spotlight}` placeholders are filled from JS values.   */
+/* ------------------------------------------------------------------ */
 
-const APP_TITLES = { files: 'Files', spaces: 'Spaces', writer: 'Writer', sheets: 'Sheets', slides: 'Slides', pinboard: 'Pinboard', helm: 'Helm', store: 'App Store', pos: 'Point of Sale', settings: 'Settings' };
+function buildSections(t) {
+  const V = { brand: BRAND.name, spotlight: SPOTLIGHT_KEYS };
+  const T = (key) => t(key, V);
+  return [
+    {
+      id: 'start',
+      title: T('helpContent.sections.start.title'),
+      icon: Rocket,
+      articles: [
+        {
+          id: 'accounts',
+          title: T('helpContent.sections.start.articles.accounts.title'),
+          keywords: T('helpContent.sections.start.articles.accounts.keywords'),
+          blocks: [
+            { t: 'p', text: T('helpContent.sections.start.articles.accounts.b0') },
+            { t: 'steps', items: [
+              T('helpContent.sections.start.articles.accounts.b1.0'),
+              T('helpContent.sections.start.articles.accounts.b1.1'),
+              T('helpContent.sections.start.articles.accounts.b1.2'),
+            ] },
+            { t: 'tip', text: T('helpContent.sections.start.articles.accounts.b2') },
+          ],
+        },
+        {
+          id: 'cloud',
+          title: T('helpContent.sections.start.articles.cloud.title'),
+          keywords: T('helpContent.sections.start.articles.cloud.keywords'),
+          blocks: [
+            { t: 'p', text: T('helpContent.sections.start.articles.cloud.b0') },
+            { t: 'steps', items: [
+              T('helpContent.sections.start.articles.cloud.b1.0'),
+              T('helpContent.sections.start.articles.cloud.b1.1'),
+            ] },
+            { t: 'tip', text: T('helpContent.sections.start.articles.cloud.b2') },
+          ],
+        },
+      ],
+    },
+    {
+      id: 'desktop',
+      title: T('helpContent.sections.desktop.title'),
+      icon: Monitor,
+      articles: [
+        {
+          id: 'icons',
+          title: T('helpContent.sections.desktop.articles.icons.title'),
+          keywords: T('helpContent.sections.desktop.articles.icons.keywords'),
+          blocks: [
+            { t: 'p', text: T('helpContent.sections.desktop.articles.icons.b0') },
+            { t: 'steps', items: [
+              T('helpContent.sections.desktop.articles.icons.b1.0'),
+              T('helpContent.sections.desktop.articles.icons.b1.1'),
+              T('helpContent.sections.desktop.articles.icons.b1.2'),
+              T('helpContent.sections.desktop.articles.icons.b1.3'),
+            ] },
+          ],
+        },
+        {
+          id: 'taskbar',
+          title: T('helpContent.sections.desktop.articles.taskbar.title'),
+          keywords: T('helpContent.sections.desktop.articles.taskbar.keywords'),
+          blocks: [
+            { t: 'p', text: T('helpContent.sections.desktop.articles.taskbar.b0') },
+            { t: 'steps', items: [
+              T('helpContent.sections.desktop.articles.taskbar.b1.0'),
+              T('helpContent.sections.desktop.articles.taskbar.b1.1'),
+              T('helpContent.sections.desktop.articles.taskbar.b1.2'),
+              T('helpContent.sections.desktop.articles.taskbar.b1.3'),
+            ] },
+          ],
+        },
+        {
+          id: 'windows',
+          title: T('helpContent.sections.desktop.articles.windows.title'),
+          keywords: T('helpContent.sections.desktop.articles.windows.keywords'),
+          blocks: [
+            { t: 'p', text: T('helpContent.sections.desktop.articles.windows.b0') },
+            { t: 'steps', items: [
+              T('helpContent.sections.desktop.articles.windows.b1.0'),
+              T('helpContent.sections.desktop.articles.windows.b1.1'),
+              T('helpContent.sections.desktop.articles.windows.b1.2'),
+            ] },
+            { t: 'tip', text: T('helpContent.sections.desktop.articles.windows.b2') },
+          ],
+        },
+        {
+          id: 'spaces',
+          title: T('helpContent.sections.desktop.articles.spaces.title'),
+          keywords: T('helpContent.sections.desktop.articles.spaces.keywords'),
+          appId: 'spaces',
+          blocks: [
+            { t: 'p', text: T('helpContent.sections.desktop.articles.spaces.b0') },
+            { t: 'steps', items: [
+              T('helpContent.sections.desktop.articles.spaces.b1.0'),
+              T('helpContent.sections.desktop.articles.spaces.b1.1'),
+              T('helpContent.sections.desktop.articles.spaces.b1.2'),
+            ] },
+          ],
+        },
+      ],
+    },
+    {
+      id: 'apps',
+      title: T('helpContent.sections.apps.title'),
+      icon: LayoutGrid,
+      articles: [
+        {
+          id: 'g-files',
+          title: T('helpContent.sections.apps.articles.g-files.title'),
+          keywords: T('helpContent.sections.apps.articles.g-files.keywords'),
+          appId: 'files',
+          blocks: [
+            { t: 'p', text: T('helpContent.sections.apps.articles.g-files.b0') },
+            { t: 'steps', items: [
+              T('helpContent.sections.apps.articles.g-files.b1.0'),
+              T('helpContent.sections.apps.articles.g-files.b1.1'),
+              T('helpContent.sections.apps.articles.g-files.b1.2'),
+              T('helpContent.sections.apps.articles.g-files.b1.3'),
+            ] },
+          ],
+        },
+        {
+          id: 'g-writer',
+          title: T('helpContent.sections.apps.articles.g-writer.title'),
+          keywords: T('helpContent.sections.apps.articles.g-writer.keywords'),
+          appId: 'writer',
+          blocks: [
+            { t: 'p', text: T('helpContent.sections.apps.articles.g-writer.b0') },
+            { t: 'steps', items: [
+              T('helpContent.sections.apps.articles.g-writer.b1.0'),
+              T('helpContent.sections.apps.articles.g-writer.b1.1'),
+              T('helpContent.sections.apps.articles.g-writer.b1.2'),
+            ] },
+          ],
+        },
+        {
+          id: 'g-sheets',
+          title: T('helpContent.sections.apps.articles.g-sheets.title'),
+          keywords: T('helpContent.sections.apps.articles.g-sheets.keywords'),
+          appId: 'sheets',
+          blocks: [
+            { t: 'p', text: T('helpContent.sections.apps.articles.g-sheets.b0') },
+            { t: 'steps', items: [
+              T('helpContent.sections.apps.articles.g-sheets.b1.0'),
+              T('helpContent.sections.apps.articles.g-sheets.b1.1'),
+            ] },
+          ],
+        },
+        {
+          id: 'g-slides',
+          title: T('helpContent.sections.apps.articles.g-slides.title'),
+          keywords: T('helpContent.sections.apps.articles.g-slides.keywords'),
+          appId: 'slides',
+          blocks: [
+            { t: 'p', text: T('helpContent.sections.apps.articles.g-slides.b0') },
+            { t: 'steps', items: [
+              T('helpContent.sections.apps.articles.g-slides.b1.0'),
+              T('helpContent.sections.apps.articles.g-slides.b1.1'),
+              T('helpContent.sections.apps.articles.g-slides.b1.2'),
+            ] },
+          ],
+        },
+        {
+          id: 'g-pinboard',
+          title: T('helpContent.sections.apps.articles.g-pinboard.title'),
+          keywords: T('helpContent.sections.apps.articles.g-pinboard.keywords'),
+          appId: 'pinboard',
+          blocks: [
+            { t: 'p', text: T('helpContent.sections.apps.articles.g-pinboard.b0') },
+            { t: 'steps', items: [
+              T('helpContent.sections.apps.articles.g-pinboard.b1.0'),
+              T('helpContent.sections.apps.articles.g-pinboard.b1.1'),
+              T('helpContent.sections.apps.articles.g-pinboard.b1.2'),
+            ] },
+          ],
+        },
+        {
+          id: 'g-helm',
+          title: T('helpContent.sections.apps.articles.g-helm.title'),
+          keywords: T('helpContent.sections.apps.articles.g-helm.keywords'),
+          appId: 'helm',
+          blocks: [
+            { t: 'p', text: T('helpContent.sections.apps.articles.g-helm.b0') },
+            { t: 'steps', items: [
+              T('helpContent.sections.apps.articles.g-helm.b1.0'),
+              T('helpContent.sections.apps.articles.g-helm.b1.1'),
+              T('helpContent.sections.apps.articles.g-helm.b1.2'),
+            ] },
+            { t: 'warn', text: T('helpContent.sections.apps.articles.g-helm.b2') },
+          ],
+        },
+        {
+          id: 'g-store',
+          title: T('helpContent.sections.apps.articles.g-store.title'),
+          keywords: T('helpContent.sections.apps.articles.g-store.keywords'),
+          appId: 'store',
+          blocks: [
+            { t: 'p', text: T('helpContent.sections.apps.articles.g-store.b0') },
+            { t: 'steps', items: [
+              T('helpContent.sections.apps.articles.g-store.b1.0'),
+              T('helpContent.sections.apps.articles.g-store.b1.1'),
+              T('helpContent.sections.apps.articles.g-store.b1.2'),
+            ] },
+            { t: 'tip', text: T('helpContent.sections.apps.articles.g-store.b2') },
+          ],
+        },
+        {
+          id: 'g-pos',
+          title: T('helpContent.sections.apps.articles.g-pos.title'),
+          keywords: T('helpContent.sections.apps.articles.g-pos.keywords'),
+          appId: 'pos',
+          blocks: [
+            { t: 'p', text: T('helpContent.sections.apps.articles.g-pos.b0') },
+            { t: 'steps', items: [
+              T('helpContent.sections.apps.articles.g-pos.b1.0'),
+              T('helpContent.sections.apps.articles.g-pos.b1.1'),
+              T('helpContent.sections.apps.articles.g-pos.b1.2'),
+            ] },
+            { t: 'tip', text: T('helpContent.sections.apps.articles.g-pos.b2') },
+          ],
+        },
+        {
+          id: 'g-punch',
+          title: T('helpContent.sections.apps.articles.g-punch.title'),
+          keywords: T('helpContent.sections.apps.articles.g-punch.keywords'),
+          appId: 'punch',
+          blocks: [
+            { t: 'p', text: T('helpContent.sections.apps.articles.g-punch.b0') },
+            { t: 'steps', items: [
+              T('helpContent.sections.apps.articles.g-punch.b1.0'),
+              T('helpContent.sections.apps.articles.g-punch.b1.1'),
+              T('helpContent.sections.apps.articles.g-punch.b1.2'),
+              T('helpContent.sections.apps.articles.g-punch.b1.3'),
+            ] },
+            { t: 'tip', text: T('helpContent.sections.apps.articles.g-punch.b2') },
+          ],
+        },
+        {
+          id: 'g-catalogue',
+          title: T('helpContent.sections.apps.articles.g-catalogue.title'),
+          keywords: T('helpContent.sections.apps.articles.g-catalogue.keywords'),
+          appId: 'bouquinerie',
+          blocks: [
+            { t: 'p', text: T('helpContent.sections.apps.articles.g-catalogue.b0') },
+            { t: 'steps', items: [
+              T('helpContent.sections.apps.articles.g-catalogue.b1.0'),
+              T('helpContent.sections.apps.articles.g-catalogue.b1.1'),
+              T('helpContent.sections.apps.articles.g-catalogue.b1.2'),
+              T('helpContent.sections.apps.articles.g-catalogue.b1.3'),
+            ] },
+          ],
+        },
+        {
+          id: 'g-settings',
+          title: T('helpContent.sections.apps.articles.g-settings.title'),
+          keywords: T('helpContent.sections.apps.articles.g-settings.keywords'),
+          appId: 'settings',
+          blocks: [
+            { t: 'p', text: T('helpContent.sections.apps.articles.g-settings.b0') },
+            { t: 'steps', items: [
+              T('helpContent.sections.apps.articles.g-settings.b1.0'),
+              T('helpContent.sections.apps.articles.g-settings.b1.1'),
+              T('helpContent.sections.apps.articles.g-settings.b1.2'),
+            ] },
+          ],
+        },
+      ],
+    },
+    {
+      id: 'shortcuts',
+      title: T('helpContent.sections.shortcuts.title'),
+      icon: Keyboard,
+      articles: [
+        {
+          id: 'kb-shortcuts',
+          title: T('helpContent.sections.shortcuts.articles.kb-shortcuts.title'),
+          keywords: T('helpContent.sections.shortcuts.articles.kb-shortcuts.keywords'),
+          blocks: [
+            { t: 'p', text: T('helpContent.sections.shortcuts.articles.kb-shortcuts.b0') },
+            { t: 'shortcuts' },
+            { t: 'tip', text: T('helpContent.sections.shortcuts.articles.kb-shortcuts.b2') },
+          ],
+        },
+        {
+          id: 'kb-search',
+          title: T('helpContent.sections.shortcuts.articles.kb-search.title'),
+          keywords: T('helpContent.sections.shortcuts.articles.kb-search.keywords'),
+          blocks: [
+            { t: 'p', text: T('helpContent.sections.shortcuts.articles.kb-search.b0') },
+            { t: 'steps', items: [
+              T('helpContent.sections.shortcuts.articles.kb-search.b1.0'),
+              T('helpContent.sections.shortcuts.articles.kb-search.b1.1'),
+              T('helpContent.sections.shortcuts.articles.kb-search.b1.2'),
+            ] },
+            { t: 'p', text: T('helpContent.sections.shortcuts.articles.kb-search.b2') },
+            { t: 'tip', text: T('helpContent.sections.shortcuts.articles.kb-search.b3') },
+          ],
+        },
+      ],
+    },
+    {
+      id: 'touch',
+      title: T('helpContent.sections.touch.title'),
+      icon: Smartphone,
+      articles: [
+        {
+          id: 'touch-mode',
+          title: T('helpContent.sections.touch.articles.touch-mode.title'),
+          keywords: T('helpContent.sections.touch.articles.touch-mode.keywords'),
+          blocks: [
+            { t: 'p', text: T('helpContent.sections.touch.articles.touch-mode.b0') },
+            { t: 'steps', items: [
+              T('helpContent.sections.touch.articles.touch-mode.b1.0'),
+              T('helpContent.sections.touch.articles.touch-mode.b1.1'),
+              T('helpContent.sections.touch.articles.touch-mode.b1.2'),
+              T('helpContent.sections.touch.articles.touch-mode.b1.3'),
+            ] },
+          ],
+        },
+      ],
+    },
+    {
+      id: 'styles',
+      title: T('helpContent.sections.styles.title'),
+      icon: Palette,
+      articles: [
+        {
+          id: 'ui-style',
+          title: T('helpContent.sections.styles.articles.ui-style.title'),
+          keywords: T('helpContent.sections.styles.articles.ui-style.keywords'),
+          blocks: [
+            { t: 'p', text: T('helpContent.sections.styles.articles.ui-style.b0') },
+            { t: 'steps', items: [
+              T('helpContent.sections.styles.articles.ui-style.b1.0'),
+              T('helpContent.sections.styles.articles.ui-style.b1.1'),
+              T('helpContent.sections.styles.articles.ui-style.b1.2'),
+            ] },
+          ],
+        },
+      ],
+    },
+    {
+      id: 'faq',
+      title: T('helpContent.sections.faq.title'),
+      icon: LifeBuoy,
+      articles: [
+        {
+          id: 'faq-website',
+          title: T('helpContent.sections.faq.articles.faq-website.title'),
+          keywords: T('helpContent.sections.faq.articles.faq-website.keywords'),
+          blocks: [
+            { t: 'p', text: T('helpContent.sections.faq.articles.faq-website.b0') },
+            { t: 'steps', items: [
+              T('helpContent.sections.faq.articles.faq-website.b1.0'),
+              T('helpContent.sections.faq.articles.faq-website.b1.1'),
+            ] },
+          ],
+        },
+        {
+          id: 'faq-save',
+          title: T('helpContent.sections.faq.articles.faq-save.title'),
+          keywords: T('helpContent.sections.faq.articles.faq-save.keywords'),
+          blocks: [
+            { t: 'p', text: T('helpContent.sections.faq.articles.faq-save.b0') },
+            { t: 'steps', items: [
+              T('helpContent.sections.faq.articles.faq-save.b1.0'),
+              T('helpContent.sections.faq.articles.faq-save.b1.1'),
+            ] },
+            { t: 'tip', text: T('helpContent.sections.faq.articles.faq-save.b2') },
+          ],
+        },
+        {
+          id: 'faq-find',
+          title: T('helpContent.sections.faq.articles.faq-find.title'),
+          keywords: T('helpContent.sections.faq.articles.faq-find.keywords'),
+          blocks: [
+            { t: 'steps', items: [
+              T('helpContent.sections.faq.articles.faq-find.b0.0'),
+              T('helpContent.sections.faq.articles.faq-find.b0.1'),
+              T('helpContent.sections.faq.articles.faq-find.b0.2'),
+            ] },
+          ],
+        },
+        {
+          id: 'faq-slow',
+          title: T('helpContent.sections.faq.articles.faq-slow.title'),
+          keywords: T('helpContent.sections.faq.articles.faq-slow.keywords'),
+          blocks: [
+            { t: 'steps', items: [
+              T('helpContent.sections.faq.articles.faq-slow.b0.0'),
+              T('helpContent.sections.faq.articles.faq-slow.b0.1'),
+              T('helpContent.sections.faq.articles.faq-slow.b0.2'),
+            ] },
+          ],
+        },
+        {
+          id: 'faq-tour',
+          title: T('helpContent.sections.faq.articles.faq-tour.title'),
+          keywords: T('helpContent.sections.faq.articles.faq-tour.keywords'),
+          blocks: [
+            { t: 'p', text: T('helpContent.sections.faq.articles.faq-tour.b0') },
+            { t: 'steps', items: [
+              T('helpContent.sections.faq.articles.faq-tour.b1.0'),
+            ] },
+            { t: 'tip', text: T('helpContent.sections.faq.articles.faq-tour.b2'), isTour: true },
+          ],
+        },
+      ],
+    },
+    {
+      id: 'manual',
+      title: T('helpContent.sections.manual.title'),
+      icon: BookOpen,
+      keywords: T('helpContent.sections.manual.keywords'),
+      articles: [
+        {
+          id: 'manual-pdf',
+          title: T('helpContent.sections.manual.articles.manual-pdf.title'),
+          keywords: T('helpContent.sections.manual.articles.manual-pdf.keywords'),
+          blocks: [
+            { t: 'p', text: T('helpContent.sections.manual.articles.manual-pdf.b0') },
+            { t: 'steps', items: [
+              T('helpContent.sections.manual.articles.manual-pdf.b1.0'),
+              T('helpContent.sections.manual.articles.manual-pdf.b1.1'),
+              T('helpContent.sections.manual.articles.manual-pdf.b1.2'),
+            ] },
+            { t: 'pdf', text: T('helpContent.sections.manual.articles.manual-pdf.b2') },
+            { t: 'tip', text: T('helpContent.sections.manual.articles.manual-pdf.b3') },
+          ],
+        },
+      ],
+    },
+    {
+      id: 'contact',
+      title: T('helpContent.sections.contact.title'),
+      icon: MessageCircleQuestion,
+      keywords: T('helpContent.sections.contact.keywords'),
+      custom: 'contact',
+      articles: [
+      ],
+    },
+  ];
+}
+
+function buildAppTitles(t) {
+  const o = {};
+  for (const k of ['files','spaces','writer','sheets','slides','pinboard','helm','store','pos','settings']) {
+    o[k] = t(`helpContent.appTitles.${k}`);
+  }
+  return o;
+}
+
 
 function Block({ block, shortcuts }) {
   const { t } = useLang();
@@ -705,6 +780,10 @@ export default function HelpApp({ windowApi }) {
     return () => { alive = false; };
   }, []);
 
+  // Localized help content — rebuilt whenever the language changes.
+  const SECTIONS = useMemo(() => buildSections(t), [t]);
+  const APP_TITLES = useMemo(() => buildAppTitles(t), [t]);
+
   // Live shortcut list (availability-aware), so the docs never drift.
   const shortcuts = useMemo(() => availableShortcuts(winCtx), [winCtx]);
 
@@ -720,7 +799,7 @@ export default function HelpApp({ windowApi }) {
         ? [{ section: s, article: { id: `${s.id}-section`, title: s.title, blocks: [] }, text: `${s.title} ${s.keywords}`.toLowerCase() }]
         : []),
     ]),
-    []
+    [SECTIONS]
   );
 
   const q = query.trim().toLowerCase();

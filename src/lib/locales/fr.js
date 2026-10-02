@@ -2556,4 +2556,344 @@ export const fr = {
     needsMigration: 'La commande en ligne n’est pas encore disponible sur cette page.',
   },
 
+  helpContent: {
+    sections: {
+      start: {
+        title: 'Prise en main',
+        articles: {
+          accounts: {
+            title: 'Se connecter, créer un compte ou essayer en invité',
+            keywords: 'connexion identifiant compte invité mot de passe essai nom d’utilisateur email',
+            b0: '{brand} utilise une seule connexion infonuagique — votre nom d’utilisateur ou votre adresse e-mail fonctionne sur tous vos appareils.',
+            b1: [
+              'Connexion : entrez votre nom d’utilisateur ou votre adresse e-mail, puis votre mot de passe.',
+              'Créer un compte : à choisir une seule fois — vos fichiers, vos notes et vos réglages vous suivent ensuite sur tous vos appareils.',
+              'Essayer gratuitement pendant 30 minutes : accès complet pendant une demi-heure, sans compte — un essai par appareil.'
+            ],
+            b2: 'Mot de passe oublié ? Choisissez « Mot de passe oublié ? » sur l’écran de connexion pour recevoir un lien de réinitialisation par e-mail.'
+          },
+          cloud: {
+            title: 'Votre compte infonuagique',
+            keywords: 'infonuagique synchronisation compte stockage',
+            b0: 'Tout vit dans votre compte infonuagique. Connectez-vous sur n’importe quel appareil et votre bureau — fichiers, applis, ventes — vous y attend.',
+            b1: [
+              'Une connexion, un compte : votre nom d’utilisateur ou votre adresse e-mail fonctionne partout.',
+              'Vos données vous suivent : commencez une vente sur l’ordinateur du magasin, terminez-la sur votre téléphone.'
+            ],
+            b2: 'Un compte par personne — vos ventes, vos fichiers et vos réglages vous suivent sur chaque appareil où vous vous connectez.'
+          }
+        }
+      },
+      desktop: {
+        title: 'Visite du bureau',
+        articles: {
+          icons: {
+            title: 'Icônes du bureau',
+            keywords: 'icônes bureau double clic ouvrir glisser ranger retirer',
+            b0: 'Chaque appli vit sur votre bureau sous forme d’icône.',
+            b1: [
+              'Cliquez une fois sur une icône pour la sélectionner.',
+              'Double-cliquez (ou touchez deux fois) pour ouvrir l’appli.',
+              'Faites glisser les icônes pour les ranger — votre disposition est mémorisée.',
+              'Cliquez avec le bouton droit sur une icône et choisissez « Retirer du bureau » pour la masquer. Rien n’est supprimé ; ramenez-la à tout moment depuis Réglages → Applications.'
+            ]
+          },
+          taskbar: {
+            title: 'Barre des tâches, dock et menu Démarrer',
+            keywords: 'barre des tâches dock menu démarrer recherche épinglé lancer',
+            b0: 'La barre au bord de l’écran est votre centre de commande.',
+            b1: [
+              'Ouvrez le menu Démarrer depuis le bouton de démarrage pour chercher et lancer n’importe quelle appli.',
+              'Les applis épinglées restent dans le menu Démarrer pour un accès en un clic.',
+              'Les applis ouvertes apparaissent dans la barre des tâches — cliquez sur l’une d’elles pour ramener sa fenêtre au premier plan.',
+              'Dans Réglages → Apparence, vous pouvez déplacer la barre des tâches vers n’importe quel bord de l’écran, ou changer tout le style vers Windows 11 ou Mac OS X 10.6.'
+            ]
+          },
+          windows: {
+            title: 'Fenêtres',
+            keywords: 'fenêtre redimensionner glisser réduire agrandir fermer',
+            b0: 'Les applis s’ouvrent dans des fenêtres que vous contrôlez entièrement.',
+            b1: [
+              'Faites glisser la barre de titre pour déplacer une fenêtre.',
+              'Faites glisser n’importe quel bord ou coin pour la redimensionner.',
+              'Utilisez les boutons de la barre de titre pour réduire, agrandir ou fermer.'
+            ],
+            b2: 'Sur un téléphone ou une tablette, activez l’Optimisation tactile dans Réglages → Apparence : les applis passent en plein écran avec de grandes zones tactiles.'
+          },
+          spaces: {
+            title: 'Espaces (bureaux virtuels)',
+            keywords: 'espaces bureaux virtuels changer organiser',
+            b0: 'Les espaces sont des bureaux séparés pour les différentes parties de votre vie — par ex. Travail, École, Loisirs.',
+            b1: [
+              'Ouvrez Espaces pour créer, renommer et supprimer des espaces.',
+              'Chaque espace garde ses propres fenêtres ouvertes.',
+              'Changez d’espace depuis l’appli Espaces ou la barre des tâches.'
+            ]
+          }
+        }
+      },
+      apps: {
+        title: 'Guide des applis',
+        articles: {
+          'g-files': {
+            title: 'Fichiers',
+            keywords: 'fichiers téléverser télécharger dossier documents stockage',
+            b0: 'Vos documents, téléversements et dossiers. Les mêmes fichiers sur tous vos appareils quand vous utilisez l’Infonuagique.',
+            b1: [
+              'Téléverser : cliquez sur Téléverser (ou glissez des fichiers) — documents, photos, PDF, tout.',
+              'Double-cliquez sur un fichier pour l’apercevoir ; utilisez Télécharger pour en enregistrer une copie.',
+              'Nouveau dossier / Renommer / Supprimer sont dans la barre d’outils. Les fichiers supprimés demandent d’abord confirmation.',
+              'Les fichiers bureautiques (Rédaction, Tableaux, Présentations) s’enregistrent directement dans Fichiers.'
+            ]
+          },
+          'g-writer': {
+            title: 'Rédaction',
+            keywords: 'rédaction documents texte mise en forme',
+            b0: 'Des documents avec une mise en forme riche — titres, gras, listes, et plus.',
+            b1: [
+              'Écrivez en tapant ; mettez en forme avec la barre d’outils.',
+              'Enregistrer range le document dans Fichiers. Enregistrer sous crée une copie sous un nouveau nom.',
+              'Si vous essayez de fermer avec des modifications non enregistrées, on vous le demandera d’abord.'
+            ]
+          },
+          'g-sheets': {
+            title: 'Tableaux',
+            keywords: 'tableaux tableur formules cellules',
+            b0: 'Des tableurs avec de vraies formules, enregistrés dans vos Fichiers.',
+            b1: [
+              'Cliquez sur une cellule et tapez. Commencez par = pour une formule, par ex. =SOMME(A1:A5).',
+              'Enregistrer range le tableau ; Enregistrer sous en fait une copie sous un nouveau nom.'
+            ]
+          },
+          'g-slides': {
+            title: 'Présentations',
+            keywords: 'présentations diaporama présenter',
+            b0: 'Des présentations avec un mode de présentation plein écran.',
+            b1: [
+              'Ajoutez des diapositives, choisissez des mises en page et tapez votre contenu.',
+              'Présenter lance le diaporama en plein écran.',
+              'Enregistrer sous garde une copie sous un nouveau nom sans toucher à l’original.'
+            ]
+          },
+          'g-pinboard': {
+            title: 'Pense-bête',
+            keywords: 'pense-bête notes capture rapide recherche',
+            b0: 'Votre bac de capture : notes rapides, liens et fichiers avec recherche plein texte.',
+            b1: [
+              'Épinglez n’importe quoi en quelques secondes — c’est enregistré aussitôt.',
+              'La recherche trouve du texte à l’intérieur de vos épingles.',
+              'Helm peut aussi y enregistrer des choses pour vous.'
+            ]
+          },
+          'g-helm': {
+            title: 'Helm (votre assistant)',
+            keywords: 'helm assistant aide demander discuter',
+            b0: 'Helm est l’assistant intégré à {brand}. Demandez-lui d’ouvrir des applis, de trouver des choses, de chercher des infos et de faire avancer le travail.',
+            b1: [
+              'Tapez ce que vous voulez : « ouvre Fichiers », « active le mode sombre », « souviens-toi que j’aime le thé ».',
+              'Le mode local répond depuis votre appareil ; le mode infonuagique intelligent peut chercher des infos en ligne.',
+              'Helm se souvient de ce que vous lui dites et peut s’en rappeler plus tard.'
+            ],
+            b2: 'Le mode infonuagique intelligent utilise un service public gratuit — n’y envoyez jamais de mots de passe ni de données privées.'
+          },
+          'g-store': {
+            title: 'Magasin d’applis',
+            keywords: 'magasin applis installer ajouter retirer désinstaller',
+            b0: 'Ajoutez des applis web — outils de dessin, cartes, musique et plus — comme de vraies applis {brand}.',
+            b1: [
+              'Parcourez ou cherchez dans le catalogue, puis cliquez sur Installer.',
+              'Les applis installées apparaissent dans votre menu Démarrer et sur votre bureau, et s’ouvrent dans leurs propres fenêtres.',
+              'Désinstallez à tout moment depuis le magasin ou Réglages → Applications.'
+            ],
+            b2: 'Chaque appli du magasin est vérifiée pour bien fonctionner. Si l’une se comporte mal, désinstallez-la et essayez-en une autre.'
+          },
+          'g-pos': {
+            title: 'Point de vente',
+            keywords: 'caisse point de vente boutique magasin paiement produits inventaire',
+            b0: 'Une caisse de magasin complète : produits, encaissement, reçus et rapports.',
+            b1: [
+              'Configurez votre magasin, puis ajoutez des produits avec prix et stock.',
+              'Encaissez les ventes dans Encaissement — espèces et carte, avec la monnaie calculée.',
+              'Remboursements, codes PIN du personnel et rapports de ventes quotidiens sont intégrés.'
+            ],
+            b2: 'Le personnel se connecte sur différents appareils et partage le même magasin.'
+          },
+          'g-punch': {
+            title: 'Attestations (pointeuse)',
+            keywords: 'attestations pointeuse personnel heures paie horaire quarts pauses',
+            b0: 'Le personnel pointe à l’arrivée et au départ avec son code PIN ; les responsables gèrent les horaires, les corrections et la paie.',
+            b1: [
+              'Pointez à l’arrivée/au départ sur la pointeuse avec votre code PIN ; ajoutez des pauses au besoin.',
+              'Les responsables construisent l’horaire hebdomadaire — les quarts qui se chevauchent pour une même personne sont bloqués.',
+              'Les corrections réparent les erreurs (mauvaise heure, oubli de pointage) et sont consignées.',
+              'L’approbation de la paie vérifie les heures avant qu’elles comptent.'
+            ],
+            b2: 'Les heures de travaux communautaires sont suivies séparément des heures payées, avec des attestations imprimables.'
+          },
+          'g-catalogue': {
+            title: 'Catalogue',
+            keywords: 'catalogue inventaire articles isbn code-barres livres dons salons commandes spéciales',
+            b0: 'Le catalogue du magasin : articles avec recherche par ISBN/code-barres, dons, journées de foire et commandes spéciales.',
+            b1: [
+              'Catalogue : ajoutez des livres avec prix, quantité et emplacement en rayon ; importez-en plusieurs à la fois depuis un CSV.',
+              'Dons : notez les livres donnés et leur destination.',
+              'Journées de foire : suivez les ventes faites aux foires du livre séparément de celles du magasin.',
+              'Commandes spéciales : notez ce qu’un client cherche.'
+            ]
+          },
+          'g-settings': {
+            title: 'Réglages',
+            keywords: 'réglages personnaliser thème fond d’écran apparence applis',
+            b0: 'Faites de {brand} le vôtre.',
+            b1: [
+              'Apparence : mode clair/sombre, couleur d’accent, fond d’écran, style d’interface, position de la barre des tâches, mode tactile.',
+              'Applications : choisissez quelles applis s’affichent sur le bureau et dans le menu Démarrer.',
+              'Vos données : importez, exportez ou effacez tout.'
+            ]
+          }
+        }
+      },
+      shortcuts: {
+        title: 'Raccourcis et recherche',
+        articles: {
+          'kb-shortcuts': {
+            title: 'Raccourcis clavier',
+            keywords: 'clavier raccourcis touches fenêtre',
+            b0: 'Ces raccourcis fonctionnent partout sur le bureau. Les raccourcis ne volent jamais vos frappes pendant que vous écrivez.',
+            b2: 'Les combinaisons déjà utilisées ne sont jamais reprises : Ctrl+1…8 change d’espace, Ctrl+Alt+Gauche/Droite parcourt les espaces, et Ctrl+Maj+P ouvre l’éditeur du Pense-bête.'
+          },
+          'kb-search': {
+            title: 'Recherche : Spotlight et le menu Démarrer',
+            keywords: 'recherche spotlight trouver fichier épingle globale',
+            b0: 'Appuyez sur {spotlight} n’importe où pour ouvrir Spotlight, la recherche globale. Elle cherche dans vos applis, vos fichiers et vos épingles en même temps.',
+            b1: [
+              'Tapez pour chercher — les résultats apparaissent groupés en Applis, Fichiers et Épingles.',
+              'Utilisez ↑ et ↓ pour naviguer, Entrée pour ouvrir, Échap pour fermer.',
+              'Ouvrir un fichier lance la bonne appli (photos dans Images, documents dans Rédaction, etc.). Ouvrir une épingle vous mène au Pense-bête.'
+            ],
+            b2: 'La zone de recherche du menu Démarrer fait la même chose : les applis correspondantes apparaissent d’abord, avec les Fichiers et Épingles correspondants groupés en dessous.',
+            b3: 'Les applis que vous avez masquées dans Réglages → Applications sont aussi exclues des résultats de recherche.'
+          }
+        }
+      },
+      touch: {
+        title: 'Optimisation tactile',
+        articles: {
+          'touch-mode': {
+            title: 'Utiliser {brand} sur un téléphone ou une tablette',
+            keywords: 'tactile mobile téléphone tablette plein écran',
+            b0: 'L’optimisation tactile transforme {brand} en écran d’accueil façon téléphone : grandes icônes, pages à faire défiler, un dock et des applis plein écran.',
+            b1: [
+              'Activez-la dans Réglages → Apparence → Optimisation tactile.',
+              'Touchez une icône pour ouvrir l’appli en plein écran.',
+              'Touchez le X ou la barre d’accueil en bas pour revenir à l’écran d’accueil.',
+              'Désactivez-la à tout moment pour retrouver le bureau.'
+            ]
+          }
+        }
+      },
+      styles: {
+        title: 'Styles d’interface',
+        articles: {
+          'ui-style': {
+            title: 'Styles {brand}, Windows 11 ou Mac OS X 10.6',
+            keywords: 'interface style thème windows mac dock barre des tâches apparence',
+            b0: 'Choisissez le style que vous aimez dans Réglages → Apparence → Style d’interface. Tout continue de fonctionner — seule la décoration change.',
+            b1: [
+              '{brand} : le bureau classique, calme, style papier et encre.',
+              'Windows 11 : barre des tâches centrée et boutons de fenêtre familiers.',
+              'Mac OS X 10.6 : barre de menus en haut, Dock en verre avec grossissement, et boutons de fenêtre façon feux tricolores.'
+            ]
+          }
+        }
+      },
+      faq: {
+        title: 'FAQ et dépannage',
+        articles: {
+          'faq-website': {
+            title: 'Un site web ne se charge pas dans une appli web',
+            keywords: 'site web ne charge pas blanc bloqué intégré',
+            b0: 'Certains sites web refusent d’être affichés à l’intérieur d’autres pages. C’est le réglage de sécurité du site lui-même.',
+            b1: [
+              'Essayez la solution de repli « vue simplifiée » ou « vue texte » si l’une est proposée.',
+              'Sinon utilisez « Ouvrir dans un nouvel onglet » — le site fonctionne toujours dans son propre onglet.'
+            ]
+          },
+          'faq-save': {
+            title: 'J’ai oublié d’enregistrer mon document',
+            keywords: 'oublié enregistrer non enregistré perdu document',
+            b0: 'Rédaction, Tableaux et Présentations vous avertissent avant de fermer avec des modifications non enregistrées : rouvrez simplement l’appli — votre travail est généralement encore là.',
+            b1: [
+              'Rouvrez l’appli depuis le bureau ou le menu Démarrer.',
+              'Enregistrez (ou Enregistrer sous) tout de suite pour le conserver.'
+            ],
+            b2: 'Prenez l’habitude d’appuyer sur Enregistrer après de grosses modifications — ça ne prend qu’une seconde.'
+          },
+          'faq-find': {
+            title: 'Je ne trouve pas mon fichier',
+            keywords: 'trouver fichier perdu chercher où',
+            b0: [
+              'Ouvrez Fichiers et vérifiez chaque dossier — les nouveaux téléversements arrivent dans le dossier principal.',
+              'Utilisez la recherche du Pense-bête si c’était une note ou un lien.',
+              'Demandez à Helm : « trouve mon tableau de budget ».'
+            ]
+          },
+          'faq-slow': {
+            title: 'Quelque chose semble lent ou bloqué',
+            keywords: 'lent bloqué figé recharger actualiser',
+            b0: [
+              'Fermez les fenêtres que vous n’utilisez pas.',
+              'Rechargez la page dans votre navigateur — dans l’Infonuagique, tout est enregistré et revient.',
+              'Si une appli se comporte mal, fermez juste cette fenêtre et rouvrez-la.'
+            ]
+          },
+          'faq-tour': {
+            title: 'Rejouer la visite guidée',
+            keywords: 'visite bienvenue rejouer aide recommencer',
+            b0: 'Envie de revoir la visite guidée ? Vous pouvez la rejouer à tout moment.',
+            b1: [
+              'Cliquez sur le bouton ci-dessous pour rejouer la visite guidée.'
+            ],
+            b2: 'Cette appli d’aide est toujours là aussi — ouvrez-la depuis le menu Démarrer quand vous en avez besoin.'
+          }
+        }
+      },
+      manual: {
+        title: 'Manuel d’utilisation',
+        keywords: '',
+        articles: {
+          'manual-pdf': {
+            title: 'Le guide de démarrage (PDF)',
+            keywords: 'manuel pdf guide télécharger imprimer livret documentation complète',
+            b0: 'Le guide de démarrage est livré dans {brand} — un petit tour de chaque appli, du Point de vente au Catalogue.',
+            b1: [
+              'Cliquez sur le bouton ci-dessous pour ouvrir le manuel en PDF dans un nouvel onglet.',
+              'Utilisez la recherche dans la page de votre navigateur (Ctrl+F / ⌘F) pour chercher dans le PDF.',
+              'Ou tapez simplement dans la zone de recherche en haut de cette appli d’aide — elle cherche aussi dans le texte complet du manuel, et chaque résultat ouvre le PDF à la bonne page.'
+            ],
+            b2: 'Ouvrir le guide de démarrage (PDF)',
+            b3: 'Vendra est 100 % infonuagique : il faut une connexion Internet, et tout est stocké dans la base de données infonuagique unique partagée par toutes les applis.'
+          }
+        }
+      },
+      contact: {
+        title: 'Contact et commentaires',
+        keywords: '',
+        articles: {}
+      }
+    },
+    appTitles: {
+      files: 'Fichiers',
+      spaces: 'Espaces',
+      writer: 'Rédaction',
+      sheets: 'Tableaux',
+      slides: 'Présentations',
+      pinboard: 'Pense-bête',
+      helm: 'Helm',
+      store: 'Magasin d’applis',
+      pos: 'Point de vente',
+      settings: 'Réglages'
+    }
+  },
+
 };
