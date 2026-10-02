@@ -3115,6 +3115,11 @@ function HistoryTab({ store, sales, memberName, onVoid, onRefund, onExchange, se
       0
     );
   };
+  const mintRefundIdem = () => {
+    refundIdem.current = (typeof crypto !== 'undefined' && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : `refund-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  };
   const openRefund = (sale) => {
     const sel = {};
     sale.items.forEach((it, idx) => {
@@ -3126,9 +3131,7 @@ function HistoryTab({ store, sales, memberName, onVoid, onRefund, onExchange, se
     setRefundMethod('cash');
     setRefundReason('');
     setRefundResult(null);
-    refundIdem.current = (typeof crypto !== 'undefined' && crypto.randomUUID)
-      ? crypto.randomUUID()
-      : `refund-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    mintRefundIdem();
     setRefundFor(sale);
   };
   // Estimate mirrors backend.pos.refundSale: each line gets its net share of
@@ -3174,6 +3177,9 @@ function HistoryTab({ store, sales, memberName, onVoid, onRefund, onExchange, se
       } else {
         setRefundFor(null);
       }
+      // Mint a fresh idempotency key so a follow-up refund/exchange in the
+      // same dialog doesn't replay this one.
+      mintRefundIdem();
     } catch (err) {
       setRefundResult({ error: err.message });
     } finally {
@@ -3191,6 +3197,8 @@ function HistoryTab({ store, sales, memberName, onVoid, onRefund, onExchange, se
     try {
       await onExchange({ sale: refundFor, lines, idemKey: refundIdem.current });
       setRefundFor(null);
+      // Fresh key for any subsequent action.
+      mintRefundIdem();
     } finally {
       setRefundBusy(false);
       refundLock.current = false;
@@ -4291,7 +4299,16 @@ function DrawerTab({ store, sales, role, cashierName, extras }) {
     const t = new Date(openedAt).getTime();
     return sales
       .filter((s) => !s.voided && s.method === 'cash' && new Date(s.createdAt).getTime() >= t)
-      .reduce((sum, s) => sum + s.totalCents, 0);
+      .reduce((sum, s) => {
+        // H3: cash into drawer is tendered - change, not total (tender adjustments
+        // like gift cards reduce cash received).
+        const cashIn = (s.tenderedCents ?? s.totalCents) - (s.changeCents ?? 0);
+        // H2: subtract cash refunds paid out of the drawer.
+        const cashRefunds = (s.refunds || [])
+          .filter((r) => r.method === 'cash' && new Date(r.createdAt).getTime() >= t)
+          .reduce((rsum, r) => rsum + (r.refundedCents || 0), 0);
+        return sum + cashIn - cashRefunds;
+      }, 0);
   };
 
   const pettySince = (openedAt) => {
@@ -6875,7 +6892,7 @@ export default function POSApp({
     });
     // NUCLEAR FAILSAFE: log to the money audit trail.
     logMoneyMovement('refund', {
-      amountCents: res.refundedCents || 0,
+      amountCents: res.refund?.refundedCents || 0,
       saleId: sale.id,
       saleNumber: sale.number,
       method,

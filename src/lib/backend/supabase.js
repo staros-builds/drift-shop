@@ -1512,9 +1512,7 @@ export function createSupabaseBackend(config = null) {
       const parent = await resolveFolder(uid, segs.slice(0, -1), true);
       const name = segs[segs.length - 1];
       const existing = await findFile(uid, parent.id, name);
-      // A previous large-text version may have lived on the binary path —
-      // drop its storage object so it doesn't orphan.
-      if (existing?.storage_path) await removePinFileQuietly(existing.storage_path);
+      const oldStoragePath = existing?.storage_path || null;
       const payload = {
         user_id: uid,
         folder_id: parent.id,
@@ -1534,6 +1532,9 @@ export function createSupabaseBackend(config = null) {
       } else {
         row = check(await client.from('vfs_files').insert(payload).select().single(), 'Creating file');
       }
+      // Delete the old storage object ONLY after the DB write succeeded —
+      // otherwise a DB failure would orphan the row pointing at deleted bytes.
+      if (oldStoragePath) await removePinFileQuietly(oldStoragePath);
       return toEntry(row, 'file', path);
     },
 
@@ -1733,16 +1734,17 @@ export function createSupabaseBackend(config = null) {
   // at once converge on one row via the shop-root unique index.
   async function shopRootFolder(storeId) {
     await requireShopScope();
-    const first = check(
-      await client
-        .from('vfs_folders')
-        .select('id, name, updated_at')
-        .eq('store_id', storeId)
-        .is('parent_id', null)
-        .maybeSingle(),
-      'Loading the shop folder'
-    );
-    if (first) return first;
+    // Use limit(1) instead of maybeSingle(): if duplicate shop roots exist,
+    // pick the oldest rather than throwing.
+    const firstRes = await client
+      .from('vfs_folders')
+      .select('id, name, updated_at')
+      .eq('store_id', storeId)
+      .is('parent_id', null)
+      .order('created_at', { ascending: true })
+      .limit(1);
+    const first = check(firstRes, 'Loading the shop folder');
+    if (first && first.length > 0) return first[0];
     try {
       return check(
         await client
@@ -5429,6 +5431,9 @@ export function createSupabaseBackend(config = null) {
         // The shop's public storefront page (migration 063).
         'storefront_profiles',
         'bq_items', 'bq_donations', 'bq_donation_items', 'bq_fairs', 'bq_fair_sales', 'bq_special_orders',
+        // Customer online orders (migration 071): without these, a restored
+        // shop loses its entire online order history.
+        'online_orders',
       ];
       for (const t of tables) {
         try {

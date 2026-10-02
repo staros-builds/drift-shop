@@ -22,7 +22,7 @@ export const KNOWN_STORE_TABLES = new Set([
   'pos_shifts', 'pos_time_off', 'pos_pay_periods',
   'pos_punch_settings', 'pos_breaks', 'storefront_profiles',
   'bq_items', 'bq_donations', 'bq_donation_items', 'bq_fairs',
-  'bq_fair_sales', 'bq_special_orders',
+  'bq_fair_sales', 'bq_special_orders', 'online_orders',
 ]);
 
 const rows = (v) => (Array.isArray(v) ? v.length : 0);
