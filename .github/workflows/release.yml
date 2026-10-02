@@ -1,0 +1,128 @@
+# Vendra — passive release pipeline (docs/release-rules.md)
+#
+# push to main -> tests gate -> ONE build (byte-verified) -> expand-only
+# idempotent migrations (only if the DB secret exists) -> identical dist
+# to every configured mirror -> per-mirror buildId smoke checks.
+# A failing step stops the line and says why in this log; whatever was
+# already live stays live — a failed smoke check never unpublishes.
+
+name: release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: npm ci
+      - run: npm test
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+    outputs:
+      build_id: ${{ steps.bid.outputs.build_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: npm ci
+      - name: Build once (with production env)
+        run: npm run build
+      - name: Byte-verify the bundle (never trust exit code alone)
+        run: npm run verify:bundle
+      - name: Read build id
+        id: bid
+        run: echo "build_id=$(node -p "JSON.parse(require('fs').readFileSync('dist/build.json','utf8')).buildId")" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with: { name: dist, path: dist, retention-days: 7 }
+
+  migrations:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client (for psql)
+        if: env.SUPABASE_DB_URL != ''
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+      - name: Apply expand-only idempotent migrations (067+)
+        if: env.SUPABASE_DB_URL != ''
+        run: |
+          echo "::notice::Applying new migrations in order (expand-only, idempotent)."
+          for f in supabase/migrations/0*.sql; do
+            n=$(basename "$f")
+            num=${n%%_*}
+            if [ "$num" -ge 67 ]; then
+              echo "== $n"
+              psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -1 -f "$f"
+            fi
+          done
+      - name: Migrations skipped (no DB secret configured)
+        if: env.SUPABASE_DB_URL == ''
+        run: echo "::warning::SUPABASE_DB_URL secret not set — migrations were NOT applied by this run. Apply the pending 067+ migrations deliberately (admin step). The app capability-probes, so the new build still runs against the previous schema."
+
+  deploy-pages:
+    needs: [build, migrations]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: master, path: pages }
+      - uses: actions/download-artifact@v4
+        with: { name: dist, path: dist }
+      - name: Publish dist to the Pages branch (primary mirror)
+        run: |
+          cd pages
+          find . -mindepth 1 -maxdepth 1 -not -name .git -exec rm -rf {} +
+          cp -r ../dist/. .
+          touch .nojekyll
+          git config user.name "vendra-release"
+          git config user.email "release@localhost"
+          git add -A
+          git commit -m "release ${{ needs.build.outputs.build_id }} (from main ${{ github.sha }})" || echo "no changes"
+          git push origin master
+
+  smoke-pages:
+    needs: [deploy-pages, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Smoke check — Pages mirror serves this buildId
+        run: |
+          want='${{ needs.build.outputs.build_id }}'
+          for i in 1 2 3 4 5 6; do
+            got=$(curl -fsL "https://staros-builds.github.io/drift-shop/build.json?x=$RANDOM" 2>/dev/null | node -pe "JSON.parse(require('fs').readFileSync(0,'utf8')).buildId" 2>/dev/null || echo "")
+            echo "attempt $i: got=$got want=$want"
+            [ "$got" = "$want" ] && exit 0
+            sleep 20
+          done
+          echo "::error::Smoke check FAILED — the Pages mirror is not serving build $want. The previous good build stays live for anyone already on it; investigate before the next push."
+          exit 1
+
+  # Additional mirrors (Cloudflare Pages, Netlify, Firebase Hosting,
+  # Surge, Render, Bitbucket, GitHub account root site, Neocities;
+  # Sevalla is dashboard-wired) fan out from deploy/mirrors.json via
+  # deploy-mirrors.yml — each is inert until its account secrets
+  # exist; see docs/redundancy.md.
