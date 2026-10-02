@@ -828,17 +828,6 @@ export default function StorefrontPublic({ slug, configError = null, appHome = n
               style={styles.field}
             />
             {authError ? <div style={styles.errBox}>{authError}</div> : null}
-            {/* DEBUG: show signOut trace if present */}
-            {(() => {
-              try {
-                const t = localStorage.getItem('drift:signout-trace');
-                if (t) {
-                  const j = JSON.parse(t);
-                  return <div style={{...styles.errBox, whiteSpace: 'pre-wrap', fontSize: '10px'}}>SIGNOUT TRACE {j.at}: {j.stack.join('\n')}</div>;
-                }
-              } catch {}
-              return null;
-            })()}
             <button
               type="button"
               disabled={authBusy || !authEmail.includes('@') || !authPassword}

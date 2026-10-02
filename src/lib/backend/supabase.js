@@ -330,7 +330,19 @@ export function createSupabaseBackend(config = null) {
         'Set them in your .env, or use the local backend instead.'
     );
   }
-  const rawClient = createClient(url, key);
+  // Storefront isolation: the public shop page (#/store/<slug>) uses a
+  // separate Supabase auth storage key so customer sessions never share
+  // localStorage with the owner desktop. This prevents the desktop's
+  // access check (or any other tab) from signing out customers via
+  // BroadcastChannel sync.
+  const isStorefront = typeof window !== 'undefined' &&
+    /^#\/store\//.test(window.location.hash);
+  const storageKey = isStorefront
+    ? `sb-${new URL(url).hostname.split('.')[0]}-storefront-auth-token`
+    : undefined; // default key for desktop
+  const rawClient = createClient(url, key, storageKey ? {
+    auth: { storageKey },
+  } : undefined);
   const client = readOnly ? guardClientForStandbyRead(rawClient) : rawClient;
 
   // App root URL (origin + Vite base path), the landing page for every
@@ -872,15 +884,6 @@ export function createSupabaseBackend(config = null) {
     },
 
     async signOut() {
-      // DEBUG: record the stack in localStorage so the browser can read it
-      // from the DOM (no DevTools access in test env).
-      try {
-        const stack = new Error().stack || 'no-stack';
-        localStorage.setItem('drift:signout-trace', JSON.stringify({
-          at: new Date().toISOString(),
-          stack: stack.split('\n').slice(0, 15),
-        }));
-      } catch {}
       const { error } = await client.auth.signOut();
       if (error) throw new Error(`Sign out failed: ${error.message}`);
       // onAuthStateChange will clear cachedUser; do it eagerly too
