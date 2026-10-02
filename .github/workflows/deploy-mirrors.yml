@@ -1,0 +1,239 @@
+# Drift Shop — ONE release, up to TEN doors (app-mirror fan-out)
+#
+# Builds the app ONCE and ships the identical dist to every mirror
+# host in deploy/mirrors.json whose account secrets exist. Hosts
+# without secrets no-op green with a notice — safe to merge today,
+# before any mirror account exists. Full design, per-host setup, and
+# honest free-tier limits: docs/redundancy.md.
+#
+# Triggers: the "Run workflow" button (the one release action) or a
+# version tag (v*). Day-to-day pushes keep rebuilding GitHub Pages
+# the existing way; flip vars.MIRROR_GITHUB_PAGES=true to move even
+# that into this workflow — never run both deploys at once.
+#
+# The dist is host-agnostic (relative base './', hash routes), so no
+# job here edits code per host. If a host ever demanded that, it does
+# not belong in the registry (deploy/emit-matrix.mjs enforces it).
+
+name: deploy-mirrors
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+concurrency:
+  group: deploy-mirrors
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: matrix
+        run: echo "matrix=$(node deploy/emit-matrix.mjs)" >> "$GITHUB_OUTPUT"
+
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+      # Database failover config (docs/redundancy.md). Absent = default off:
+      # the app boots against the primary only, exactly as before.
+      VITE_SUPABASE_FALLBACK_URL: ${{ vars.VITE_SUPABASE_FALLBACK_URL }}
+      VITE_SUPABASE_FALLBACK_ANON_KEY: ${{ vars.VITE_SUPABASE_FALLBACK_ANON_KEY }}
+      VITE_SUPABASE_FALLBACK2_URL: ${{ vars.VITE_SUPABASE_FALLBACK2_URL }}
+      VITE_SUPABASE_FALLBACK2_ANON_KEY: ${{ vars.VITE_SUPABASE_FALLBACK2_ANON_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Warn if the backend address is not configured
+        if: env.VITE_SUPABASE_URL == ''
+        run: echo "::warning::vars.VITE_SUPABASE_URL is not set — this build boots to the honest 'backend is not configured' screen on every mirror. Set the repo variables before a real release."
+      - run: npm ci
+      - run: npm run build
+      - name: Byte-verify the bundle (never deploy a boot stub to a live mirror)
+        run: npm run verify:bundle
+      - name: Fingerprint the dist (every mirror must serve exactly this)
+        run: |
+          FP=$(find dist -type f | sort | xargs sha256sum | sha256sum | cut -d' ' -f1)
+          echo "dist fingerprint: $FP"
+          echo "### Release dist fingerprint: \`$FP\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Every mirror job in this run deploys the artifact with this fingerprint. A mirror serving anything else is stale or broken." >> "$GITHUB_STEP_SUMMARY"
+      - name: Package the one identical dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+          retention-days: 7
+      - name: Package for GitHub Pages (only used if its job is enabled)
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  pages:
+    needs: build
+    if: vars.MIRROR_GITHUB_PAGES == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+      contents: read
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+  deploy:
+    needs: [plan, build]
+    if: fromJSON(needs.plan.outputs.matrix).include[0] != null
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    env:
+      HAS_CLOUDFLARE: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+      HAS_NETLIFY: ${{ secrets.NETLIFY_AUTH_TOKEN != '' }}
+      HAS_SURGE: ${{ secrets.SURGE_LOGIN != '' }}
+      HAS_RENDER: ${{ secrets.RENDER_DEPLOY_HOOK_URL != '' }}
+      HAS_FIREBASE: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
+      HAS_DENO: ${{ secrets.DENO_DEPLOY_TOKEN != '' }}
+      HAS_BITBUCKET: ${{ secrets.BITBUCKET_ACCESS_TOKEN != '' }}
+      HAS_GITHUB_ROOT: ${{ secrets.ROOT_SITE_DEPLOY_KEY != '' }}
+      HAS_NEOCITIES: ${{ secrets.NEOCITIES_API_KEY != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get the one identical dist
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Cloudflare Pages
+        if: matrix.type == 'cloudflare-pages' && env.HAS_CLOUDFLARE == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+
+      - name: Netlify
+        if: matrix.type == 'netlify-cli' && env.HAS_NETLIFY == 'true'
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: npx --yes netlify-cli@17 deploy --prod --dir=dist
+
+      - name: Surge
+        if: matrix.type == 'surge' && env.HAS_SURGE == 'true'
+        env:
+          SURGE_LOGIN: ${{ secrets.SURGE_LOGIN }}
+          SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
+          SURGE_DOMAIN: ${{ vars.SURGE_DOMAIN }}
+        run: npx --yes surge@0.40 dist "$SURGE_DOMAIN"
+
+      - name: Render (trigger its build via deploy hook)
+        if: matrix.type == 'render-hook' && env.HAS_RENDER == 'true'
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL" && echo "Render deploy triggered."
+
+      - name: Firebase Hosting
+        if: matrix.type == 'firebase' && env.HAS_FIREBASE == 'true'
+        env:
+          FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        # firebase login:ci tokens are deprecated upstream; CI deploys with a
+        # service-account JSON (Firebase Hosting Admin role) via
+        # GOOGLE_APPLICATION_CREDENTIALS. Keep the JSON in the
+        # FIREBASE_SERVICE_ACCOUNT secret, never in the repo.
+        run: |
+          echo "$GOOGLE_APPLICATION_CREDENTIALS" > "$RUNNER_TEMP/sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          npx --yes firebase-tools@13 deploy --only hosting --project "$FIREBASE_PROJECT_ID" --non-interactive
+
+      - name: Deno Deploy
+        if: matrix.type == 'deno-deployctl' && env.HAS_DENO == 'true'
+        uses: denoland/deployctl@v1
+        with:
+          project: ${{ vars.DENO_PROJECT }}
+          root: dist
+          token: ${{ secrets.DENO_DEPLOY_TOKEN }}
+
+      - name: Bitbucket (git push the identical dist)
+        if: matrix.type == 'bitbucket-git' && env.HAS_BITBUCKET == 'true'
+        env:
+          BITBUCKET_ACCESS_TOKEN: ${{ secrets.BITBUCKET_ACCESS_TOKEN }}
+          BITBUCKET_WORKSPACE: ${{ vars.BITBUCKET_WORKSPACE }}
+        run: |
+          repo="${BITBUCKET_WORKSPACE}.bitbucket.io"
+          git clone --depth 1 "https://x-token-auth:${BITBUCKET_ACCESS_TOKEN}@bitbucket.org/${BITBUCKET_WORKSPACE}/${repo}.git" bb-site
+          find bb-site -mindepth 1 -maxdepth 1 -not -name .git -exec rm -rf {} +
+          cp -r dist/. bb-site/
+          cd bb-site
+          git config user.name "vendra-release"
+          git config user.email "release@localhost"
+          git add -A
+          git commit -m "release: identical dist from deploy-mirrors" || echo "no changes"
+          git push origin HEAD
+
+      - name: GitHub account root site (git push the identical dist)
+        if: matrix.type == 'github-root-git' && env.HAS_GITHUB_ROOT == 'true'
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.ROOT_SITE_DEPLOY_KEY }}
+
+      - name: GitHub account root site (publish)
+        if: matrix.type == 'github-root-git' && env.HAS_GITHUB_ROOT == 'true'
+        run: |
+          git clone --depth 1 git@github.com:staros-builds/staros-builds.github.io.git root-site
+          find root-site -mindepth 1 -maxdepth 1 -not -name .git -exec rm -rf {} +
+          cp -r dist/. root-site/
+          touch root-site/.nojekyll
+          cd root-site
+          git config user.name "vendra-release"
+          git config user.email "release@localhost"
+          git add -A
+          git commit -m "release: identical dist from deploy-mirrors" || echo "no changes"
+          git push origin HEAD
+
+      - name: Neocities (API upload of the identical dist)
+        if: matrix.type == 'neocities-api' && env.HAS_NEOCITIES == 'true'
+        env:
+          NEOCITIES_API_KEY: ${{ secrets.NEOCITIES_API_KEY }}
+        run: |
+          # Neocities free accounts restrict some upload file types; the
+          # release's /build.json hash check after deploy catches anything
+          # missing before this door is announced.
+          find dist -type f | while read -r f; do
+            rel="${f#dist/}"
+            curl -fsS -H "Authorization: Bearer $NEOCITIES_API_KEY" \
+              -F "$rel=@$f" https://neocities.org/api/upload > /dev/null
+            echo "uploaded $rel"
+          done
+
+      - name: Explain a skip
+        if: |
+          (matrix.type == 'cloudflare-pages' && env.HAS_CLOUDFLARE != 'true') ||
+          (matrix.type == 'netlify-cli' && env.HAS_NETLIFY != 'true') ||
+          (matrix.type == 'surge' && env.HAS_SURGE != 'true') ||
+          (matrix.type == 'render-hook' && env.HAS_RENDER != 'true') ||
+          (matrix.type == 'firebase' && env.HAS_FIREBASE != 'true') ||
+          (matrix.type == 'deno-deployctl' && env.HAS_DENO != 'true') ||
+          (matrix.type == 'bitbucket-git' && env.HAS_BITBUCKET != 'true') ||
+          (matrix.type == 'github-root-git' && env.HAS_GITHUB_ROOT != 'true') ||
+          (matrix.type == 'neocities-api' && env.HAS_NEOCITIES != 'true')
+        run: |
+          echo "::notice::${{ matrix.id }}: account secrets not set - skipped (this is the designed no-op). Setup: deploy/mirrors.json + docs/redundancy.md."
