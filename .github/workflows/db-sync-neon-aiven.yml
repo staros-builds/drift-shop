@@ -1,0 +1,121 @@
+# Vendra — automatic backend re-sync: primary (Supabase) -> Neon + Aiven
+#
+# Every hour: dumps the live primary, restores it into BOTH vanilla-Postgres
+# copies (Neon warm copy, Aiven cold vault), then verifies per-table row
+# counts match. A mismatch or an unreachable backend FAILS the run ->
+# GitHub emails the repo owner. That email is the alarm.
+#
+# ONE WRITER, ALWAYS: the copies are overwritten, never written by the app.
+# Supabase stays the single live writer; there is no split-brain path.
+# The copies are data-survival (Supabase Auth/Storage services don't exist
+# on vanilla Postgres) — see docs/failover.md for the manual recovery path.
+#
+# Needs repo secrets: PRIMARY_DATABASE_URL, NEON_DATABASE_URL, AIVEN_DATABASE_URL.
+# Until all three exist the job exits green in seconds and changes nothing.
+
+name: db-sync-neon-aiven
+
+on:
+  schedule:
+    # Minute 23: off the top of the hour, away from any other scheduled job.
+    - cron: '23 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: db-sync-neon-aiven
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      HAS_CONFIG: ${{ secrets.PRIMARY_DATABASE_URL != '' }}
+      PRIMARY_DATABASE_URL: ${{ secrets.PRIMARY_DATABASE_URL }}
+      NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+      AIVEN_DATABASE_URL: ${{ secrets.AIVEN_DATABASE_URL }}
+    steps:
+      - name: Not configured yet — nothing to do
+        if: env.HAS_CONFIG != 'true'
+        run: echo "::notice::DB sync secrets missing — add PRIMARY_DATABASE_URL, NEON_DATABASE_URL and AIVEN_DATABASE_URL to enable the hourly re-sync."
+
+      - uses: actions/checkout@v4
+        if: env.HAS_CONFIG == 'true'
+
+      - name: Install PostgreSQL 17 client (client must match or exceed the primary server version)
+        if: env.HAS_CONFIG == 'true'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq curl gnupg ca-certificates lsb-release
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /usr/share/keyrings/pgdg.gpg
+          echo "deb [signed-by=/usr/share/keyrings/pgdg.gpg] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+          pg_dump --version
+
+      - name: Dump the primary (schema + data, no owners, no privileges)
+        if: env.HAS_CONFIG == 'true'
+        run: |
+          pg_dump "$PRIMARY_DATABASE_URL" -Fc --no-owner --no-privileges -f /tmp/primary.dump
+          test -s /tmp/primary.dump || { echo "::error::Primary dump is empty — refusing to touch the copies."; exit 1; }
+          ls -la /tmp/primary.dump
+
+      - name: Build the vanilla-Postgres restore list (drop Supabase-only objects)
+        if: env.HAS_CONFIG == 'true'
+        run: |
+          pg_restore -l /tmp/primary.dump | grep -vE "EXTENSION - supabase_vault|COMMENT - EXTENSION supabase_vault|SCHEMA - vault |TABLE DATA vault |EVENT TRIGGER - |FUNCTION realtime list_changes" > /tmp/restore.list
+          wc -l /tmp/restore.list
+
+      - name: Prepare targets (stub roles + extensions, idempotent)
+        if: env.HAS_CONFIG == 'true'
+        run: |
+          for url in "$NEON_DATABASE_URL" "$AIVEN_DATABASE_URL"; do
+            psql "$url" -v ON_ERROR_STOP=1 -f tools/sync/vanilla-target-prep.sql
+          done
+
+      - name: Restore into Neon (warm copy)
+        if: env.HAS_CONFIG == 'true'
+        run: |
+          pg_restore --clean --if-exists --no-owner -L /tmp/restore.list -d "$NEON_DATABASE_URL" /tmp/primary.dump > /tmp/restore-neon.log 2>&1; code=$?
+          tail -5 /tmp/restore-neon.log
+          # Fail only on real errors; the row-count verify below is the authority.
+          if grep "pg_restore: error" /tmp/restore-neon.log | grep -vqE "already exists|does not exist"; then
+            echo "::error::Neon restore had real errors — see log."; exit 1
+          fi
+          echo "Neon restore done (pg_restore exit $code, benign noise tolerated)."
+
+      - name: Restore into Aiven (cold vault)
+        if: env.HAS_CONFIG == 'true'
+        run: |
+          pg_restore --clean --if-exists --no-owner -L /tmp/restore.list -d "$AIVEN_DATABASE_URL" /tmp/primary.dump > /tmp/restore-aiven.log 2>&1; code=$?
+          tail -5 /tmp/restore-aiven.log
+          if grep "pg_restore: error" /tmp/restore-aiven.log | grep -vqE "already exists|does not exist"; then
+            echo "::error::Aiven restore had real errors — see log."; exit 1
+          fi
+          echo "Aiven restore done (pg_restore exit $code, benign noise tolerated)."
+
+      - name: Verify row counts (primary vs both copies) — mismatch fails loudly
+        if: env.HAS_CONFIG == 'true'
+        run: bash tools/sync/verify-vanilla.sh
+
+      - name: Publish heartbeat to the primary (sync health the app can read)
+        if: always() && env.HAS_CONFIG == 'true'
+        run: |
+          psql "$PRIMARY_DATABASE_URL" -v ON_ERROR_STOP=1 -c "
+            INSERT INTO public.backend_status (id, checked_at, run_url, primary_ok, neon_ok, aiven_ok, neon_mismatches, aiven_mismatches, tables_checked, note)
+            VALUES (1, now(), '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}', true,
+                    ${NEON_OK:-null}, ${AIVEN_OK:-null}, ${NEON_MM:-null}, ${AIVEN_MM:-null}, ${TABLES:-null}, '${{ job.status }}')
+            ON CONFLICT (id) DO UPDATE SET
+              checked_at = EXCLUDED.checked_at, run_url = EXCLUDED.run_url,
+              primary_ok = EXCLUDED.primary_ok,
+              neon_ok = EXCLUDED.neon_ok, aiven_ok = EXCLUDED.aiven_ok,
+              neon_mismatches = EXCLUDED.neon_mismatches, aiven_mismatches = EXCLUDED.aiven_mismatches,
+              tables_checked = EXCLUDED.tables_checked, note = EXCLUDED.note;"
+          echo "Heartbeat published."
+
+      - name: Summary
+        if: always() && env.HAS_CONFIG == 'true'
+        run: |
+          echo "### Hourly backend re-sync" >> "$GITHUB_STEP_SUMMARY"
+          echo "Primary -> Neon (warm) + Aiven (cold vault), row counts verified." >> "$GITHUB_STEP_SUMMARY"
+          echo "A red run means a copy disagrees or is unreachable — that email is the alarm." >> "$GITHUB_STEP_SUMMARY"
