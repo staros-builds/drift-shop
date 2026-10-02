@@ -768,6 +768,45 @@ export function createSupabaseBackend(config = null) {
       return { status: 'redirect' };
     },
 
+    // Passwordless sign-in (Jesse, 2026-10-02 — maximum login ease): "email
+    // me a login link". No password to remember or type; Supabase emails a
+    // one-time sign-in link. Like signUpWithEmail and signInWithOAuth, the
+    // link lands back here carrying ?authflow=owner|customer[&shop=], so it
+    // reuses the exact same callback routing and post-OAuth classification:
+    // an owner lands on the desktop, a customer lands back on their shop.
+    // For a brand-new address Supabase creates the account on first click,
+    // so this doubles as the simplest possible signup — the classification
+    // stamps it from the flow, exactly like an OAuth signup.
+    // Returns { status: 'link-sent', email }.
+    async signInWithMagicLink({ email, kind, slug }) {
+      const v = validateSignupEmail(email, BRAND.accountsDomain);
+      if (!v.ok) {
+        const e = new Error(v.code);
+        e.code = v.code;
+        throw e;
+      }
+      const accountKind = kind === 'customer' ? 'customer' : 'owner';
+      const redirectTo = buildSignupRedirectTo({
+        origin: window.location.origin,
+        basePath: import.meta.env?.BASE_URL || '/',
+        kind: accountKind,
+        slug,
+      });
+      const { error } = await client.auth.signInWithOtp({
+        email: v.email,
+        options: { emailRedirectTo: redirectTo },
+      });
+      if (error) {
+        if (error.status === 429 || /rate|too many/i.test(error.message || '')) {
+          const e = new Error('email-rate-limited');
+          e.code = 'email-rate-limited';
+          throw e;
+        }
+        throw new Error(`Could not send the sign-in link: ${error.message}`);
+      }
+      return { status: 'link-sent', email: v.email };
+    },
+
     // Guest trial via Supabase anonymous sign-in: a real auth user (real UID, so
     // RLS applies normally) flagged is_guest. Needs "Allow anonymous sign-ins"
     // enabled in Supabase Auth settings. (The old guest-xxx@drift.local sign-up

@@ -36,14 +36,23 @@ export const PENDING_FLOW_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Social sign-in providers (Jesse, 2026-10-01): email + password stays,
-// but users may also continue with another service. Only providers that
-// Supabase can enable for free and that we wire end-to-end belong here —
-// the UI renders exactly this list, and the backend rejects anything else
-// before calling Supabase.
+// Social sign-in providers (Jesse, 2026-10-01; expanded 2026-10-02 for
+// maximum login ease/flexibility): email + password stays, but users may
+// also continue with any of these services. Only providers that Supabase
+// can enable for free and that we wire end-to-end belong here — the UI
+// renders exactly this list, and the backend rejects anything else before
+// calling Supabase. A provider that isn't switched on in Supabase Auth →
+// Providers yet fails gracefully with the coded 'oauth-not-enabled' error
+// (plain-language UI message), never a crash.
 export const OAUTH_PROVIDERS = [
   { id: 'google', labelKey: 'login.oauthGoogle' },
   { id: 'github', labelKey: 'login.oauthGithub' },
+  { id: 'facebook', labelKey: 'login.oauthFacebook' },
+  { id: 'discord', labelKey: 'login.oauthDiscord' },
+  { id: 'azure', labelKey: 'login.oauthMicrosoft' },
+  { id: 'gitlab', labelKey: 'login.oauthGitlab' },
+  { id: 'spotify', labelKey: 'login.oauthSpotify' },
+  { id: 'twitch', labelKey: 'login.oauthTwitch' },
 ];
 
 /** Normalize a provider id to a supported OAuth provider, or null. */

@@ -285,6 +285,24 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  // Passwordless sign-in ("email me a login link"): saves the pending flow
+  // first so the link landing routes like a confirmation (owner → desktop,
+  // customer → their shop), then asks the backend to send the link. The
+  // browser stays put; only a send failure comes back here as an error.
+  const signInMagicLink = useCallback(async ({ email, kind, slug }) => {
+    const accountKind = kind === 'customer' ? 'customer' : 'owner';
+    savePendingFlow({ kind: accountKind, slug });
+    explicitAuthRef.current = true;
+    try {
+      return await backend.auth.signInWithMagicLink({ email, kind: accountKind, slug });
+    } catch (e) {
+      clearPendingFlow();
+      throw e;
+    } finally {
+      explicitAuthRef.current = false;
+    }
+  }, []);
+
   const signInGuest = useCallback(async () => {
     if (typeof backend.auth.signInGuest !== 'function') {
       throw new Error('Guest sign-in is not available with this backend.');
@@ -336,7 +354,7 @@ export function AuthProvider({ children }) {
     setProfile((p) => (p ? { ...p, must_change_password: false } : p));
   }, []);
 
-  const value = { user, loading, signUp, signUpEmail, signIn, signInOAuth, signInGuest, signOut, completePasswordChange, accessBlock, clearAccessBlock, isAdmin, profile, accessChecked, authEpoch };
+  const value = { user, loading, signUp, signUpEmail, signIn, signInOAuth, signInMagicLink, signInGuest, signOut, completePasswordChange, accessBlock, clearAccessBlock, isAdmin, profile, accessChecked, authEpoch };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

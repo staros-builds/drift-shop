@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { LogIn, UserPlus, AlertCircle, Timer, X, Languages, KeyRound, MailQuestion, CheckCircle2 } from 'lucide-react';
+import { LogIn, UserPlus, AlertCircle, Timer, X, Languages, KeyRound, Mail, MailQuestion, CheckCircle2 } from 'lucide-react';
 import { useAuth, TRIAL_USED_KEY } from '../../os/AuthContext.jsx';
 import { useLang } from '../../lib/i18n.jsx';
 import { backend } from '../../lib/backend/current.js';
@@ -389,7 +389,7 @@ function ForgotPasswordDialog({ onClose }) {
  * in with a username or an email address.
  */
 export default function LoginScreen() {
-  const { signIn, signUpEmail, signInOAuth, signInGuest, accessBlock, clearAccessBlock } = useAuth();
+  const { signIn, signUpEmail, signInOAuth, signInMagicLink, signInGuest, accessBlock, clearAccessBlock } = useAuth();
   const { t, lang } = useLang();
   const [mode, setMode] = useState('signin'); // 'signin' | 'signup'
   // Single identifier field: accepts a username OR an email address.
@@ -407,6 +407,8 @@ export default function LoginScreen() {
   // After signupWithEmail returns needs-confirmation: the check-your-email
   // panel replaces the form until the user confirms via the email link.
   const [checkEmail, setCheckEmail] = useState(null); // { email } | null
+  const [magicMode, setMagicMode] = useState(false); // passwordless: email me a login link
+  const [magicSent, setMagicSent] = useState(null); // { email } | null
   const [lastSentAt, setLastSentAt] = useState(0);
   const [nowTick, setNowTick] = useState(() => Date.now());
   // One-time notice from an auth callback landing (e.g. an expired
@@ -673,6 +675,25 @@ export default function LoginScreen() {
     }
   };
 
+  // Passwordless sign-in: the link doubles as signup for a new address, so
+  // this lives on the sign-in side only — one obvious door, no wrong choice.
+  const sendMagicLink = async (e) => {
+    if (e) e.preventDefault();
+    if (busyRef.current) return;
+    setError('');
+    setBusy(true);
+    busyRef.current = true;
+    try {
+      const res = await signInMagicLink({ email: identifier, kind: 'owner' });
+      setMagicSent({ email: res.email });
+    } catch (err) {
+      setError(friendlyAuthError(err));
+    } finally {
+      setBusy(false);
+      busyRef.current = false;
+    }
+  };
+
   return (
     <div className="fixed inset-0 overflow-y-auto bg-paper">
       <div className="flex min-h-full items-center justify-center p-4">
@@ -705,6 +726,8 @@ export default function LoginScreen() {
                 setMode(b.id);
                 setError('');
                 setCheckEmail(null);
+                setMagicMode(false);
+                setMagicSent(null);
                 setNotice(null);
               }}
               className={`rounded-os px-3 py-1.5 text-sm font-medium duration-160 ${
@@ -744,7 +767,34 @@ export default function LoginScreen() {
           </div>
         )}
 
-        {checkEmail ? (
+        {magicSent ? (
+          <div className="mt-3 space-y-3">
+            <div className="flex flex-col items-center text-center">
+              <span className="text-accent"><CheckCircle2 size={36} /></span>
+              <h2 className="mt-2 text-lg font-semibold text-ink">{t('login.magicLinkTitle')}</h2>
+            </div>
+            <p className="text-sm leading-relaxed text-ink">
+              {t('login.magicLinkBody').replace('{email}', magicSent.email)}
+            </p>
+            <p className="text-xs leading-relaxed text-muted">
+              {t('login.checkEmailSpam')}
+            </p>
+            {error && (
+              <div role="alert" className="flex items-start gap-2 rounded-os border border-osborder bg-paper px-3 py-2 text-sm text-ink">
+                <AlertCircle size={16} className="mt-0.5 shrink-0 text-accent" />
+                <span>{error}</span>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => { setMagicSent(null); setMagicMode(false); setError(''); }}
+              disabled={busy}
+              className="w-full rounded-os px-4 py-2 text-center text-xs font-medium text-muted duration-160 hover:text-ink disabled:opacity-50"
+            >
+              {t('login.startOver')}
+            </button>
+          </div>
+        ) : checkEmail ? (
           <div className="mt-3 space-y-3">
             <div className="flex flex-col items-center text-center">
               <span className="text-accent"><CheckCircle2 size={36} /></span>
@@ -790,6 +840,45 @@ export default function LoginScreen() {
               {t('login.startOver')}
             </button>
           </div>
+        ) : magicMode ? (
+        <form onSubmit={sendMagicLink} className="mt-3 space-y-2">
+          <p className="text-sm leading-relaxed text-muted">
+            {t('login.magicLinkHint')}
+          </p>
+          <Field
+            label={t('login.signupEmailLabel')}
+            type="email"
+            value={identifier}
+            onChange={setIdentifier}
+            autoComplete="email"
+            placeholder={t('login.identifierPlaceholder')}
+          />
+
+          {error && (
+            <div role="alert" className="flex items-start gap-2 rounded-os border border-osborder bg-paper px-3 py-2 text-sm text-ink">
+              <AlertCircle size={16} className="mt-0.5 shrink-0 text-accent" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={busy}
+            aria-busy={busy}
+            className="flex w-full items-center justify-center gap-2 rounded-os bg-accent px-4 py-2 text-sm font-semibold text-accentink duration-160 hover:opacity-90 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+          >
+            <Mail size={16} />
+            {busy ? t('common.working') : t('login.magicLinkBtn')}
+          </button>
+          <button
+            type="button"
+            onClick={() => { setMagicMode(false); setError(''); }}
+            disabled={busy}
+            className="w-full rounded-os px-4 py-2 text-center text-xs font-medium text-muted duration-160 hover:text-ink disabled:opacity-50"
+          >
+            {t('login.magicLinkBack')}
+          </button>
+        </form>
         ) : (
         <form onSubmit={mode === 'signup' ? submitSignup : submit} className="mt-3 space-y-2">
           {resetNotice && (
@@ -848,8 +937,15 @@ export default function LoginScreen() {
             autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
           />
 
-          {mode === 'signin' && (
-            <div className="flex justify-end">
+          {mode === 'signin' && !magicMode && (
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => { setMagicMode(true); setError(''); }}
+                className="text-xs font-medium text-accent duration-160 hover:underline"
+              >
+                {t('login.magicLinkBtn')}
+              </button>
               <button
                 type="button"
                 onClick={() => setForgotOpen(true)}

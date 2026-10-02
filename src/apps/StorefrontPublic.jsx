@@ -649,6 +649,24 @@ export default function StorefrontPublic({ slug, configError = null, appHome = n
     }
   };
 
+  // Passwordless sign-in for customers: emailed link, same routing as the
+  // other doors (the pending flow brings them back to this shop, and the
+  // shop link is stamped on landing like an OAuth signup).
+  const doMagicLink = async () => {
+    setAuthBusy(true);
+    setAuthError('');
+    savePendingFlow({ kind: 'customer', slug });
+    try {
+      await backend.auth.signInWithMagicLink({ email: authEmail, kind: 'customer', slug });
+      setAuthMode('magicSent');
+    } catch (e) {
+      clearPendingFlow();
+      setAuthError(/rate|too many/i.test(String(e?.message || '')) ? oo('magicLinkRate') : oo('signInFail'));
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
   const doPlaceOrder = async () => {
     if (placing) return;
     const problem = validateCartForOrder(cart);
@@ -757,6 +775,15 @@ export default function StorefrontPublic({ slug, configError = null, appHome = n
               {oo('signInBtn')}
             </button>
           </>
+        ) : authMode === 'magicSent' ? (
+          <>
+            <p style={styles.sheetTitle}>{oo('magicLinkTitle')}</p>
+            <p style={styles.sheetSub}>{oo('magicLinkBody', { email: authEmail })}</p>
+            <div style={styles.noteBox}>{oo('checkEmailHint')}</div>
+            <button type="button" style={{ ...styles.primaryBtn, background: accent }} onClick={() => setAuthMode('signin')}>
+              {oo('signInBtn')}
+            </button>
+          </>
         ) : (
           <>
             <p style={styles.sheetTitle}>{authMode === 'signup' ? oo('signUpTitle') : oo('signInTitle')}</p>
@@ -805,9 +832,17 @@ export default function StorefrontPublic({ slug, configError = null, appHome = n
                 style={{ ...styles.ghostBtn, width: '100%', marginTop: 8, opacity: authBusy ? 0.6 : 1 }}
                 onClick={() => doOAuth(p.id)}
               >
-                {oo(p.id === 'google' ? 'oauthGoogle' : 'oauthGithub')}
+                {oo(p.labelKey)}
               </button>
             ))}
+            <button
+              type="button"
+              disabled={authBusy || !authEmail.includes('@')}
+              style={{ ...styles.ghostBtn, width: '100%', marginTop: 8, opacity: authBusy ? 0.6 : 1 }}
+              onClick={doMagicLink}
+            >
+              {oo('magicLinkBtn')}
+            </button>
             <div style={{ textAlign: 'center', marginTop: 6 }}>
               <button
                 type="button"

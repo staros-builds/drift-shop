@@ -107,11 +107,15 @@ check('signup redirect URL normalizes the base path', () => {
   );
 });
 
-check('OAuth providers: google + github only, normalized', () => {
-  assert.deepEqual(OAUTH_PROVIDERS.map((p) => p.id), ['google', 'github']);
+check('OAuth providers: full free set, normalized', () => {
+  assert.deepEqual(OAUTH_PROVIDERS.map((p) => p.id), [
+    'google', 'github', 'facebook', 'discord', 'azure', 'gitlab', 'spotify', 'twitch',
+  ]);
   assert.equal(normalizeOAuthProvider('Google'), 'google');
   assert.equal(normalizeOAuthProvider(' github '), 'github');
-  assert.equal(normalizeOAuthProvider('facebook'), null);
+  assert.equal(normalizeOAuthProvider('Azure'), 'azure');
+  assert.equal(normalizeOAuthProvider('DISCORD'), 'discord');
+  assert.equal(normalizeOAuthProvider('twitter'), null);
   assert.equal(normalizeOAuthProvider(''), null);
   assert.equal(normalizeOAuthProvider(null), null);
   // The OAuth round trip reuses the signup redirect builder, so the

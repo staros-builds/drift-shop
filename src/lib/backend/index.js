@@ -27,9 +27,11 @@
  *       signUpWithEmail({ email, password, displayName, kind, slug })
  *         -> { status: 'signed-in', user } | { status: 'needs-confirmation', email }
  *       resendConfirmation({ email, kind, slug }) -> void
- *       signInWithOAuth({ provider, kind, slug })  // 'google' | 'github'
+ *       signInWithOAuth({ provider, kind, slug })  // see OAUTH_PROVIDERS
  *         -> { status: 'redirect' }   // browser leaves for the provider;
  *                                     // lands via consumeAuthCallback
+ *       signInWithMagicLink({ email, kind, slug })  // passwordless: emailed link
+ *         -> { status: 'link-sent', email }  // lands via consumeAuthCallback
  *       consumeAuthCallback()                 // email-link landing router
  *         -> { kind: 'confirmed', flow } | { kind: 'recovery' }
  *          | { kind: 'error', errorCode } | { kind: 'none' }
