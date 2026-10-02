@@ -36,6 +36,11 @@ const PLATFORM_SUFFIXES = [
   '.workers.dev',
   '.vercel.app',
   '.onrender.com',
+  '.neocities.org',
+  '.bitbucket.io',
+  '.surge.sh',
+  '.web.app',
+  '.firebaseapp.com',
 ];
 
 /**
