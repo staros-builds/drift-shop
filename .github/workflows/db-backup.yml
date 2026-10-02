@@ -1,0 +1,121 @@
+# Drift Shop — scheduled full-database backup exports
+#
+# The standbys (db-sync-multi) hold copies that follow the primary
+# within the hour. This job makes BACKUP FILES: dated, downloadable
+# pg_dump snapshots of the whole database, kept in places that do
+# not depend on any database provider staying alive. Restore path:
+# psql into any Supabase-shaped project, or rebuild + in-app Restore
+# for per-shop files (docs/redundancy.md).
+#
+# Destinations — BOTH are opt-in because a full dump is the entire
+# shop (every product, sale, and staff login hash):
+#   1. Release assets in a PRIVATE backup repo (recommended):
+#      repo variable BACKUP_REPO=owner/name + secret
+#      BACKUP_REPO_TOKEN (fine-grained PAT, contents:write on that
+#      repo only). One release per run, dump attached as an asset.
+#   2. Workflow artifact on THIS repo (vars.BACKUP_TO_ARTIFACT=true):
+#      only sensible when this repo is private — on a public repo,
+#      anyone can download run artifacts. Retention days from
+#      vars.BACKUP_ARTIFACT_RETENTION (default 30, GitHub max 90).
+# Set secret BACKUP_PASSPHRASE to encrypt the dump (AES-256) before
+# it leaves the runner, whichever destination is used.
+#
+# NO-OP GUARD: without PRIMARY_DATABASE_URL the job is green in
+# seconds and changes nothing.
+
+name: db-backup
+
+on:
+  # Schedule DISABLED 2026-10-02: the job needs a private destination
+  # (repo var BACKUP_REPO + secret BACKUP_REPO_TOKEN, or
+  # vars.BACKUP_TO_ARTIFACT=true on a private repo) before the weekly run
+  # is worth anything — without one it computes a full dump and discards
+  # it. Re-enable by uncommenting the cron below once a destination exists.
+  # schedule:
+  #   # Weekly, Sunday 04:17 UTC. Daily is one cron edit away; weekly
+  #   # is the honest floor for a layer that exists for provider-death,
+  #   # not for hour-level recovery (the standbys cover that).
+  #   - cron: '17 4 * * 0'
+  workflow_dispatch:
+
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      HAS_PRIMARY_DB: ${{ secrets.PRIMARY_DATABASE_URL != '' }}
+      PRIMARY_DB_URL: ${{ secrets.PRIMARY_DATABASE_URL }}
+      PRIMARY_URL: ${{ secrets.PRIMARY_SUPABASE_URL }}
+      PRIMARY_ANON_KEY: ${{ secrets.PRIMARY_SUPABASE_ANON_KEY }}
+      PRIMARY_SERVICE_KEY: ${{ secrets.PRIMARY_SUPABASE_SERVICE_KEY }}
+      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+    steps:
+      - name: Not configured yet — nothing to back up
+        if: env.HAS_PRIMARY_DB != 'true'
+        run: echo "::notice::PRIMARY_DATABASE_URL secret not set — db-backup is a no-op until the backend secrets exist. See docs/redundancy.md."
+
+      - uses: actions/checkout@v4
+        if: env.HAS_PRIMARY_DB == 'true'
+
+      - name: Install PostgreSQL 17 client (must match or exceed the PG 17 primary — stock v16 aborts)
+        if: env.HAS_PRIMARY_DB == 'true'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq curl gnupg ca-certificates lsb-release
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /usr/share/keyrings/pgdg.gpg
+          echo "deb [signed-by=/usr/share/keyrings/pgdg.gpg] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+          pg_dump --version
+
+      - name: Export the full database (schema + data + login accounts)
+        if: env.HAS_PRIMARY_DB == 'true'
+        env:
+          SYNC_ALLOW_WRITE: '1'
+        run: |
+          mkdir -p backup-out
+          STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+          echo "STAMP=$STAMP" >> "$GITHUB_ENV"
+          node tools/sync/export.mjs --out "backup-out/drift-$STAMP.sql" --mode seed --with-auth --live
+          gzip -9 backup-out/*.sql
+          if [ -n "$BACKUP_PASSPHRASE" ]; then
+            for f in backup-out/*.gz; do
+              openssl enc -aes-256-cbc -salt -pbkdf2 -pass env:BACKUP_PASSPHRASE -in "$f" -out "$f.enc"
+              mv "$f.enc" "$f"
+            done
+            echo "Dump encrypted with BACKUP_PASSPHRASE before upload."
+          else
+            echo "::warning::BACKUP_PASSPHRASE not set — the dump is uploaded unencrypted. Its destination must be private."
+          fi
+          sha256sum backup-out/* > backup-out/SHA256SUMS.txt
+          ls -la backup-out
+
+      - name: Save as a release in the private backup repo
+        if: env.HAS_PRIMARY_DB == 'true' && vars.BACKUP_REPO != ''
+        env:
+          GH_TOKEN: ${{ secrets.BACKUP_REPO_TOKEN }}
+          BACKUP_REPO: ${{ vars.BACKUP_REPO }}
+        run: |
+          gh release create "db-$STAMP" backup-out/* \
+            --repo "$BACKUP_REPO" \
+            --title "Database backup $STAMP" \
+            --notes "Automated full-database export (schema+data+auth) from the Drift Shop primary. Restore: docs/redundancy.md. ${BACKUP_PASSPHRASE:+Encrypted with BACKUP_PASSPHRASE.}"
+
+      - name: Save as a workflow artifact on this repo
+        if: env.HAS_PRIMARY_DB == 'true' && vars.BACKUP_TO_ARTIFACT == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ env.STAMP }}
+          path: backup-out/*
+          retention-days: ${{ vars.BACKUP_ARTIFACT_RETENTION || 30 }}
+
+      - name: Summary
+        if: always() && env.HAS_PRIMARY_DB == 'true'
+        run: |
+          echo "### Database backup export" >> "$GITHUB_STEP_SUMMARY"
+          echo "Destinations: backup-repo release = ${{ vars.BACKUP_REPO != '' }}, workflow artifact = ${{ vars.BACKUP_TO_ARTIFACT == 'true' }}." >> "$GITHUB_STEP_SUMMARY"
+          echo "If neither destination is enabled the dump was discarded with the runner — enable one. See docs/redundancy.md." >> "$GITHUB_STEP_SUMMARY"
