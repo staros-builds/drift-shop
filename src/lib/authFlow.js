@@ -44,11 +44,10 @@ export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // calling Supabase. A provider that isn't switched on in Supabase Auth →
 // Providers yet fails gracefully with the coded 'oauth-not-enabled' error
 // (plain-language UI message), never a crash.
-export const OAUTH_PROVIDERS = [
-  { id: 'google', labelKey: 'login.oauthGoogle' },
-  { id: 'facebook', labelKey: 'login.oauthFacebook' },
-  { id: 'azure', labelKey: 'login.oauthMicrosoft' },
-];
+// OAuth providers are currently disabled — none are configured in Supabase Auth.
+// When a provider is set up (OAuth app + client ID/secret in Supabase dashboard),
+// add it back here. Until then, the list stays empty per the "no switch on later" rule.
+export const OAUTH_PROVIDERS = [];
 
 /** Normalize a provider id to a supported OAuth provider, or null. */
 export function normalizeOAuthProvider(provider) {
