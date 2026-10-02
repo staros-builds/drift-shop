@@ -1,0 +1,14 @@
+name: db-sync (manual fallback)
+on: { workflow_dispatch: {} }
+jobs:
+  notice:
+    runs-on: ubuntu-latest
+    env:
+      HAS_STANDBY: ${{ secrets.STANDBY_DATABASE_URL != '' }}
+    steps:
+      - run: |
+          if [ "$HAS_STANDBY" != 'true' ]; then
+            echo "::notice::No STANDBY_DATABASE_URL secret — legacy manual sync is inert. The hourly db-sync-neon-aiven workflow handles Neon/Aiven."
+          else
+            echo "::notice::Standby configured — legacy path would run (kept as manual fallback)."
+          fi
