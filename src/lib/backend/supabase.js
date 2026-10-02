@@ -396,8 +396,13 @@ export function createSupabaseBackend(config = null) {
   let cachedUser = null; // { id, email, username, role, isGuest } | null
   let booted = false;
   const authListeners = new Set();
+  // Monotonic token to make applySession atomic: if a newer auth event
+  // arrives while a profile fetch is in flight, the stale fetch's result
+  // is discarded instead of resurrecting a dead session.
+  let sessionSeq = 0;
 
   async function applySession(session) {
+    const mySeq = ++sessionSeq;
     if (!session?.user) {
       cachedUser = null;
     } else {
@@ -413,6 +418,8 @@ export function createSupabaseBackend(config = null) {
       } catch (err) {
         console.error('profile fetch failed:', err);
       }
+      // Discard if a newer auth event arrived during the fetch.
+      if (mySeq !== sessionSeq) return;
       cachedUser = {
         id: su.id,
         email: su.email ?? null,

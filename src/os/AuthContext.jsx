@@ -58,25 +58,27 @@ export function AuthProvider({ children }) {
       // Pass the explicit UID to avoid cachedUser race during sign-in.
       profile = await backend.auth.getAccessProfile(u.id);
     } catch (e) {
-      // Fail CLOSED on read errors: if we cannot verify the profile, do not
-      // grant desktop access. A fail-open here let unpaid/blocked accounts
-      // into a dead desktop with no valid session. Sign out to clear any
-      // stale session and show a clear message.
-      console.error('[drift] access check failed, signing out:', e);
-      try {
-        await backend.auth.signOut();
-      } catch {}
-      setUser(null);
-      setProfile(null);
+      // Do NOT sign out on transient read errors — that would wipe the
+      // session globally across all tabs (including a storefront customer
+      // tab). Show the verify-failed block and let the user retry; only
+      // sign out on positive evidence the account is gone/blocked.
+      console.error('[drift] access check failed (session preserved):', e);
       setIsAdmin(false);
       setAccessChecked(false);
       setAccessBlock({
         kind: 'verify-failed',
         title: 'Could not verify account',
-        message: 'We could not verify your account status. Check your connection and try signing in again.',
+        message: 'We could not verify your account status. Check your connection and try again.',
       });
       setAuthEpoch((ep) => ep + 1);
       return { kind: 'verify-failed' };
+    }
+    // Customer accounts never use the desktop shell (they sign in on shop
+    // storefronts). If a customer session arrives here via multi-tab
+    // BroadcastChannel sync, leave it completely alone — signing out would
+    // destroy the customer's storefront session in every tab.
+    if (profile && profile.account_kind === 'customer') {
+      return null;
     }
     // The fetched profile is the shell's source of truth for admin-only
     // surfaces (Admin app listing, openWindow gate) and for device-account

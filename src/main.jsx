@@ -4,6 +4,7 @@ import './index.css';
 import { captureInstallPrompt, registerServiceWorker } from './lib/pwa.js';
 import { BRAND } from './lib/brand.js';
 import { validateBackendConfig } from './lib/backend/configCheck.js';
+import RootErrorBoundary from './components/os/RootErrorBoundary.jsx';
 import {
   readEndpointConfig,
   hasFallback,
@@ -296,7 +297,9 @@ function renderHostedStorefront(slug) {
     .then(({ default: StorefrontPublic }) => {
       root.render(
         <React.StrictMode>
-          <StorefrontPublic slug={slug} appHome={shopAppHome} />
+          <RootErrorBoundary>
+            <StorefrontPublic slug={slug} appHome={shopAppHome} />
+          </RootErrorBoundary>
         </React.StrictMode>,
       );
     })
@@ -320,10 +323,12 @@ function renderStorefront(slug, configCheck) {
     .then(({ default: StorefrontPublic }) => {
       root.render(
         <React.StrictMode>
-          <StorefrontPublic
-            slug={slug}
-            configError={configCheck.status === 'ok' ? null : configCheck}
-          />
+          <RootErrorBoundary>
+            <StorefrontPublic
+              slug={slug}
+              configError={configCheck.status === 'ok' ? null : configCheck}
+            />
+          </RootErrorBoundary>
         </React.StrictMode>,
       );
     })
