@@ -13,6 +13,8 @@ export const BRAND = {
   // Tagline under the product name (login screen, crash screen footer).
   taglineEn: 'Point of sale, catalogue, team and files — in one calm app.',
   taglineFr: 'Caisse, catalogue, équipe et fichiers — dans une seule appli.',
+  taglineEs: 'Punto de venta, catálogo, equipo y archivos — en una sola app tranquila.',
+  taglinePt: 'Ponto de venda, catálogo, equipe e arquivos — em um só app tranquilo.',
   // Synthetic email domain used to map bare usernames to emails for
   // Supabase auth (users only ever see their username). Must be a domain
   // shape Supabase's email validation accepts on signup.

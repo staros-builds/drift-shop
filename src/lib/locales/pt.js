@@ -3,7 +3,7 @@ import { BRAND } from '../brand.js';
 export const pt = {
   brand: {
     name: BRAND.name,
-    tagline: BRAND.taglineEn,
+    tagline: BRAND.taglinePt,
   },
   crash: {
     title: 'Algo deu errado',
