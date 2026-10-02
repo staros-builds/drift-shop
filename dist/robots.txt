@@ -1,6 +1,0 @@
-# Vendra landing — every crawler is welcome; the app itself lives
-# behind the link on these pages and needs no separate entry.
-User-agent: *
-Allow: /
-
-Sitemap: https://YOUR-SHOP-DOMAIN.example/drift-shop/sitemap.xml

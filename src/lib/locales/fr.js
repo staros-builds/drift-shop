@@ -678,6 +678,7 @@ export const fr = {
       roleCashier: 'Caissier',
       itemsCount: '{n} articles',
       inactive: 'inactif',
+      openAnotherStore: 'Ouvrir un autre magasin',
       inviteUsed: 'utilisé {uses}{max}',
       yourRole: 'Votre rôle : {role}',
       currentSale: 'Vente en cours',

@@ -677,6 +677,7 @@ export const es = {
       roleCashier: 'Cajero',
       itemsCount: '{n} artículos',
       inactive: 'inactivo',
+      openAnotherStore: 'Abrir otra tienda',
       inviteUsed: 'usado {uses}{max}',
       yourRole: 'Tu rol: {role}',
       currentSale: 'Venta actual',

@@ -676,6 +676,7 @@ export const pt = {
       roleCashier: 'Caixa',
       itemsCount: '{n} itens',
       inactive: 'inativo',
+      openAnotherStore: 'Abrir outra loja',
       inviteUsed: 'usado {uses}{max}',
       yourRole: 'Sua função: {role}',
       currentSale: 'Venda atual',

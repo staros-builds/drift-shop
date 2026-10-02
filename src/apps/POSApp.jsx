@@ -901,7 +901,7 @@ function SellTab({ products, store, v4, customers, customerId, onCustomerChange,
               className={`${inputCls} w-40`}
             >
               {categories.map((c) => (
-                <option key={c} value={c}>{c}</option>
+                <option key={c} value={c}>{c === 'All' ? t('common.all') : c}</option>
               ))}
             </select>
           )}
@@ -7129,8 +7129,8 @@ export default function POSApp({
             <button
               type="button"
               onClick={() => setShowCreate(true)}
-              title="Open another store"
-              aria-label="Open another store"
+              title={t('pos.ui.openAnotherStore')}
+              aria-label={t('pos.ui.openAnotherStore')}
               className="rounded-os border border-osborder bg-paper p-1.5 text-muted hover:border-accent hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               <Plus size={15} />

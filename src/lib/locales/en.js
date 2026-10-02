@@ -677,6 +677,7 @@ export const en = {
       roleCashier: 'Cashier',
       itemsCount: '{n} items',
       inactive: 'inactive',
+      openAnotherStore: 'Open another store',
       inviteUsed: 'used {uses}{max}',
       yourRole: 'Your role: {role}',
       currentSale: 'Current sale',
