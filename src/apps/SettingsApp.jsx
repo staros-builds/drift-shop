@@ -382,6 +382,19 @@ export default function SettingsApp({ windowApi }) {
   // Implemented in src/lib/accountBackup.js so the factory-reset flow can
   // reuse the exact same export code path; exportData below is the thin
   // Settings button wrapper around it.
+  const exportData = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const dump = await exportAccountBackup();
+      downloadBackupFile(dump, `vendra-backup-${new Date().toISOString().slice(0, 10)}.json`);
+      push(t('settings.data.backupComplete'), t('settings.data.backupCompleteBody'));
+    } catch (err) {
+      push(t('settings.data.backupFailed'), err?.message || t('settings.data.backupFailedBody'));
+    } finally {
+      setExporting(false);
+    }
+  };
 
   // S2: wipe everything, gated on a single explicit danger dialog.
   // Resetting settings to defaults also clears welcome_seen, so the welcome

@@ -298,6 +298,8 @@ export const pt = {
       installNote: 'Instalar adiciona o Drift Shop ao seu dispositivo como um aplicativo normal. Ainda precisa de internet — tudo vive no seu banco de dados na nuvem.',
       backupComplete: 'Cópia de segurança concluída',
       backupCompleteBody: 'Toda a sua conta Drift foi baixada como arquivo de backup. Guarde num lugar seguro — ele contém dados privados como os PINs dos funcionários.',
+      backupFailed: 'Cópia de segurança falhou',
+      backupFailedBody: 'Não foi possível criar a cópia de segurança. Verifique sua conexão e tente novamente.',
       importComplete: 'Importação concluída',
       importCompleteBody: 'Seus dados do Drift foram restaurados do arquivo de backup. ',
     },
