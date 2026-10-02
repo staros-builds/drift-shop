@@ -343,6 +343,24 @@ export function createSupabaseBackend(config = null) {
   const rawClient = createClient(url, key, storageKey ? {
     auth: { storageKey },
   } : undefined);
+  // DEBUG: intercept fetch to log auth API calls
+  if (typeof window !== 'undefined' && /^#\/store\//.test(window.location.hash)) {
+    const origFetch = window.fetch;
+    window.fetch = async (...args) => {
+      const urlStr = String(args[0] || '');
+      if (urlStr.includes('/auth/v1/')) {
+        const method = args[1]?.method || 'GET';
+        console.log(`[drift-auth-debug] ${method} ${urlStr.split('/auth/v1/')[1]}`);
+        try {
+          localStorage.setItem('drift:auth-calls', JSON.stringify([
+            ...JSON.parse(localStorage.getItem('drift:auth-calls') || '[]'),
+            { t: new Date().toISOString(), method, path: urlStr.split('/auth/v1/')[1] },
+          ].slice(-20)));
+        } catch {}
+      }
+      return origFetch(...args);
+    };
+  }
   const client = readOnly ? guardClientForStandbyRead(rawClient) : rawClient;
 
   // App root URL (origin + Vite base path), the landing page for every
