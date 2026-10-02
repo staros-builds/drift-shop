@@ -443,6 +443,14 @@ export function createSupabaseBackend(config = null) {
       .getSession()
       .then(async ({ data }) => {
         const session = data.session;
+        // Race guard: if the user signed in while the restore was in
+        // flight (cachedUser already set), the restored session is stale
+        // and must NOT overwrite the fresh sign-in. This hit the
+        // storefront, where customers can sign in before boot's getSession
+        // resolves. Only apply the restore when no sign-in has occurred.
+        if (cachedUser) {
+          return;
+        }
         if (session?.user) {
           // Validate the restored session against the server: if the account
           // was deleted, the local token is stale and would boot into a dead
