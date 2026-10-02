@@ -774,7 +774,7 @@ export default function SettingsApp({ windowApi }) {
             type="button"
             onClick={toggleTouchMode}
             role="switch"
-            aria-checked={!!touchMode}
+            aria-checked={!!settings?.touch_mode}
             className="flex min-h-[44px] w-full items-center gap-3 rounded-os border border-osborder px-4 py-3 text-left transition-colors duration-160 hover:bg-surface"
           >
             <span className="flex-1">
