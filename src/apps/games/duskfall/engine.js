@@ -1,5 +1,5 @@
 /**
- * DUSKFALL — an original first-person corridor crawler in the DOOM-like
+ * DUSKFALL — an original first-person corridor crawler in the classic
  * raycaster tradition. Every texture, sprite, map, sound and name here is
  * generated in code for this project; nothing is taken from any existing
  * game. The engine below is 100% DOM-free so it can be unit-tested in Node:

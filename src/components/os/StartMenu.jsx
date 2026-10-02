@@ -12,7 +12,7 @@ import { appTitle } from '../../lib/appTitle.js';
 import { useLang } from '../../lib/i18n.jsx';
 
 /**
- * Start menu, Windows 11 style in Drift's paper-and-ink theme: a floating
+ * Start menu, Windows 11 style in Vendra's paper-and-ink theme: a floating
  * centered frosted panel with search on top, a Pinned app grid, an
  * All-apps alphabetical list view, a Recommended (recent) section, and a
  * footer with the user chip + sign out. Installed web apps appear in the

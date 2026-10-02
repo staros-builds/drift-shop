@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  CalendarDays, ChevronLeft, ChevronRight, Plus, X, Search, Clock,
+  CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, Plus, X, Search, Clock,
   Phone, Trash2, Cloud, Check, UserPlus,
 } from 'lucide-react';
 import { backend } from '../lib/backend/current.js';
+import { downloadAppointmentIcs } from '../lib/integrations.js';
 import { localeTag, useLang } from '../lib/i18n.jsx';
 
 /* ------------------------------------------------------------------ */
@@ -330,6 +331,17 @@ function EditorDialog({ initial, customers, staff, appointments, canDelete, onCl
             </button>
           ) : <span />}
           <div className="flex gap-2">
+            {editing && (
+              <button type="button" onClick={() => {
+                if (!downloadAppointmentIcs({ title, startsAt, endsAt, notes, customerName: custSearch })) {
+                  setError(t('integrations.addToCalendarFail'));
+                }
+              }}
+                title={t('integrations.addToCalendar')}
+                className="flex items-center gap-1.5 rounded-os border border-osborder px-3 py-2 text-sm font-medium text-ink hover:border-accent">
+                <CalendarPlus size={15} /> {t('integrations.addToCalendar')}
+              </button>
+            )}
             <button type="button" onClick={onClose}
               className="rounded-os border border-osborder px-4 py-2 text-sm font-medium text-ink hover:border-accent">
               {t('common.cancel')}

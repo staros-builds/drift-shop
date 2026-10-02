@@ -38,14 +38,14 @@ function useClock() {
   return now;
 }
 
-/** iOS-style status bar: live clock left, Drift wordmark right. */
+/** iOS-style status bar: live clock left, Vendra wordmark right. */
 export function TouchStatusBar() {
   const now = useClock();
   const time = now.toLocaleTimeString(localeTag(), { hour: 'numeric', minute: '2-digit' });
   return (
     <div className="flex h-11 shrink-0 items-center justify-between px-5">
       <span className="text-[15px] font-semibold text-ink">{time}</span>
-      <span className="text-xs font-medium uppercase tracking-[0.2em] text-muted">Drift</span>
+      <span className="text-xs font-medium uppercase tracking-[0.2em] text-muted">Vendra</span>
     </div>
   );
 }

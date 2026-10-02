@@ -1,5 +1,5 @@
 /**
- * Drift Supabase backend adapter.
+ * Vendra Supabase backend adapter.
  *
  * Implements the same adapter interface as local.js against the Drift
  * Supabase schema (see ../build3-supabase-schema.md):
@@ -17,12 +17,26 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { resolveSupabaseEndpoint, guardClientForStandbyRead, writeBlockedError } from '../dbEndpoints.js';
+import { BRAND } from '../brand.js';
+import {
+  validateSignupEmail,
+  buildSignupRedirectTo,
+  parseAuthCallbackUrl,
+  resolveConfirmedFlow,
+  readPendingFlow,
+  clearPendingFlow,
+  setAuthNotice,
+} from '../authFlow.js';
 import { normIsbn, normText, cleanBqItem, bqCsvHeaders, bqExportCsv, bqParseCsv, BQ_ORDER_STATUSES } from '../bouquinerie-shared.js';
+import { isBusinessPreset } from '../businessPresets.js';
+import { cleanLinkFields } from '../integrations.js';
+import { normalizeDomainInput, isValidHostname } from '../hostnameResolve.js';
 import { storageUploadXhr } from './storageXhr.js';
 
 const MAX_SPACES = 8;
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB inline text; larger text rides the binary path
-const MAX_UPLOAD_BYTES = 500 * 1024 * 1024; // 500 MB per binary upload (incl. large text)
+const MAX_UPLOAD_BYTES = 50 * 1024 * 1024; // 50 MB per binary upload — the free storage plan's per-file ceiling; fail fast with a plain message instead of a platform rejection
 const MAX_PIN_FILE_BYTES = 50 * 1024 * 1024; // 50 MB per file/image pin (Supabase Storage)
 const PIN_FILES_BUCKET = 'user-files';
 
@@ -255,16 +269,71 @@ function friendlyPosError(err, action) {
   return err;
 }
 
-export function createSupabaseBackend() {
-  const url = import.meta.env?.VITE_SUPABASE_URL;
-  const key = import.meta.env?.VITE_SUPABASE_ANON_KEY;
+/**
+ * True when Supabase rejected the request because of the API key itself
+ * (HTTP 401 + "Invalid API key") rather than the user's credentials —
+ * wrong passwords come back as HTTP 400 "Invalid login credentials".
+ * A rejected key means the BUILD is misconfigured; reporting it as a
+ * credential failure sends the user chasing the wrong problem (this
+ * exact confusion happened in production with a truncated key).
+ */
+function isApiKeyRejection(error) {
+  if (!error) return false;
+  const msg = String(error.message || '');
+  if (/invalid api[- ]?key|no api key/i.test(msg)) return true;
+  return Number(error.status) === 401 && /api[- ]?key/i.test(msg);
+}
+
+/**
+ * Build the Error thrown for a failed auth call. API-key rejections get
+ * a coded error ('server-config') so the login UI can show its
+ * plain-language setup-problem message instead of the raw backend text.
+ */
+function authFailure(prefix, error) {
+  if (isApiKeyRejection(error)) {
+    const e = new Error(`${prefix}: the server rejected this app's access key.`);
+    e.code = 'server-config';
+    return e;
+  }
+  return new Error(`${prefix}: ${error.message}`);
+}
+
+export function createSupabaseBackend(config = null) {
+  // Boot may have failed over to a standby database (docs/redundancy.md).
+  // resolveSupabaseEndpoint() returns the build's env by default (today's
+  // behavior); after a standby-read boot it returns the standby with
+  // readOnly: true, and the client below is wrapped so every write path
+  // rejects with an honest message instead of touching the standby.
+  // Optional explicit connection pair (scale groundwork): lets a future
+  // caller build an adapter for a DIFFERENT project than the build-time
+  // one — e.g. once the backend directory (./directory.js) routes a shop
+  // to its own project. With no argument, behavior is exactly the
+  // endpoint resolution above. An explicit config always wins and is
+  // never read-only (the caller owns that connection).
+  const resolved = resolveSupabaseEndpoint();
+  const url = config ? config.url : resolved.url;
+  const key = config ? config.key : resolved.key;
+  const readOnly = config ? false : resolved.readOnly;
   if (!url || !key) {
     throw new Error(
       'Supabase adapter needs VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY. ' +
         'Set them in your .env, or use the local backend instead.'
     );
   }
-  const client = createClient(url, key);
+  const rawClient = createClient(url, key);
+  const client = readOnly ? guardClientForStandbyRead(rawClient) : rawClient;
+
+  // App root URL (origin + Vite base path), the landing page for every
+  // auth email link. Query markers (?authflow=…) ride on it; the
+  // redirect-URL allowlist in the Supabase dashboard must cover them
+  // (wildcards supported — see docs/one-login-email-signup.md).
+  function appRootUrl(extraParams) {
+    const base = import.meta.env?.BASE_URL || '/';
+    const root = window.location.origin + (base.endsWith('/') ? base : base + '/');
+    if (!extraParams) return root;
+    const qs = new URLSearchParams(extraParams).toString();
+    return qs ? `${root}?${qs}` : root;
+  }
 
   /**
    * Raw storage upload over XMLHttpRequest so callers get real byte-level
@@ -273,6 +342,9 @@ export function createSupabaseBackend() {
    * RLS — implemented in ./storageXhr.js so it can be unit-tested.
    */
   async function storageUploadXhrBound({ bucket, storagePath, blob, upsert, onProgress }) {
+    // The XHR path bypasses the supabase-js client, so the standby-read
+    // guard must be enforced here explicitly: file uploads are writes.
+    if (readOnly) throw writeBlockedError();
     const { data: sessData, error: sessErr } = await client.auth.getSession();
     if (sessErr) throw new Error('Your sign-in expired — sign out and back in, then try again.');
     return storageUploadXhr({
@@ -551,11 +623,90 @@ export function createSupabaseBackend() {
         password,
         options: { data: { username: cleanName, is_guest: false } },
       });
-      if (error) throw new Error(`Sign up failed: ${error.message}`);
+      if (error) throw authFailure('Sign up failed', error);
       return settleSession(
         { session: data.session, credentials: { email: cleanEmail, password } },
         'Account created. Check your email to confirm it, then sign in.'
       );
+    },
+
+    // One-login email signup (2026-10-01): owners AND customers sign up with
+    // a REAL email address. Supabase sends a confirmation email; the link
+    // lands back here (see consumeAuthCallback) carrying ?authflow= so the
+    // app knows where to resume.
+    //
+    // Returns { status: 'signed-in', user } when the project has "Confirm
+    // email" OFF (or the address was already confirmed), or
+    // { status: 'needs-confirmation', email } when a confirmation email is
+    // on its way. Enumeration-safe: Supabase answers the same way for an
+    // already-registered address (placeholder user, no session, no error),
+    // so the UI can show one honest "check your inbox" message either way.
+    //
+    // kind: 'owner' (default) | 'customer'. slug: the shop page a customer
+    // signed up from (routes them back after confirming).
+    async signUpWithEmail({ email, password, displayName, kind, slug }) {
+      const v = validateSignupEmail(email, BRAND.accountsDomain);
+      if (!v.ok) {
+        const e = new Error(v.code);
+        e.code = v.code;
+        throw e;
+      }
+      if (!password || password.length < 8) throw new Error('Password must be at least 8 characters.');
+      const name = String(displayName ?? '').trim() || v.email.split('@')[0];
+      const accountKind = kind === 'customer' ? 'customer' : 'owner';
+      const redirectTo = buildSignupRedirectTo({
+        origin: window.location.origin,
+        basePath: import.meta.env?.BASE_URL || '/',
+        kind: accountKind,
+        slug,
+      });
+      const { data, error } = await client.auth.signUp({
+        email: v.email,
+        password,
+        options: {
+          data: { username: name, is_guest: false, account_kind: accountKind },
+          emailRedirectTo: redirectTo,
+        },
+      });
+      if (error) throw authFailure('Sign up failed', error);
+      if (data.session) {
+        await applySession(data.session);
+        if (!cachedUser) throw new Error('Sign up failed: no session was established.');
+        return { status: 'signed-in', user: { ...cachedUser } };
+      }
+      return { status: 'needs-confirmation', email: v.email };
+    },
+
+    // Resend the signup confirmation email. Supabase enforces a 60s
+    // per-user window and hourly project limits (see docs rate limits);
+    // rate rejections surface as the coded 'email-rate-limited' error.
+    async resendConfirmation({ email, kind, slug }) {
+      const v = validateSignupEmail(email, BRAND.accountsDomain);
+      if (!v.ok) {
+        const e = new Error(v.code);
+        e.code = v.code;
+        throw e;
+      }
+      const accountKind = kind === 'customer' ? 'customer' : 'owner';
+      const redirectTo = buildSignupRedirectTo({
+        origin: window.location.origin,
+        basePath: import.meta.env?.BASE_URL || '/',
+        kind: accountKind,
+        slug,
+      });
+      const { error } = await client.auth.resend({
+        type: 'signup',
+        email: v.email,
+        options: { emailRedirectTo: redirectTo },
+      });
+      if (error) {
+        if (error.status === 429 || /rate|too many/i.test(error.message || '')) {
+          const e = new Error('email-rate-limited');
+          e.code = 'email-rate-limited';
+          throw e;
+        }
+        throw new Error(`Could not resend the confirmation email: ${error.message}`);
+      }
     },
 
     async signIn({ email, password }) {
@@ -563,7 +714,16 @@ export function createSupabaseBackend() {
         email: String(email ?? '').trim(),
         password: password ?? '',
       });
-      if (error) throw new Error(`Sign in failed: ${error.message}`);
+      if (error) {
+        // Unconfirmed email: coded so the login screen can say "check your
+        // inbox" instead of the generic wrong-password message.
+        if (error.code === 'email_not_confirmed' || /email not confirmed/i.test(error.message || '')) {
+          const e = authFailure('Sign in failed', error);
+          e.code = 'email-not-confirmed';
+          throw e;
+        }
+        throw authFailure('Sign in failed', error);
+      }
       await applySession(data.session);
       if (!cachedUser) throw new Error('Sign in failed: no session was established.');
       return { user: { ...cachedUser } };
@@ -582,7 +742,7 @@ export function createSupabaseBackend() {
       const { data, error } = await client.auth.signInAnonymously({
         options: { data: { username: `Guest ${tag}`, is_guest: true } },
       });
-      if (error) throw new Error(`Guest sign-in failed: ${error.message}`);
+      if (error) throw authFailure('Guest sign-in failed', error);
       return settleSession(
         { session: data.session, credentials: null },
         'Guest sign-in needs anonymous sign-ins enabled in Supabase Auth settings.'
@@ -627,7 +787,7 @@ export function createSupabaseBackend() {
       const uid = uidOverride || requireUid();
       const { data, error } = await client
         .from('profiles')
-        .select('id, username, role, is_guest, is_paid, is_locked, disabled_until, trial_started_at, trial_ends_at, created_at, account_type, device_store_id, must_change_password, is_master')
+        .select('id, username, role, is_guest, is_paid, is_locked, disabled_until, trial_started_at, trial_ends_at, created_at, account_type, device_store_id, must_change_password, is_master, account_kind')
         .eq('id', uid)
         .maybeSingle();
       if (error) throw new Error(`Loading account status failed: ${error.message}`);
@@ -791,47 +951,151 @@ export function createSupabaseBackend() {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) {
         throw new Error('Enter a valid email address.');
       }
-      const base = import.meta.env?.BASE_URL || '/';
-      const redirectTo = window.location.origin + (base.endsWith('/') ? base : base + '/');
+      // authflow=recovery marks the landing so consumeAuthCallback can tell
+      // a password reset apart from a signup confirmation (both arrive as
+      // ?code=).
+      const redirectTo = appRootUrl({ authflow: 'recovery' });
       const { error } = await client.auth.resetPasswordForEmail(clean, { redirectTo });
       if (error) throw new Error(`Could not send reset email: ${error.message}`);
     },
 
-    // After the user clicks the email reset link, Supabase lands back here.
-    // Newer flow: ?code= (PKCE) — exchange it for a recovery session.
-    // Older flow: #access_token=...&type=recovery — supabase-js picks it up
-    // automatically during getSession(). Either way a "recovery pending"
-    // flag is left so the app shell can force the choose-a-new-password
-    // screen instead of the desktop. Returns true when a recovery session
-    // is now active (or will be once getSession runs).
-    async consumeRecoveryCode() {
-      let url = null;
-      try {
-        url = new URL(window.location.href);
-      } catch {
-        return false;
-      }
-      const code = url.searchParams.get('code');
-      const hash = new URLSearchParams((url.hash || '').replace(/^#/, ''));
-      const isRecoveryHash = hash.get('type') === 'recovery' && !!hash.get('access_token');
-      if (!code && !isRecoveryHash) return false;
-      if (code) {
-        const { data, error } = await client.auth.exchangeCodeForSession(code);
-        if (error) throw new Error(`This reset link is invalid or expired: ${error.message}`);
-        url.searchParams.delete('code');
+    // Auth callback landing (one login, 2026-10-01). Consumes the URL after
+    // an email link brings the user back — signup confirmations AND
+    // password-recovery links both arrive here. Signup links carry
+    // ?authflow=owner|customer (set as emailRedirectTo by signUpWithEmail);
+    // recovery links carry ?authflow=recovery (set by requestPasswordReset);
+    // links sent before this change carry no marker and fall back to the
+    // same-device pending-flow record, then to legacy recovery semantics.
+    //
+    // Returns one of:
+    //   { kind: 'confirmed', flow: { kind: 'owner'|'customer'|null, slug } }
+    //   { kind: 'recovery' }            — force the new-password screen
+    //   { kind: 'error', errorCode }     — e.g. errorCode 'otp_expired'
+    //   { kind: 'none' }                — no callback in this URL
+    //
+    // One-time URL markers (code, authflow, error params) are stripped from
+    // the address bar so a refresh never replays the landing.
+    async consumeAuthCallback() {
+      const parsed = parseAuthCallbackUrl(window.location.href);
+
+      const cleanUrl = () => {
         try {
+          const url = new URL(window.location.href);
+          for (const k of ['code', 'authflow', 'shop', 'error', 'error_code', 'error_description']) {
+            url.searchParams.delete(k);
+          }
+          const hp = new URLSearchParams((url.hash || '').replace(/^#/, ''));
+          for (const k of ['error', 'error_code', 'error_description', 'access_token', 'refresh_token', 'expires_in', 'token_type', 'type']) {
+            hp.delete(k);
+          }
+          const rest = hp.toString();
+          url.hash = rest ? `#${rest}` : '';
           window.history.replaceState(null, '', url.pathname + url.search + url.hash);
         } catch {
           /* non-fatal */
         }
-        if (!data?.session) return false;
+      };
+
+      if (parsed.kind === 'error') {
+        cleanUrl();
+        if (parsed.errorCode === 'otp_expired') {
+          setAuthNotice({ kind: 'expired' });
+        }
+        return parsed;
       }
-      try {
-        localStorage.setItem('driftshop_recovery_pending', '1');
-      } catch {
-        /* non-fatal */
+
+      if (parsed.kind === 'code' || parsed.kind === 'signup-implicit') {
+        // Which flow? The URL's authflow marker wins (it survives
+        // cross-device); the pending record is the same-device fallback.
+        // An explicit authflow=recovery marker always wins over a stale
+        // pending signup record.
+        let authflow = parsed.authflow || null;
+        let urlSlug = null;
+        try {
+          urlSlug = new URL(window.location.href).searchParams.get('shop');
+        } catch {
+          /* non-fatal */
+        }
+        if (authflow !== 'recovery' && !authflow) {
+          const pending = readPendingFlow();
+          if (pending) authflow = pending.kind;
+        }
+        const isSignup =
+          authflow !== 'recovery' &&
+          (authflow === 'owner' ||
+            authflow === 'customer' ||
+            parsed.kind === 'signup-implicit' ||
+            !!readPendingFlow());
+        if (parsed.kind === 'code') {
+          const { data, error } = await client.auth.exchangeCodeForSession(parsed.code);
+          cleanUrl();
+          if (error) {
+            if (isSignup) {
+              if (/expired|invalid/i.test(error.message || '')) {
+                setAuthNotice({ kind: 'expired' });
+              }
+              const e = new Error(`This confirmation link is invalid or expired: ${error.message}`);
+              e.code = 'link-expired';
+              throw e;
+            }
+            throw new Error(`This reset link is invalid or expired: ${error.message}`);
+          }
+          if (!data?.session) return { kind: 'none' };
+        } else {
+          // Implicit flow: supabase-js already turned the hash into a
+          // session during client init.
+          cleanUrl();
+        }
+        if (!isSignup) {
+          // Unmarked ?code= with no signup markers anywhere: legacy
+          // recovery semantics (exactly the pre-change behavior).
+          try {
+            localStorage.setItem('driftshop_recovery_pending', '1');
+          } catch {
+            /* non-fatal */
+          }
+          return { kind: 'recovery' };
+        }
+        let flow = resolveConfirmedFlow(authflow, urlSlug);
+        if (!flow.kind) {
+          // Cross-device confirm with no markers anywhere: the profile's
+          // account_kind (stamped at signup by the DB trigger) answers.
+          try {
+            const { data: sess } = await client.auth.getSession();
+            const uid = sess?.session?.user?.id;
+            if (uid) {
+              const p = await auth.getAccessProfile(uid);
+              if (p?.account_kind === 'owner' || p?.account_kind === 'customer') {
+                flow = { kind: p.account_kind, slug: flow.slug };
+              }
+            }
+          } catch {
+            /* best-effort */
+          }
+        }
+        clearPendingFlow();
+        return { kind: 'confirmed', flow };
       }
-      return true;
+
+      if (parsed.kind === 'recovery-implicit') {
+        cleanUrl();
+        try {
+          localStorage.setItem('driftshop_recovery_pending', '1');
+        } catch {
+          /* non-fatal */
+        }
+        clearPendingFlow();
+        return { kind: 'recovery' };
+      }
+
+      return { kind: 'none' };
+    },
+
+    // Back-compat wrapper: true when a recovery session is now active.
+    // New code should use consumeAuthCallback().
+    async consumeRecoveryCode() {
+      const res = await auth.consumeAuthCallback();
+      return res.kind === 'recovery';
     },
 
     // True when a previous recovery-link landing is still waiting for the
@@ -1109,7 +1373,7 @@ export function createSupabaseBackend() {
       if (bytes > MAX_FILE_BYTES) {
         // Large text: ride the binary upload path (text/plain Blob,
         // is_binary=true) instead of failing — read() decodes it back to
-        // text above, so big files save AND reopen. 500 MB cap still applies.
+        // text above, so big files save AND reopen. 50 MB cap still applies.
         return this.upload(path, new Blob([text], { type: 'text/plain' }));
       }
       const uid = requireUid();
@@ -1153,7 +1417,7 @@ export function createSupabaseBackend() {
       if (!(blob instanceof Blob)) throw new Error('upload() needs a file or blob.');
       if (blob.size > MAX_UPLOAD_BYTES) {
         throw new Error(
-          `File too large (${Math.round(blob.size / 1024 / 1024)} MB) — uploads are limited to 500 MB.`
+          `File too large (${Math.round(blob.size / 1024 / 1024)} MB) — uploads are limited to 50 MB.`
         );
       }
       const uid = requireUid();
@@ -1268,6 +1532,390 @@ export function createSupabaseBackend() {
           .from('vfs_folders')
           .select('id')
           .eq('user_id', uid)
+          .eq('parent_id', newParent.id)
+          .eq('name', newName)
+          .maybeSingle(),
+        'Checking for a name clash'
+      );
+      if (collidingFolder) throw new Error(`A folder named "${newName}" already exists there.`);
+      if (folder) {
+        // refuse to move a folder into itself or one of its descendants:
+        // walk the destination's ancestor chain and compare ids
+        const np = check(
+          await client.from('vfs_folders').select('parent_id').eq('id', newParent.id).single(),
+          'Resolving destination'
+        );
+        let ancestorId = np.parent_id;
+        let guard = 0;
+        while (ancestorId && guard++ < 100) {
+          if (ancestorId === folder.id) throw new Error('Cannot move a folder into itself.');
+          const a = check(
+            await client.from('vfs_folders').select('parent_id').eq('id', ancestorId).single(),
+            'Resolving destination'
+          );
+          ancestorId = a.parent_id;
+        }
+        check(
+          await client
+            .from('vfs_folders')
+            .update({ name: newName, parent_id: newParent.id })
+            .eq('id', folder.id),
+          'Renaming folder'
+        );
+      } else {
+        check(
+          await client
+            .from('vfs_files')
+            .update({ name: newName, folder_id: newParent.id })
+            .eq('id', file.id),
+          'Renaming file'
+        );
+      }
+    },
+  };
+
+  // ---- shop files (migration 066+) ----------------------------------------------
+  // Shop scope is the files namespace with the owner key swapped: rows carry
+  // store_id instead of being matched on user_id, so every member of the
+  // shop sees the same area. Personal rows are untouched — they keep
+  // store_id = NULL and remain visible only to their owner.
+  let vfsShopProbe = null;
+  async function vfsHasShopScope() {
+    if (vfsShopProbe !== null) return vfsShopProbe;
+    try {
+      const res = await client.from('vfs_folders').select('store_id').limit(1);
+      vfsShopProbe = !res.error || !/42703|does not exist/i.test(res.error.message || '');
+    } catch {
+      vfsShopProbe = false;
+    }
+    return vfsShopProbe;
+  }
+  async function requireShopScope() {
+    if (!(await vfsHasShopScope())) {
+      throw new Error(
+        'Shop files need a database update to work. Ask the shop owner to run the latest update, then try again. / ' +
+          'Les fichiers de la boutique nécessitent une mise à jour de la base de données. Demandez au propriétaire de la boutique d\u2019appliquer la dernière mise à jour, puis réessayez.'
+      );
+    }
+  }
+
+  // Lazily created shared root for a store. Race-safe: two members creating
+  // at once converge on one row via the shop-root unique index.
+  async function shopRootFolder(storeId) {
+    await requireShopScope();
+    const first = check(
+      await client
+        .from('vfs_folders')
+        .select('id, name, updated_at')
+        .eq('store_id', storeId)
+        .is('parent_id', null)
+        .maybeSingle(),
+      'Loading the shop folder'
+    );
+    if (first) return first;
+    try {
+      return check(
+        await client
+          .from('vfs_folders')
+          .insert({ user_id: requireUid(), parent_id: null, name: 'shop', store_id: storeId })
+          .select('id, name, updated_at')
+          .single(),
+        'Creating the shop folder'
+      );
+    } catch (err) {
+      if (!/23505|duplicate|unique/i.test(err?.message || '')) throw err;
+      return check(
+        await client
+          .from('vfs_folders')
+          .select('id, name, updated_at')
+          .eq('store_id', storeId)
+          .is('parent_id', null)
+          .maybeSingle(),
+        'Loading the shop folder'
+      );
+    }
+  }
+
+  async function shopResolveFolder(storeId, segments, create) {
+    await requireShopScope();
+    let folder = await shopRootFolder(storeId);
+    for (const seg of segments) {
+      const res = await client
+        .from('vfs_folders')
+        .select('id, name, updated_at')
+        .eq('store_id', storeId)
+        .eq('parent_id', folder.id)
+        .eq('name', seg)
+        .maybeSingle();
+      if (res.error) throw new Error(`Resolving folder "${seg}" failed: ${res.error.message}`);
+      let row = res.data;
+      if (!row) {
+        if (!create) return null;
+        row = check(
+          await client
+            .from('vfs_folders')
+            .insert({ user_id: requireUid(), parent_id: folder.id, name: seg, store_id: storeId })
+            .select('id, name, updated_at')
+            .single(),
+          `Creating folder "${seg}"`
+        );
+      }
+      folder = row;
+    }
+    return folder;
+  }
+
+  async function shopFindFile(storeId, folderId, name) {
+    const res = await client
+      .from('vfs_files')
+      .select('id, name, mime_type, size_bytes, is_binary, storage_path, content_text, updated_at')
+      .eq('store_id', storeId)
+      .eq('folder_id', folderId)
+      .eq('name', name)
+      .maybeSingle();
+    if (res.error) throw new Error(`Looking up file "${name}" failed: ${res.error.message}`);
+    return res.data;
+  }
+
+  const shopFiles = {
+    async list(storeId, path) {
+      const segs = splitPath(path);
+      const folder = await shopResolveFolder(storeId, segs, false);
+      if (!folder) throw new Error(`Folder not found: ${path}`);
+      const subfolders = check(
+        await client
+          .from('vfs_folders')
+          .select('id, name, updated_at')
+          .eq('store_id', storeId)
+          .eq('parent_id', folder.id)
+          .order('name'),
+        'Listing folders'
+      );
+      const subfiles = check(
+        await client
+          .from('vfs_files')
+          .select('id, name, mime_type, size_bytes, updated_at')
+          .eq('store_id', storeId)
+          .eq('folder_id', folder.id)
+          .order('name'),
+        'Listing files'
+      );
+      const base = joinPath(segs);
+      return [
+        ...subfolders.map((f) => toEntry(f, 'folder', `${base}/${f.name}`)),
+        ...subfiles.map((f) => toEntry(f, 'file', `${base}/${f.name}`)),
+      ];
+    },
+
+    async read(storeId, path) {
+      const segs = splitPath(path);
+      if (segs.length === 0) throw new Error('Cannot read the root folder.');
+      const parent = await shopResolveFolder(storeId, segs.slice(0, -1), false);
+      if (!parent) throw new Error(`File not found: ${path}`);
+      const file = await shopFindFile(storeId, parent.id, segs[segs.length - 1]);
+      if (!file) {
+        const maybeFolder = await shopResolveFolder(storeId, segs, false);
+        if (maybeFolder) throw new Error(`${path} is a folder.`);
+        throw new Error(`File not found: ${path}`);
+      }
+      if (file.is_binary) {
+        if (file.mime_type && file.mime_type.startsWith('text/') && file.storage_path) {
+          const { data, error } = await client.storage
+            .from(PIN_FILES_BUCKET)
+            .download(file.storage_path);
+          if (error) throw new Error(`Could not load file: ${error.message}`);
+          return { text: await data.text() };
+        }
+        const err = new Error(`Cannot preview binary file: ${path}`);
+        err.code = 'IS_BINARY';
+        throw err;
+      }
+      return { text: file.content_text ?? '' };
+    },
+
+    async downloadBlob(storeId, path) {
+      const segs = splitPath(path);
+      if (segs.length === 0) throw new Error('Cannot download the root folder.');
+      const parent = await shopResolveFolder(storeId, segs.slice(0, -1), false);
+      if (!parent) throw new Error(`File not found: ${path}`);
+      const file = await shopFindFile(storeId, parent.id, segs[segs.length - 1]);
+      if (!file) throw new Error(`File not found: ${path}`);
+      if (file.storage_path) {
+        const { data, error } = await client.storage.from(PIN_FILES_BUCKET).download(file.storage_path);
+        if (error) throw new Error(`Could not download file: ${error.message}`);
+        return data;
+      }
+      return new Blob([file.content_text ?? ''], { type: file.mime_type || 'text/plain' });
+    },
+
+    async write(storeId, path, text) {
+      if (typeof text !== 'string') throw new Error('write() accepts text only.');
+      const bytes = byteLength(text);
+      if (bytes > MAX_FILE_BYTES) {
+        return this.upload(storeId, path, new Blob([text], { type: 'text/plain' }));
+      }
+      const segs = splitPath(path);
+      if (segs.length === 0) throw new Error('Cannot write to the root folder.');
+      const parent = await shopResolveFolder(storeId, segs.slice(0, -1), true);
+      const name = segs[segs.length - 1];
+      const existing = await shopFindFile(storeId, parent.id, name);
+      if (existing?.storage_path) await removePinFileQuietly(existing.storage_path);
+      const payload = {
+        user_id: requireUid(),
+        store_id: storeId,
+        folder_id: parent.id,
+        name,
+        mime_type: 'text/plain',
+        size_bytes: bytes,
+        is_binary: false,
+        content_text: text,
+        storage_path: null,
+      };
+      let row;
+      if (existing) {
+        row = check(
+          await client.from('vfs_files').update(payload).eq('id', existing.id).select().single(),
+          'Saving file'
+        );
+      } else {
+        row = check(await client.from('vfs_files').insert(payload).select().single(), 'Creating file');
+      }
+      return toEntry(row, 'file', path);
+    },
+
+    // Binary upload for shop scope. Bytes go to the private user-files
+    // bucket under shop/<store-id>/…; the vfs_files row keeps the same
+    // is_binary=true + storage_path shape as personal files.
+    async upload(storeId, path, blob, onProgress) {
+      if (!(blob instanceof Blob)) throw new Error('upload() needs a file or blob.');
+      if (blob.size > MAX_UPLOAD_BYTES) {
+        throw new Error(
+          `File too large (${Math.round(blob.size / 1024 / 1024)} MB) — uploads are limited to 50 MB.`
+        );
+      }
+      const segs = splitPath(path);
+      if (segs.length === 0) throw new Error('Cannot upload to the root folder.');
+      const parent = await shopResolveFolder(storeId, segs.slice(0, -1), true);
+      const name = segs[segs.length - 1];
+      const safe = name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80) || 'file';
+      const storagePath = `shop/${storeId}/${newUuid()}/${safe}`;
+      try {
+        await storageUploadXhrBound({
+          bucket: PIN_FILES_BUCKET,
+          storagePath,
+          blob,
+          upsert: false,
+          onProgress: typeof onProgress === 'function' ? onProgress : null,
+        });
+      } catch (err) {
+        throw new Error(`Uploading file failed: ${err?.message || 'upload failed.'}`);
+      }
+      const existing = await shopFindFile(storeId, parent.id, name);
+      if (existing?.storage_path) await removePinFileQuietly(existing.storage_path);
+      const payload = {
+        user_id: requireUid(),
+        store_id: storeId,
+        folder_id: parent.id,
+        name,
+        mime_type: blob.type || 'application/octet-stream',
+        size_bytes: blob.size,
+        is_binary: true,
+        content_text: null,
+        storage_path: storagePath,
+      };
+      let row;
+      if (existing) {
+        row = check(
+          await client.from('vfs_files').update(payload).eq('id', existing.id).select().single(),
+          'Saving file'
+        );
+      } else {
+        row = check(
+          await client.from('vfs_files').insert(payload).select().single(),
+          'Uploading file'
+        );
+      }
+      return toEntry(row, 'file', path);
+    },
+
+    // Resolve a fresh signed URL for a binary file's bytes.
+    async fileUrl(storeId, path) {
+      const segs = splitPath(path);
+      if (segs.length === 0) throw new Error('Cannot resolve the root folder.');
+      const parent = await shopResolveFolder(storeId, segs.slice(0, -1), false);
+      if (!parent) throw new Error(`File not found: ${path}`);
+      const file = await shopFindFile(storeId, parent.id, segs[segs.length - 1]);
+      if (!file?.storage_path) throw new Error('This file has no downloadable bytes.');
+      const { data, error } = await client.storage
+        .from(PIN_FILES_BUCKET)
+        .createSignedUrl(file.storage_path, 3600);
+      if (error) throw new Error(`Could not load file: ${error.message}`);
+      return { url: data.signedUrl, mime: file.mime_type, name: file.name };
+    },
+
+    // Per-shop storage readout (Admin → Shops): how much the shop's
+    // shared files take up. size_bytes is recorded for every file at
+    // upload (inline text and storage-backed alike), so summing it is
+    // honest without listing a single byte of content. RLS limits the
+    // rows to shop members — a non-member sees an empty sum.
+    async usageBytes(storeId) {
+      const rows = check(
+        await client.from('vfs_files').select('size_bytes').eq('store_id', storeId),
+        'Measuring shop files'
+      );
+      let bytes = 0;
+      for (const r of rows) bytes += Number(r.size_bytes) || 0;
+      return { bytes, files: rows.length };
+    },
+
+    async mkdir(storeId, path) {
+      const segs = splitPath(path);
+      if (segs.length === 0) return toEntry(await shopRootFolder(storeId), 'folder', '/');
+      const folder = await shopResolveFolder(storeId, segs, true);
+      return toEntry(folder, 'folder', path);
+    },
+
+    async remove(storeId, path) {
+      const segs = splitPath(path);
+      if (segs.length === 0) throw new Error('Cannot remove the root folder.');
+      const parent = await shopResolveFolder(storeId, segs.slice(0, -1), false);
+      if (!parent) throw new Error(`Nothing found at ${path}.`);
+      const name = segs[segs.length - 1];
+      const file = await shopFindFile(storeId, parent.id, name);
+      if (file) {
+        check(await client.from('vfs_files').delete().eq('id', file.id), 'Deleting file');
+        if (file.storage_path) await removePinFileQuietly(file.storage_path);
+        return;
+      }
+      const folder = await shopResolveFolder(storeId, segs, false);
+      if (!folder) throw new Error(`Nothing found at ${path}.`);
+      // cascade deletes children server-side
+      check(await client.from('vfs_folders').delete().eq('id', folder.id), 'Deleting folder');
+    },
+
+    async rename(storeId, oldPath, newPath) {
+      const oldSegs = splitPath(oldPath);
+      const newSegs = splitPath(newPath);
+      if (oldSegs.length === 0 || newSegs.length === 0) {
+        throw new Error('Cannot rename the root folder.');
+      }
+      if (oldPath === newPath) return;
+      const oldParent = await shopResolveFolder(storeId, oldSegs.slice(0, -1), false);
+      if (!oldParent) throw new Error(`Nothing found at ${oldPath}.`);
+      const oldName = oldSegs[oldSegs.length - 1];
+      const file = await shopFindFile(storeId, oldParent.id, oldName);
+      const folder = file ? null : await shopResolveFolder(storeId, oldSegs, false);
+      if (!file && !folder) throw new Error(`Nothing found at ${oldPath}.`);
+      const newParent = await shopResolveFolder(storeId, newSegs.slice(0, -1), true);
+      const newName = newSegs[newSegs.length - 1];
+      if (await shopFindFile(storeId, newParent.id, newName)) {
+        throw new Error(`A file named "${newName}" already exists there.`);
+      }
+      const collidingFolder = check(
+        await client
+          .from('vfs_folders')
+          .select('id')
+          .eq('store_id', storeId)
           .eq('parent_id', newParent.id)
           .eq('name', newName)
           .maybeSingle(),
@@ -1906,7 +2554,7 @@ export function createSupabaseBackend() {
   };
 
   // ---- pos: multi-user point of sale ----------------------------------------------
-  // Stores are shared across Drift users: pos_stores + pos_store_members
+  // Stores are shared across Vendra users: pos_stores + pos_store_members
   // (roles owner/manager/cashier), pos_products, pos_sales (per-store
   // sequential numbers assigned by a DB trigger), pos_invites (join codes).
   const mapPosStore = (r) => ({
@@ -1915,6 +2563,10 @@ export function createSupabaseBackend() {
     currency: r.currency ?? '$',
     taxRate: Number(r.tax_rate ?? 0),
     taxRates: Array.isArray(r.tax_rates) ? r.tax_rates : [],
+    // migration 067: chosen business-type preset; null both when
+    // never chosen and on pre-migration databases (capabilities() tells
+    // the two apart via the posHasBusinessPreset probe).
+    businessPreset: r.business_preset ?? null,
     createdAt: r.created_at,
   });
 
@@ -1980,6 +2632,12 @@ export function createSupabaseBackend() {
     adjustments: Array.isArray(r.tender_adjustments) ? r.tender_adjustments : [],
     loyaltyEarned: Number(r.loyalty_earned ?? 0),
     loyaltyRedeemed: Number(r.loyalty_redeemed_points ?? 0),
+    // migration 064: sales channel. 'register' = till sale, 'fair' = book
+    // fair sale (see bouquinerie.recordFairSale). fairName is the fair's
+    // name snapshotted at sale time (historical truth, like orgName).
+    channel: r.channel === 'fair' ? 'fair' : 'register',
+    fairId: r.fair_id ?? null,
+    fairName: r.fair_name ?? null,
   });
 
   // SHA-256 hex for staff PINs (PINs are never stored or sent in the clear).
@@ -2002,6 +2660,39 @@ export function createSupabaseBackend() {
       posV4 = false;
     }
     return posV4;
+  }
+
+  // Salted-PIN capability probe (migration 069, phase 1): when the
+  // pin_kdf column exists, PIN sets also write a bcrypt hash via
+  // pos_staff_set_pin and logins go through pos_staff_login2. Databases
+  // without the migration keep the exact legacy SHA-256 behavior.
+  let posPinKdf = null;
+  async function posHasPinKdf() {
+    if (posPinKdf !== null) return posPinKdf;
+    try {
+      const res = await client.from('pos_staff').select('pin_kdf').limit(1);
+      posPinKdf = !res.error || !/42703|does not exist/i.test(res.error.message || '');
+    } catch {
+      posPinKdf = false;
+    }
+    return posPinKdf;
+  }
+
+  // Draft migration 070 capability probe: pos_stores.business_preset
+  // records which universal business-type preset a shop runs. Older
+  // databases simply don't have it — the preset then applies layout-only
+  // and Admin says the database update is due. (Coordinator: if the
+  // final migration number differs from 070, update this comment.)
+  let posPreset = null;
+  async function posHasBusinessPreset() {
+    if (posPreset !== null) return posPreset;
+    try {
+      const res = await client.from('pos_stores').select('business_preset').limit(1);
+      posPreset = !res.error || !/42703|PGRST204|does not exist|Could not find/i.test(res.error.message || '');
+    } catch {
+      posPreset = false;
+    }
+    return posPreset;
   }
 
   // Migration 021 capability probe: pos_sales.tax_lines holds the exact tax
@@ -2079,6 +2770,21 @@ export function createSupabaseBackend() {
     return posSaleIdemCol;
   }
 
+  // Migration 064 capability probe: pos_sales.channel / fair_id / fair_name.
+  // When true, fair sales are written into the ledger; when false, the
+  // bouquinerie falls back to the legacy bq_fair_sales-only bookkeeping.
+  let posSaleChannel = null;
+  async function posHasSaleChannel() {
+    if (posSaleChannel !== null) return posSaleChannel;
+    try {
+      const res = await client.from('pos_sales').select('channel').limit(1);
+      posSaleChannel = !res.error || !/42703|does not exist/i.test(res.error.message || '');
+    } catch {
+      posSaleChannel = false;
+    }
+    return posSaleChannel;
+  }
+
   // Migration 027 capability probe: pos_community_hours table.
   let posCommunity = null;  async function posHasCommunity() {
     if (posCommunity !== null) return posCommunity;
@@ -2104,6 +2810,38 @@ export function createSupabaseBackend() {
       posGiftCards = false;
     }
     return posGiftCards;
+  }
+
+  // Migration 072 capability probes (refund/break history import RPCs),
+  // same pattern as posHasBackupImport: call with an empty payload — a
+  // missing function errors, a gate answer means the function exists.
+  let posRefundHistoryImport = null;
+  async function posHasRefundHistoryImport() {
+    if (posRefundHistoryImport !== null) return posRefundHistoryImport;
+    try {
+      const res = await client.rpc('pos_refund_history_import', {
+        p_store_id: '00000000-0000-0000-0000-000000000000',
+        p_refunds: [],
+      });
+      posRefundHistoryImport = !res.error || /not a member|managers only|only managers/i.test(res.error.message || '');
+    } catch {
+      posRefundHistoryImport = false;
+    }
+    return posRefundHistoryImport;
+  }
+  let posBreakHistoryImport = null;
+  async function posHasBreakHistoryImport() {
+    if (posBreakHistoryImport !== null) return posBreakHistoryImport;
+    try {
+      const res = await client.rpc('pos_break_history_import', {
+        p_store_id: '00000000-0000-0000-0000-000000000000',
+        p_breaks: [],
+      });
+      posBreakHistoryImport = !res.error || /not a member|managers only|only managers/i.test(res.error.message || '');
+    } catch {
+      posBreakHistoryImport = false;
+    }
+    return posBreakHistoryImport;
   }
 
   // Migration 034 capability probe: pos_refunds table. When true, the
@@ -2151,19 +2889,69 @@ export function createSupabaseBackend() {
     return posV26;
   }
 
+  // Migration 075 capability probe: pos_apply_sale_stock_once applies
+  // stock exactly once per idempotency key (M-1 fix).
+  let posStockOnce = null;
+  async function posHasStockOnce() {
+    if (posStockOnce !== null) return posStockOnce;
+    try {
+      const { error } = await client.rpc('pos_apply_sale_stock_once', {
+        p_store_id: '00000000-0000-0000-0000-000000000000',
+        p_lines: [],
+        p_idempotency_key: 'probe',
+      });
+      const msg = `${error?.code || ''} ${error?.message || ''}`;
+      posStockOnce = !error || !/42883|does not exist/i.test(msg);
+    } catch {
+      posStockOnce = false;
+    }
+    return posStockOnce;
+  }
+
+  // Migration 071: customer accounts + online ordering RPCs.
+  let posOnlineOrders = null;
+  async function posHasOnlineOrders() {
+    if (posOnlineOrders !== null) return posOnlineOrders;
+    try {
+      const { error } = await client.rpc('online_orders_inbox', {
+        p_store_id: '00000000-0000-0000-0000-000000000000',
+      });
+      // The zero UUID is never a real store, so reaching the RPC's own
+      // authorization errors proves the function exists; a missing
+      // function (42883) means the migration is not applied.
+      const msg = `${error?.code || ''} ${error?.message || ''}`;
+      posOnlineOrders =
+        !error ||
+        /ONLINE_NEEDS_SIGNIN|ONLINE_FORBIDDEN|not a member/i.test(msg);
+    } catch {
+      posOnlineOrders = false;
+    }
+    return posOnlineOrders;
+  }
+
   const POS_INVITE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
   // Column allowlists for account-backup import: rows are picked down to
   // known columns so a backup from a newer/older schema (or another
   // backend's shape) can never inject unknown columns into an insert.
   const POS_IMPORT_COLUMNS = {
     pos_products: ['id', 'store_id', 'name', 'sku', 'price_cents', 'category', 'active', 'public_visible', 'cost_cents', 'track_stock', 'stock', 'low_stock_threshold', 'image_url', 'variants', 'created_at'],
-    pos_sales: ['id', 'store_id', 'number', 'items', 'subtotal_cents', 'discount_cents', 'tax_cents', 'total_cents', 'method', 'tendered_cents', 'change_cents', 'created_by', 'created_at', 'voided', 'voided_at', 'voided_by', 'tax_lines', 'org_id', 'org_name', 'org_type', 'org_tax_exempt'],
+    pos_sales: ['id', 'store_id', 'number', 'items', 'subtotal_cents', 'discount_cents', 'tax_cents', 'total_cents', 'method', 'tendered_cents', 'change_cents', 'created_by', 'created_at', 'voided', 'voided_at', 'voided_by', 'tax_lines', 'org_id', 'org_name', 'org_type', 'org_tax_exempt', 'channel', 'fair_id', 'fair_name'],
     pos_customers: ['id', 'store_id', 'name', 'phone', 'email', 'notes', 'created_at'],
     pos_staff: ['id', 'store_id', 'name', 'pin_hash', 'role', 'active', 'created_at'],
     pos_appointments: ['id', 'store_id', 'customer_id', 'staff_id', 'title', 'notes', 'starts_at', 'ends_at', 'status', 'created_by', 'created_at', 'updated_at'],
     pos_drawer_shifts: ['id', 'store_id', 'opened_by', 'opened_by_name', 'opened_at', 'open_amount_cents', 'closed_at', 'closed_by', 'close_amount_cents', 'expected_cents', 'note'],
     pos_orgs: ['id', 'store_id', 'name', 'type', 'contact', 'tax_exempt', 'notes', 'created_at', 'updated_at'],
     pos_community_hours: ['id', 'store_id', 'person_name', 'staff_id', 'org_id', 'service_date', 'minutes', 'notes', 'recorded_by', 'created_at'],
+    // Time-clock HR (migration 031). staff_id references are resolved by
+    // insert order (staff is imported above) — a row pointing at staff
+    // that did not survive the import fails its FK and is skipped by the
+    // row-by-row fallback, never fatal.
+    pos_shifts: ['id', 'store_id', 'staff_id', 'ymd', 'start', 'end', 'note', 'created_at'],
+    pos_time_off: ['id', 'store_id', 'staff_id', 'kind', 'from_date', 'to_date', 'reason', 'status', 'decided_by', 'decided_at', 'created_at'],
+    pos_pay_periods: ['id', 'store_id', 'from_date', 'to_date', 'status', 'approved_by', 'approved_at', 'created_at'],
+    // pos_punch_settings (PK is store_id, no id column) and
+    // storefront_profiles (upsert by store_id) are handled by dedicated
+    // steps in importStore — not by the generic id-keyed sanitizer.
     // Gift cards restore through the manager-only pos_giftcard_import RPC
     // (no direct-write RLS exists by design); columns listed here so the
     // generic sanitizer still normalizes rows before the RPC call.
@@ -2175,8 +2963,8 @@ export function createSupabaseBackend() {
     bq_items: ['id', 'store_id', 'owner_id', 'kind', 'title', 'author', 'isbn', 'category', 'is_new', 'condition', 'qty', 'price', 'shelf', 'source', 'status', 'abe_ref', 'abe_status', 'notes', 'created_at', 'updated_at'],
     bq_donations: ['id', 'store_id', 'owner_id', 'donor_name', 'received_at', 'item_count', 'state', 'notes', 'created_at'],
     bq_fairs: ['id', 'store_id', 'owner_id', 'name', 'fair_date', 'beneficiary', 'notes', 'created_at'],
-    bq_fair_sales: ['id', 'store_id', 'fair_id', 'item_id', 'title', 'qty', 'unit_price', 'sold_at'],
-    bq_special_orders: ['id', 'store_id', 'owner_id', 'customer_name', 'customer_phone', 'title', 'author', 'notes', 'status', 'created_at', 'updated_at'],
+    bq_fair_sales: ['id', 'store_id', 'fair_id', 'item_id', 'title', 'qty', 'unit_price', 'sold_at', 'sale_id'],
+    bq_special_orders: ['id', 'store_id', 'owner_id', 'customer_name', 'customer_phone', 'title', 'author', 'notes', 'status', 'created_at', 'updated_at', 'customer_id'],
     // bq_donation_items is a junction table (donation_id, item_id) with no
     // id/store_id — handled specially in importStore step 3b, not here.
   };
@@ -2291,6 +3079,39 @@ export function createSupabaseBackend() {
   // The clock RPCs raise plain-English errors ('invalid PIN',
   // 'already punched in', 'not punched in', 'managers only', …) — pass them
   // through instead of wrapping them in a generic message.
+  // Migration 068 capability probe: storefront_profiles carries
+  // the web-service link columns (Facebook, WhatsApp, review link...).
+  // Until it is applied, the admin form keeps the fields disabled and the
+  // save omits them — the rest of the profile keeps working exactly as
+  // on a 063 database.
+  let sfLinks = null;
+  async function storefrontHasLinks() {
+    if (sfLinks !== null) return sfLinks;
+    try {
+      const res = await client.from('storefront_profiles').select('facebook_url').limit(1);
+      sfLinks = !res.error || !/42703|PGRST204|does not exist/i.test(res.error.message || '');
+    } catch {
+      sfLinks = false;
+    }
+    return sfLinks;
+  }
+
+  // Migration 074 capability probe: the custom_domains table
+  // (per-shop own-domain names). Until it is applied, the admin form
+  // shows its "turns on after a small system update" note and never
+  // fires a doomed query — the storefront itself keeps working.
+  let sfDomains = null;
+  async function customDomainsExist() {
+    if (sfDomains !== null) return sfDomains;
+    try {
+      const res = await client.from('custom_domains').select('hostname').limit(1);
+      sfDomains = !res.error || !/42P01|PGRST205|does not exist/i.test(res.error.message || '');
+    } catch {
+      sfDomains = false;
+    }
+    return sfDomains;
+  }
+
   function mapClockError(msg) {
     const m = String(msg || '');
     const short = m.replace(/^.*:\s*/, '').trim();
@@ -2319,15 +3140,18 @@ export function createSupabaseBackend() {
     // (variants, inventory, customers, staff PINs, drawer, stacked taxes,
     // 'other' tender) until the migration has been applied.
     async capabilities() {
-      return { v4: await posHasV4(), appointments: await posHasAppts(), timeClock: await posHasClock(), backupImport: await posHasBackupImport(), giftCards: await posHasGiftCards(), refunds: await posHasRefunds(), orgs: await posHasOrgs() };
+      return { v4: await posHasV4(), appointments: await posHasAppts(), timeClock: await posHasClock(), backupImport: await posHasBackupImport(), giftCards: await posHasGiftCards(), refunds: await posHasRefunds(), orgs: await posHasOrgs(), businessPreset: await posHasBusinessPreset(), onlineOrders: await posHasOnlineOrders() };
     },
 
     async listStores() {
       const uid = requireUid();
       const v4 = await posHasV4();
-      const storeCols = v4
-        ? 'id, name, currency, tax_rate, tax_rates, created_at'
-        : 'id, name, currency, tax_rate, created_at';
+      const hasPreset = await posHasBusinessPreset();
+      const storeCols =
+        (v4
+          ? 'id, name, currency, tax_rate, tax_rates, created_at'
+          : 'id, name, currency, tax_rate, created_at') +
+        (hasPreset ? ', business_preset' : '');
       const rows = check(
         await client
           .from('pos_store_members')
@@ -2407,13 +3231,22 @@ export function createSupabaseBackend() {
           }))
           .filter((t) => t.rate > 0);
       }
+      if (patch.businessPreset !== undefined && (await posHasBusinessPreset())) {
+        // validated against the known preset ids; anything else clears
+        // back to "never chosen" rather than storing junk on the row.
+        clean.business_preset = isBusinessPreset(patch.businessPreset) ? patch.businessPreset : null;
+      }
       const v4 = await posHasV4();
+      const hasPreset = await posHasBusinessPreset();
       const row = check(
         await client
           .from('pos_stores')
           .update(clean)
           .eq('id', storeId)
-          .select(v4 ? 'id, name, currency, tax_rate, tax_rates, created_at' : 'id, name, currency, tax_rate, created_at')
+          .select(
+            (v4 ? 'id, name, currency, tax_rate, tax_rates, created_at' : 'id, name, currency, tax_rate, created_at') +
+              (hasPreset ? ', business_preset' : '')
+          )
           .single(),
         'Saving store settings'
       );
@@ -2672,6 +3505,12 @@ export function createSupabaseBackend() {
       return rows[0] || null;
     },
 
+    // Migration 068: does the storefront link/address column set
+    // exist yet? The admin form disables its link fields while it doesn't.
+    async storefrontLinksReady() {
+      return storefrontHasLinks();
+    },
+
     async saveStorefrontProfile(storeId, p) {
       const clean = {
         store_id: storeId,
@@ -2686,6 +3525,18 @@ export function createSupabaseBackend() {
         published: !!p.published,
         show_prices: p.showPrices !== false,
       };
+      // Web-service link columns (071, draft). Omitted entirely until the
+      // columns exist, so a 063 database keeps saving exactly as before;
+      // values that do not validate are stored as null, never as a bad link.
+      if (await storefrontHasLinks()) {
+        Object.assign(clean, cleanLinkFields(p));
+      }
+      // Online-ordering columns (migration 071). Omitted until the columns
+      // exist, so pre-073 databases keep saving exactly as before.
+      if (await posHasOnlineOrders()) {
+        clean.online_ordering = !!p.onlineOrdering;
+        clean.ordering_note = String(p.orderingNote ?? '').trim() || null;
+      }
       if (!/^[a-z0-9][a-z0-9-]{0,62}$/.test(clean.slug)) {
         throw new Error(
           'Storefront address must use lowercase letters, numbers and dashes only.'
@@ -2714,6 +3565,160 @@ export function createSupabaseBackend() {
         'Updating product visibility'
       );
       return mapPosProduct(row);
+    },
+
+    // ---- Per-shop own domains (migration 074) ----
+    // A shop that bought its own domain name points a CNAME at us and
+    // registers the name here; public_storefront_by_host() then serves
+    // its published storefront on that hostname. RLS does the policing
+    // (owner/manager writes); this layer normalizes and explains.
+
+    async customDomainsReady() {
+      return customDomainsExist();
+    },
+
+    async listCustomDomains(storeId) {
+      const rows = check(
+        await client
+          .from('custom_domains')
+          .select('hostname, verified_at, verification_token, verification_txt_name, created_at')
+          .eq('store_id', storeId)
+          .order('created_at', { ascending: true }),
+        'Loading your domain names'
+      );
+      return (rows || []).map((r) => ({
+        hostname: r.hostname,
+        verifiedAt: r.verified_at || null,
+        txtName: r.verification_txt_name || `_vendra-verify.${r.hostname}`,
+        txtValue: r.verification_token ? `vendra-verify=${r.verification_token}` : '',
+        createdAt: r.created_at || null,
+      }));
+    },
+
+    // Claim a hostname (migration 074): the server hands out the DNS
+    // TXT record that proves this shop controls the domain. The shop
+    // is NOT live on the name until confirmCustomDomain() sees it.
+    async addCustomDomain(storeId, rawHostname) {
+      const hostname = normalizeDomainInput(rawHostname);
+      if (!isValidHostname(hostname)) {
+        throw new Error('DOMAIN_INVALID');
+      }
+      const { data, error } = await client.rpc('custom_domain_claim', {
+        p_store_id: storeId,
+        p_hostname: hostname,
+      });
+      if (error) {
+        if (/DOMAIN_TAKEN/i.test(error.message || '')) throw new Error('DOMAIN_TAKEN');
+        if (/DOMAIN_INVALID/i.test(error.message || '')) throw new Error('DOMAIN_INVALID');
+        throw new Error(`Connecting the domain failed: ${error.message}`);
+      }
+      return {
+        hostname: data.hostname,
+        verifiedAt: data.verified_at || null,
+        txtName: data.txt_name,
+        txtValue: data.txt_value,
+        createdAt: null,
+      };
+    },
+
+    // Verify a claimed hostname: look up the TXT record over DNS-over-
+    // HTTPS (the browser has internet; SQL does not) and, if it matches
+    // the shop's secret token, ask the server to stamp it verified.
+    // Resolves true once verified; false while DNS has not caught up.
+    async confirmCustomDomain(storeId, domain) {
+      const txtName = domain.txtName || `_vendra-verify.${domain.hostname}`;
+      const res = await fetch(
+        `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(txtName)}&type=TXT`,
+        { headers: { Accept: 'application/dns-json' } }
+      );
+      if (!res.ok) throw new Error('DNS_LOOKUP_FAILED');
+      const body = await res.json().catch(() => null);
+      const answers = (body && Array.isArray(body.Answer)) ? body.Answer : [];
+      const seen = answers
+        .map((a) => String(a.data || '').replace(/^"|"$/g, '').replace(/"\s*"/g, ''))
+        .find((v) => v === domain.txtValue);
+      if (!seen) return false;
+      const { data, error } = await client.rpc('custom_domain_confirm', {
+        p_store_id: storeId,
+        p_hostname: domain.hostname,
+        p_txt_value: seen,
+      });
+      if (error) throw new Error(error.message || 'DOMAIN_CONFIRM_FAILED');
+      return !!(data && data.verified);
+    },
+
+    async removeCustomDomain(storeId, hostname) {
+      check(
+        await client
+          .from('custom_domains')
+          .delete()
+          .eq('store_id', storeId)
+          .eq('hostname', hostname),
+        'Removing the domain name'
+      );
+    },
+
+    // ---- online ordering (migration 071) ----
+    // Customer orders placed on the published storefront. Shop staff see
+    // the inbox in the POS; every write goes through the validated RPCs
+    // (status transitions, idempotent convert-to-sale) — the tables have
+    // no direct-write RLS policies at all.
+    async onlineOrdersReady() {
+      return posHasOnlineOrders();
+    },
+
+    // Open orders: received / preparing / ready, newest first.
+    async listOnlineOrders(storeId) {
+      const { data, error } = await client.rpc('online_orders_inbox', {
+        p_store_id: storeId,
+      });
+      if (error) throw new Error(error.message);
+      return Array.isArray(data) ? data : [];
+    },
+
+    // Finished orders: done / cancelled, newest first.
+    async archiveOnlineOrders(storeId, limit = 50) {
+      const { data, error } = await client.rpc('online_orders_archive', {
+        p_store_id: storeId,
+        p_limit: limit,
+      });
+      if (error) throw new Error(error.message);
+      return Array.isArray(data) ? data : [];
+    },
+
+    // Number of brand-new ('received') orders — the inbox badge.
+    async countNewOnlineOrders(storeId) {
+      const res = await client
+        .from('online_orders')
+        .select('id', { count: 'exact', head: true })
+        .eq('store_id', storeId)
+        .eq('status', 'received');
+      if (res.error) return 0;
+      return res.count ?? 0;
+    },
+
+    async setOnlineOrderStatus(orderId, status) {
+      const { data, error } = await client.rpc('online_order_set_status', {
+        p_order_id: orderId,
+        p_status: status,
+      });
+      if (error) throw new Error(error.message);
+      return data;
+    },
+
+    // Record the pickup as a real till sale (channel 'online') and mark
+    // the order done — one atomic RPC. Returns { sale_id, sale_number,
+    // order_number, stock: [...] } where stock may carry oversold flags
+    // for lines that went below zero (floored at 0 by the till's stock
+    // function).
+    async convertOnlineOrder(orderId, { method, tenderedCents }) {
+      const { data, error } = await client.rpc('online_order_convert', {
+        p_order_id: orderId,
+        p_method: method,
+        p_tendered_cents: tenderedCents == null ? null : Math.round(tenderedCents),
+      });
+      if (error) throw new Error(error.message);
+      return data;
     },
 
     async listSales(storeId, { limit = 200 } = {}) {
@@ -2849,6 +3854,16 @@ export function createSupabaseBackend() {
         payload.loyalty_earned = Math.max(0, Math.round(Number(sale.loyaltyEarned) || 0));
         payload.loyalty_redeemed_points = Math.max(0, Math.round(Number(sale.loyaltyRedeemed) || 0));
       }
+      // Sales channel (migration 064): fair sales are first-class ledger
+      // rows marked channel='fair' with the fair snapshot, so History,
+      // Reports and refunds treat them like any other sale. Register sales
+      // simply don't pass these fields.
+      if (await posHasSaleChannel()) {
+        payload.channel = sale.channel === 'fair' ? 'fair' : 'register';
+        payload.fair_id = sale.fairId ?? null;
+        payload.fair_name = sale.fairName ? String(sale.fairName).slice(0, 120) : null;
+      }
+      let replayed = false;
       const row = await (async () => {
         try {
           return check(
@@ -2872,7 +3887,10 @@ export function createSupabaseBackend() {
               .eq('store_id', storeId)
               .eq('idempotency_key', idemKey)
               .maybeSingle();
-            if (!error && data) return data;
+            if (!error && data) {
+              replayed = true;
+              return data;
+            }
           }
           throw err;
         }
@@ -2880,10 +3898,14 @@ export function createSupabaseBackend() {
       // Decrement tracked stock atomically (migration 026). Best-effort: a
       // stock failure must not lose the sale record itself — but oversold
       // lines are returned so the caller can warn instead of guessing.
+      // M-1 (nuclear QA): on an idempotent REPLAY the stock was already
+      // applied by the first attempt — never apply it twice. When the
+      // server has migration 075, the idempotency key is also passed so
+      // the database enforces exactly-once even across lost responses.
       let stockResult = { results: [] };
-      if (v4 && Array.isArray(sale.items)) {
+      if (v4 && Array.isArray(sale.items) && !replayed) {
         try {
-          stockResult = await this.applySaleStock(storeId, sale.items);
+          stockResult = await this.applySaleStock(storeId, sale.items, idemKey);
         } catch (err) {
           console.error('[drift] stock decrement failed:', err);
         }
@@ -2901,7 +3923,7 @@ export function createSupabaseBackend() {
     // decrement. Returns { results: [{ key, name, stock, oversold, error? }] }
     // — oversold lines are reported so the UI can warn, never silent.
     // Falls back to the legacy client read-then-write on pre-026 servers.
-    async applySaleStock(storeId, lines) {
+    async applySaleStock(storeId, lines, idempotencyKey = null) {
       const v26 = await posHasV26();
       const clean = (lines || [])
         .map((l) => ({
@@ -2913,6 +3935,17 @@ export function createSupabaseBackend() {
         .filter((l) => (l.product_id || l.bq_item_id) && l.qty > 0);
       if (clean.length === 0) return { results: [] };
       if (v26) {
+        // Migration 075: keyed stock application is exactly-once. Older
+        // servers (or keyless calls) keep the 026 path unchanged.
+        if (idempotencyKey && (await posHasStockOnce())) {
+          const { data, error } = await client.rpc('pos_apply_sale_stock_once', {
+            p_store_id: storeId,
+            p_lines: clean,
+            p_idempotency_key: String(idempotencyKey).slice(0, 128),
+          });
+          if (error) throw new Error(`Updating stock failed: ${error.message}`);
+          return data || { results: [] };
+        }
         const { data, error } = await client.rpc('pos_apply_sale_stock', {
           p_store_id: storeId,
           p_lines: clean,
@@ -3441,6 +4474,26 @@ export function createSupabaseBackend() {
       } catch (err) {
         throw friendlyPosError(err, 'save staff');
       }
+      if (staff.pin && (await posHasPinKdf())) {
+        // Salted-KDF upgrade (migration 069, phase 1): the row just
+        // saved carries the legacy pin_hash, so the punch RPCs keep
+        // working no matter what; this RPC adds the bcrypt hash
+        // server-side (and rewrites pin_hash from the same PIN, so the
+        // two can never diverge). Best-effort on purpose: if the RPC
+        // fails, the legacy hash the save already wrote is fully valid —
+        // the PIN simply upgrades on the next save instead.
+        try {
+          check(
+            await client.rpc('pos_staff_set_pin', {
+              p_staff_id: row.id,
+              p_pin: String(staff.pin),
+            }),
+            'Setting staff PIN'
+          );
+        } catch (err) {
+          console.warn('salted PIN write failed (legacy hash still active):', err?.message || err);
+        }
+      }
       return { id: row.id, name: row.name, role: row.role, active: !!row.active, createdAt: row.created_at };
     },
 
@@ -3463,10 +4516,23 @@ export function createSupabaseBackend() {
       const pinHash = await sha256hex(pin);
       let rows;
       try {
-        rows = check(
-          await client.rpc('pos_staff_login', { p_store_id: storeId, p_pin_hash: pinHash }),
-          'Staff sign-in'
-        );
+        // Salted-KDF login (migration 069, phase 1): the server
+        // bcrypt-verifies the PIN (and backfills legacy rows). The
+        // credential we keep for punching stays the locally computed
+        // SHA-256 — phase 1 leaves every punch RPC untouched. Without
+        // the migration, the exact legacy path runs.
+        rows = (await posHasPinKdf())
+          ? check(
+              await client.rpc('pos_staff_login2', {
+                p_store_id: storeId,
+                p_pin: String(pin),
+              }),
+              'Staff sign-in'
+            )
+          : check(
+              await client.rpc('pos_staff_login', { p_store_id: storeId, p_pin_hash: pinHash }),
+              'Staff sign-in'
+            );
       } catch (err) {
         if (/too many PIN attempts/i.test(err.message)) throw new Error('PIN_THROTTLED');
         if (/invalid PIN|not a member|sign in/i.test(err.message)) throw new Error('Invalid PIN.');
@@ -4224,6 +5290,14 @@ export function createSupabaseBackend() {
         'pos_products', 'pos_sales', 'pos_customers', 'pos_staff',
         'pos_time_punches', 'pos_punch_audits', 'pos_appointments', 'pos_drawer_shifts',
         'pos_orgs', 'pos_community_hours', 'pos_gift_cards', 'pos_gift_card_events',
+        // Refund history (migration 034) is business data too: without
+        // these rows a restored shop's books no longer reconcile.
+        'pos_refunds',
+        // Time-clock HR (migration 031): scheduled shifts, time off, pay
+        // periods, punch settings, break segments.
+        'pos_shifts', 'pos_time_off', 'pos_pay_periods', 'pos_punch_settings', 'pos_breaks',
+        // The shop's public storefront page (migration 063).
+        'storefront_profiles',
         'bq_items', 'bq_donations', 'bq_donation_items', 'bq_fairs', 'bq_fair_sales', 'bq_special_orders',
       ];
       for (const t of tables) {
@@ -4536,6 +5610,114 @@ export function createSupabaseBackend() {
           }
         }
       }
+
+      // 6. Refund history via the master/manager RPC (migration 072):
+      // pos_refunds has no direct-write RLS by design, and replaying
+      // refunds through pos_refund_sale() would re-execute them (new
+      // gift cards, wrong restock). Runs after sales AND gift cards so
+      // both references resolve. Rows are the BACKUP's raw rows (not the
+      // generic sanitizer's output — the table is not in
+      // POS_IMPORT_COLUMNS); the RPC validates sale/card existence itself.
+      const rawRefunds = Array.isArray(tables.pos_refunds) ? tables.pos_refunds : [];
+      if (rawRefunds.length) {
+        if (!(await posHasRefundHistoryImport())) {
+          report.errors.refunds =
+            'Refund records are in this backup but could not be put back yet: the shop copy needs the latest update (refund restore). Everything else restored normally. / ' +
+            'Les remboursements sont dans la sauvegarde mais ne peuvent pas encore être remis : cette copie du magasin a besoin de la dernière mise à jour. Tout le reste a été restauré normalement.';
+        } else {
+          try {
+            const { data, error } = await client.rpc('pos_refund_history_import', {
+              p_store_id: storeId,
+              p_refunds: rawRefunds.map((r) => snakeRow(r)),
+            });
+            if (error) throw error;
+            bump('pos_refunds', data?.inserted ?? 0, 'inserted');
+            bump('pos_refunds', data?.skipped ?? 0, 'skipped');
+          } catch (err) {
+            report.errors.refunds = err?.message || String(err);
+          }
+        }
+      }
+
+      // 7. Break history via the master/manager RPC (migration 072):
+      // pos_breaks writes are PIN-verified RPCs in live use, so history
+      // restore has its own path. Runs after staff AND punches.
+      const rawBreaks = Array.isArray(tables.pos_breaks) ? tables.pos_breaks : [];
+      if (rawBreaks.length) {
+        if (!(await posHasBreakHistoryImport())) {
+          report.errors.breaks =
+            'Time-clock break records are in this backup but could not be put back yet: the shop copy needs the latest update (break restore). Everything else restored normally. / ' +
+            'Les pauses de l’horodateur sont dans la sauvegarde mais ne peuvent pas encore être remises : cette copie du magasin a besoin de la dernière mise à jour. Tout le reste a été restauré normalement.';
+        } else {
+          try {
+            const { data, error } = await client.rpc('pos_break_history_import', {
+              p_store_id: storeId,
+              p_breaks: rawBreaks.map((r) => snakeRow(r)),
+            });
+            if (error) throw error;
+            bump('pos_breaks', data?.inserted ?? 0, 'inserted');
+            bump('pos_breaks', data?.skipped ?? 0, 'skipped');
+          } catch (err) {
+            report.errors.breaks = err?.message || String(err);
+          }
+        }
+      }
+
+      // 8. Punch settings (migration 031): one row per store, PK is
+      // store_id (no id column) — upsert by store_id through RLS.
+      const punchSettings = Array.isArray(tables.pos_punch_settings)
+        ? tables.pos_punch_settings[0]
+        : null;
+      if (punchSettings && typeof punchSettings === 'object') {
+        try {
+          const s = snakeRow(punchSettings);
+          const row = { store_id: storeId };
+          for (const c of ['week_start', 'paid_break_min', 'unpaid_break_min', 'grace_min']) {
+            if (s[c] !== undefined) row[c] = s[c];
+          }
+          const { error } = await client
+            .from('pos_punch_settings')
+            .upsert(row, { onConflict: 'store_id' });
+          if (error) throw error;
+          bump('pos_punch_settings', 1, 'inserted');
+        } catch (err) {
+          report.errors.punchSettings = err?.message || String(err);
+        }
+      }
+
+      // 9. Storefront profile (migration 063, link fields from the
+      // integrations draft): one row per store — upsert by store_id.
+      // The link columns may not exist on older copies, so a column
+      // error retries with the core columns only.
+      const storefrontRows = Array.isArray(tables.storefront_profiles)
+        ? tables.storefront_profiles
+        : [];
+      const sfRow = storefrontRows.find((r) => r && typeof r === 'object');
+      if (sfRow) {
+        try {
+          const s = snakeRow(sfRow);
+          const CORE = ['slug', 'display_name', 'tagline', 'about', 'hours', 'contact_email', 'contact_phone', 'accent_color', 'published', 'show_prices'];
+          const LINKS = ['address', 'facebook_url', 'instagram_url', 'tiktok_url', 'whatsapp_phone', 'review_url', 'directions_url', 'order_url', 'newsletter_url'];
+          const build = (cols) => {
+            const out = { store_id: storeId };
+            if (UUID_RE.test(String(s.id ?? ''))) out.id = s.id;
+            for (const c of cols) if (s[c] !== undefined) out[c] = s[c];
+            return out;
+          };
+          let res = await client
+            .from('storefront_profiles')
+            .upsert(build([...CORE, ...LINKS]), { onConflict: 'store_id' });
+          if (res.error && /42703|does not exist|column/i.test(res.error.message || '')) {
+            res = await client
+              .from('storefront_profiles')
+              .upsert(build(CORE), { onConflict: 'store_id' });
+          }
+          if (res.error) throw res.error;
+          bump('storefront_profiles', 1, 'inserted');
+        } catch (err) {
+          report.errors.storefront = err?.message || String(err);
+        }
+      }
       return report;
     },
   };
@@ -4554,6 +5736,41 @@ export function createSupabaseBackend() {
   }
   function bqNeed() {
     throw new Error('The catalogue needs migration 013 — ask a manager to apply it.');
+  }
+
+  // Migration 064 capability probe: bq_fair_sales.sale_id (the 1:1 link
+  // from a fair-sale record to its pos_sales ledger row). Pre-064 databases
+  // keep the legacy fair-only bookkeeping.
+  let bqFairSaleLink = null;
+  async function bqHasFairSaleLink() {
+    if (bqFairSaleLink !== null) return bqFairSaleLink;
+    try {
+      const res = await client.from('bq_fair_sales').select('sale_id').limit(1);
+      bqFairSaleLink = !res.error || !/42703|does not exist/i.test(res.error.message || '');
+    } catch {
+      bqFairSaleLink = false;
+    }
+    return bqFairSaleLink;
+  }
+
+  const mapBqFairSale = (s) => ({
+    id: s.id, fairId: s.fair_id, itemId: s.item_id, title: s.title,
+    qty: s.qty, unitPrice: Number(s.unit_price), soldAt: s.sold_at,
+    saleId: s.sale_id ?? null,
+  });
+
+  // Migration 065 capability probe: bq_special_orders.customer_id (the
+  // optional link from a special order to the shop's customer file).
+  let bqOrderCustomer = null;
+  async function bqHasOrderCustomer() {
+    if (bqOrderCustomer !== null) return bqOrderCustomer;
+    try {
+      const res = await client.from('bq_special_orders').select('customer_id').limit(1);
+      bqOrderCustomer = !res.error || !/42703|does not exist/i.test(res.error.message || '');
+    } catch {
+      bqOrderCustomer = false;
+    }
+    return bqOrderCustomer;
   }
 
   /* ---------------- Shared shop (migration 016) ----------------
@@ -4868,48 +6085,175 @@ export function createSupabaseBackend() {
       return true;
     },
 
-    async recordFairSale(fairId, { itemId, title, qty = 1, unitPrice = 0 }) {
+    async recordFairSale(fairId, { itemId, title, qty = 1, unitPrice = 0, method = 'cash', idempotencyKey = null } = {}) {
       if (!(await bqHasTables())) bqNeed();
       requireUid();
       const storeId = await bqRequireStoreId();
       // Defense in depth: only record a sale for a fair in the active shop.
-      const fair = check(await client.from('bq_fairs').select('id').eq('id', fairId).eq('store_id', storeId).maybeSingle(), 'Checking fair');
+      // The fair's name is fetched too: migration 064 snapshots it onto the
+      // ledger row (fair_name), the same pattern as the org snapshot.
+      const fair = check(await client.from('bq_fairs').select('id, name').eq('id', fairId).eq('store_id', storeId).maybeSingle(), 'Checking fair');
       if (!fair) { const e = new Error('Fair not found in this shop.'); e.code = 'bq_not_found'; throw e; }
       const q = Math.max(1, Math.floor(Number(qty) || 1));
       const p = Math.max(0, Math.round((Number(unitPrice) || 0) * 100) / 100);
-      const sale = check(await client.from('bq_fair_sales').insert({
-        fair_id: fairId, item_id: itemId || null, store_id: storeId,
-        title: String(title ?? '').trim().slice(0, 300) || 'Article',
-        qty: q, unit_price: p,
-      }).select('id, fair_id, item_id, title, qty, unit_price, sold_at').single(), 'Recording sale');
-      if (itemId) {
-        const item = await this.getItem(itemId);
-        if (item) {
-          const nextQty = Math.max(0, item.qty - q);
-          await this.saveItem({ ...item, qty: nextQty, status: nextQty === 0 ? 'sold' : item.status });
+      const cleanTitle = String(title ?? '').trim().slice(0, 300) || 'Article';
+
+      // Legacy path (pre-064 database): fair-only bookkeeping, unchanged —
+      // the app keeps working until the migration is applied.
+      if (!(await posHasSaleChannel())) {
+        const sale = check(await client.from('bq_fair_sales').insert({
+          fair_id: fairId, item_id: itemId || null, store_id: storeId,
+          title: cleanTitle,
+          qty: q, unit_price: p,
+        }).select('id, fair_id, item_id, title, qty, unit_price, sold_at').single(), 'Recording sale');
+        if (itemId) {
+          const item = await this.getItem(itemId);
+          if (item) {
+            const nextQty = Math.max(0, item.qty - q);
+            await this.saveItem({ ...item, qty: nextQty, status: nextQty === 0 ? 'sold' : item.status });
+          }
+        }
+        return { id: sale.id, fairId: sale.fair_id, itemId: sale.item_id, title: sale.title, qty: sale.qty, unitPrice: Number(sale.unit_price), soldAt: sale.sold_at };
+      }
+
+      // Ledger path (migration 064): the fair sale is a first-class
+      // pos_sales row (channel='fair'), so it gets the same atomic stock
+      // decrement, History/Reports visibility and refund path as a
+      // register sale. bq_fair_sales keeps the fair-day view, linked 1:1
+      // to the ledger row via sale_id.
+      const priceCents = Math.round(p * 100);
+      const totalCents = q * priceCents;
+      // The ledger enforces per-line money bounds (migrations 044/051) —
+      // fail here with a plain message instead of a raw database error.
+      if (q > 999 || priceCents > 1000000 || totalCents > 10000000) {
+        throw new Error('That quantity or price is too big for one sale. Please lower it and try again.');
+      }
+      const idem = idempotencyKey ? String(idempotencyKey).slice(0, 128) : null;
+      let sale = null;
+      // Idempotent replay: if this exact attempt already reached the
+      // ledger (e.g. its response was lost), reuse that row. We must NOT
+      // call pos.recordSale again here — its own replay path re-applies
+      // stock, which would double-decrement.
+      if (idem && (await posHasSaleIdemCol())) {
+        const prev = await client.from('pos_sales').select('*')
+          .eq('store_id', storeId).eq('idempotency_key', idem).maybeSingle();
+        if (!prev.error && prev.data) {
+          sale = mapPosSale(prev.data);
+          sale.stockWarnings = [];
         }
       }
-      return { id: sale.id, fairId: sale.fair_id, itemId: sale.item_id, title: sale.title, qty: sale.qty, unitPrice: Number(sale.unit_price), soldAt: sale.sold_at };
+      if (!sale) {
+        const item = itemId ? await this.getItem(itemId) : null;
+        const line = itemId
+          ? {
+              productId: `bq:${itemId}`,
+              bqItemId: itemId,
+              // Pre-sale shelf status, so a refund puts the item back
+              // exactly where it was — same shape as POS catalogue lines.
+              ...(item?.status ? { bqStatus: item.status } : {}),
+              name: cleanTitle, priceCents, qty: q,
+            }
+          : { productId: null, name: cleanTitle, priceCents, qty: q };
+        sale = await pos.recordSale(storeId, {
+          items: [line],
+          subtotalCents: totalCents,
+          discountCents: 0,
+          // Fair prices are final amounts — recorded tax-free, exactly as
+          // the old fair bookkeeping treated them.
+          taxCents: 0,
+          taxLines: [],
+          totalCents,
+          method: ['cash', 'card', 'other'].includes(method) ? method : 'cash',
+          tenderedCents: totalCents,
+          changeCents: 0,
+          channel: 'fair',
+          fairId,
+          fairName: fair.name || null,
+          ...(idem ? { idempotencyKey: idem } : {}),
+        });
+      }
+      // Link the fair-day record to its ledger row (retry-safe: the
+      // unique partial index on sale_id converges replays on one link).
+      const link = await this.ensureFairSaleLink({
+        fairId, itemId: itemId || null, storeId, title: cleanTitle,
+        qty: q, unitPrice: p, saleId: sale.id,
+      });
+      return { ...link, sale };
+    },
+
+    // Migration 064: link a fair-day record to its pos_sales ledger row.
+    // Safe to call again after a lost response — the existing link is
+    // returned instead of creating a duplicate.
+    async ensureFairSaleLink({ fairId, itemId, storeId, title, qty, unitPrice, saleId }) {
+      const cols = 'id, fair_id, item_id, title, qty, unit_price, sold_at, sale_id';
+      const found = await client.from('bq_fair_sales').select(cols)
+        .eq('sale_id', saleId).eq('store_id', storeId).maybeSingle();
+      if (!found.error && found.data) return mapBqFairSale(found.data);
+      const ins = await client.from('bq_fair_sales').insert({
+        fair_id: fairId, item_id: itemId || null, store_id: storeId,
+        title, qty, unit_price: unitPrice, sale_id: saleId,
+      }).select(cols).single();
+      if (ins.error) {
+        // Lost a race with a concurrent retry — the link exists now.
+        if (/23505|duplicate key|unique/i.test(ins.error.message || '')) {
+          const again = await client.from('bq_fair_sales').select(cols)
+            .eq('sale_id', saleId).eq('store_id', storeId).maybeSingle();
+          if (!again.error && again.data) return mapBqFairSale(again.data);
+        }
+        throw new Error(ins.error.message || 'Recording sale failed.');
+      }
+      return mapBqFairSale(ins.data);
     },
 
     async listFairSales(fairId) {
       if (!(await bqHasTables())) return [];
       const storeId = await bqRequireStoreId();
+      const linked = await bqHasFairSaleLink();
+      const cols = linked
+        ? 'id, fair_id, item_id, title, qty, unit_price, sold_at, sale_id'
+        : 'id, fair_id, item_id, title, qty, unit_price, sold_at';
       const rows = check(await client.from('bq_fair_sales')
-        .select('id, fair_id, item_id, title, qty, unit_price, sold_at')
+        .select(cols)
         .eq('fair_id', fairId).eq('store_id', storeId).order('sold_at', { ascending: false }), 'Loading fair sales');
-      return (rows || []).map((s) => ({
-        id: s.id, fairId: s.fair_id, itemId: s.item_id, title: s.title,
-        qty: s.qty, unitPrice: Number(s.unit_price), soldAt: s.sold_at,
+      const sales = (rows || []).map((s) => ({
+        ...mapBqFairSale(s),
+        refundedCents: 0,
+        voided: false,
       }));
+      // Migration 064: for ledger-linked rows, surface the refund/void
+      // state from the sales ledger so the fair-day view agrees with
+      // History. Legacy (unlinked) rows keep counting exactly as before.
+      const saleIds = sales.map((s) => s.saleId).filter(Boolean);
+      if (saleIds.length) {
+        const [ledgerRes, refundRes] = await Promise.all([
+          client.from('pos_sales').select('id, voided').in('id', saleIds),
+          client.from('pos_refunds').select('sale_id, refunded_cents').in('sale_id', saleIds),
+        ]);
+        if (!ledgerRes.error) {
+          const voidedById = new Map((ledgerRes.data || []).map((r) => [r.id, !!r.voided]));
+          for (const s of sales) if (s.saleId) s.voided = !!voidedById.get(s.saleId);
+        }
+        if (!refundRes.error) {
+          const refundedBySale = new Map();
+          for (const r of refundRes.data || []) {
+            refundedBySale.set(r.sale_id, (refundedBySale.get(r.sale_id) || 0) + (Number(r.refunded_cents) || 0));
+          }
+          for (const s of sales) if (s.saleId) s.refundedCents = refundedBySale.get(s.saleId) || 0;
+        }
+      }
+      return sales;
     },
 
     async fairTotals(fairId) {
       const sales = await this.listFairSales(fairId);
+      // Voided ledger sales no longer count, and refunds are netted out —
+      // the fair-day totals now agree with Reports. Legacy (unlinked)
+      // rows carry no refund state and count exactly as before.
+      const live = sales.filter((s) => !s.voided);
       return {
-        itemsSold: sales.reduce((n, s) => n + (s.qty || 0), 0),
-        revenue: Math.round(sales.reduce((n, s) => n + (s.qty || 0) * (s.unitPrice || 0), 0) * 100) / 100,
-        salesCount: sales.length,
+        itemsSold: live.reduce((n, s) => n + (s.qty || 0), 0),
+        revenue: Math.round(live.reduce((n, s) => n + (s.qty || 0) * (s.unitPrice || 0) - (s.refundedCents || 0) / 100, 0) * 100) / 100,
+        salesCount: live.length,
       };
     },
 
@@ -4917,8 +6261,9 @@ export function createSupabaseBackend() {
     async listOrders(filter = {}) {
       if (!(await bqHasTables())) return [];
       const storeId = await bqRequireStoreId();
+      const custCol = (await bqHasOrderCustomer()) ? ', customer_id' : '';
       let q = client.from('bq_special_orders')
-        .select('id, customer_name, customer_phone, title, author, notes, status, created_at, updated_at')
+        .select(`id, customer_name, customer_phone, title, author, notes, status, created_at, updated_at${custCol}`)
         .eq('store_id', storeId)
         .order('updated_at', { ascending: false });
       if (filter.status) q = q.eq('status', filter.status);
@@ -4926,6 +6271,7 @@ export function createSupabaseBackend() {
       return (rows || []).map((r) => ({
         id: r.id, customerName: r.customer_name, customerPhone: r.customer_phone,
         title: r.title, author: r.author, notes: r.notes, status: r.status,
+        customerId: r.customer_id ?? null,
         createdAt: r.created_at, updatedAt: r.updated_at,
       }));
     },
@@ -4949,18 +6295,34 @@ export function createSupabaseBackend() {
         notes: String(o.notes ?? '').trim().slice(0, 2000) || null,
         status: BQ_ORDER_STATUSES.includes(o.status) ? o.status : 'requested',
       };
+      // Migration 065: optional link to the shop's customer file. The
+      // name/phone above stay the order's own snapshot (they are what was
+      // picked or typed, and remain editable per order); the link only
+      // has to point at a real customer of THIS shop.
+      const hasCustCol = await bqHasOrderCustomer();
+      if (hasCustCol) {
+        const customerId = o.customerId || null;
+        if (customerId) {
+          const cust = check(await client.from('pos_customers').select('id')
+            .eq('id', customerId).eq('store_id', storeId).maybeSingle(), 'Checking customer');
+          if (!cust) { const e = new Error('Customer not found in this shop.'); e.code = 'bq_customer_gone'; throw e; }
+        }
+        payload.customer_id = customerId;
+      }
+      const rowCols = `id, customer_name, customer_phone, title, author, notes, status, created_at, updated_at${hasCustCol ? ', customer_id' : ''}`;
       let row;
       if (o.id) {
         const upd = bqStripImmutable(payload);
         row = check(await client.from('bq_special_orders').update(upd).eq('id', o.id).eq('store_id', storeId)
-          .select('id, customer_name, customer_phone, title, author, notes, status, created_at, updated_at').single(), 'Saving order');
+          .select(rowCols).single(), 'Saving order');
       } else {
         row = check(await client.from('bq_special_orders').insert(payload)
-          .select('id, customer_name, customer_phone, title, author, notes, status, created_at, updated_at').single(), 'Saving order');
+          .select(rowCols).single(), 'Saving order');
       }
       return {
         id: row.id, customerName: row.customer_name, customerPhone: row.customer_phone,
         title: row.title, author: row.author, notes: row.notes, status: row.status,
+        customerId: row.customer_id ?? null,
         createdAt: row.created_at, updatedAt: row.updated_at,
       };
     },
@@ -5063,7 +6425,11 @@ export function createSupabaseBackend() {
   // and send feedback. Users see only their own rows; the admin panel lists
   // and manages everything (RLS enforces both sides).
   const support = {
-    async createTicket({ subject, message }) {
+    // Migration 072 probe: support_tickets.scope ('shop' | 'platform')
+    // routes purchase/unlock messages to the platform owner. Older
+    // databases don't have the column yet — tickets keep working exactly
+    // as before (scope silently stays 'shop').
+    async createTicket({ subject, message, scope, storeId }) {
       const uid = requireUid();
       const clean = {
         user_id: uid,
@@ -5072,13 +6438,23 @@ export function createSupabaseBackend() {
       };
       if (!clean.subject) throw new Error('Give your request a subject.');
       if (!clean.message) throw new Error('Describe what you need.');
-      const { data, error } = await client
+      const withScope = { ...clean };
+      if (scope === 'platform' || scope === 'shop') withScope.scope = scope;
+      if (storeId) withScope.store_id = storeId;
+      let res = await client
         .from('support_tickets')
-        .insert(clean)
+        .insert(withScope)
         .select('id, subject, message, status, admin_response, created_at')
         .single();
-      if (error) throw new Error(`Sending failed: ${error.message}`);
-      return data;
+      if (res.error && /scope|store_id|42703|PGRST204|does not exist|Could not find/i.test(res.error.message || '')) {
+        res = await client
+          .from('support_tickets')
+          .insert(clean)
+          .select('id, subject, message, status, admin_response, created_at')
+          .single();
+      }
+      if (res.error) throw new Error(`Sending failed: ${res.error.message}`);
+      return res.data;
     },
 
     // Logged-out help request (e.g. "I forgot my password and have no email
@@ -5119,14 +6495,23 @@ export function createSupabaseBackend() {
 
     async listMyTickets() {
       const uid = requireUid();
-      const { data, error } = await client
+      const base = 'id, subject, message, status, admin_response, created_at, updated_at';
+      let res = await client
         .from('support_tickets')
-        .select('id, subject, message, status, admin_response, created_at, updated_at')
+        .select(`${base}, scope, store_id`)
         .eq('user_id', uid)
         .order('created_at', { ascending: false })
         .limit(50);
-      if (error) throw new Error(`Loading your requests failed: ${error.message}`);
-      return data ?? [];
+      if (res.error && /scope|store_id|42703|PGRST204|does not exist|Could not find/i.test(res.error.message || '')) {
+        res = await client
+          .from('support_tickets')
+          .select(base)
+          .eq('user_id', uid)
+          .order('created_at', { ascending: false })
+          .limit(50);
+      }
+      if (res.error) throw new Error(`Loading your requests failed: ${res.error.message}`);
+      return res.data ?? [];
     },
 
     // Attach a display name per ticket (separate query: tickets reference
@@ -5140,13 +6525,21 @@ export function createSupabaseBackend() {
     },
 
     async adminListTickets() {
-      const { data, error } = await client
+      const base = 'id, user_id, username, subject, message, status, admin_response, created_at, updated_at';
+      let res = await client
         .from('support_tickets')
-        .select('id, user_id, username, subject, message, status, admin_response, created_at, updated_at')
+        .select(`${base}, scope, store_id`)
         .order('created_at', { ascending: false })
         .limit(200);
-      if (error) throw new Error(`Loading support tickets failed: ${error.message}`);
-      const rows = data ?? [];
+      if (res.error && /scope|store_id|42703|PGRST204|does not exist|Could not find/i.test(res.error.message || '')) {
+        res = await client
+          .from('support_tickets')
+          .select(base)
+          .order('created_at', { ascending: false })
+          .limit(200);
+      }
+      if (res.error) throw new Error(`Loading support tickets failed: ${res.error.message}`);
+      const rows = res.data ?? [];
       const ids = [...new Set(rows.map((r) => r.user_id).filter(Boolean))];
       const names = await this._usernames(ids);
       return rows.map((r) => ({
@@ -5296,6 +6689,115 @@ export function createSupabaseBackend() {
     },
   };
 
+  /* ---------------- shop licensing (migration 072) ---------------- */
+  // 30-day trial per shop, then a soft lock. The database computes the
+  // effective status; keys are validated server-side (only their
+  // SHA-256 hash is ever stored). Everything here degrades to "feature
+  // off" until migration 072 is applied: available() probes once, and
+  // the app gate simply never locks.
+  let licenseProbe = null;
+  async function licensingAvailable() {
+    if (licenseProbe !== null) return licenseProbe;
+    try {
+      const res = await client.from('shop_licenses').select('store_id').limit(1);
+      licenseProbe = !res.error;
+    } catch {
+      licenseProbe = false;
+    }
+    return licenseProbe;
+  }
+
+  // RPC failures raise coded exceptions (see migration 072). Map them to
+  // stable client codes so the UI can show one plain sentence per case.
+  function licenseError(error) {
+    const msg = String(error?.message || error || '');
+    const code = msg.includes('license-too-many-attempts')
+      ? 'too-many'
+      : msg.includes('license-key-used')
+        ? 'used'
+        : msg.includes('license-not-owner')
+          ? 'not-owner'
+          : msg.includes('license-no-shop')
+            ? 'no-shop'
+            : msg.includes('license-sign-in-required')
+              ? 'sign-in'
+              : msg.includes('license-not-master')
+                ? 'not-master'
+                : msg.includes('license-key')
+                  ? 'not-found'
+                  : 'generic';
+    const err = new Error(code);
+    err.code = code;
+    return err;
+  }
+
+  const license = {
+    available: licensingAvailable,
+
+    /** The caller's shops with server-computed license status. */
+    async myStatus() {
+      if (!(await licensingAvailable())) return [];
+      const { data, error } = await client.rpc('my_license_status');
+      if (error) throw licenseError(error);
+      return data ?? [];
+    },
+
+    /**
+     * Redeem a one-time key. storeId optional: the RPC picks the
+     * caller's locked shop when omitted. Resolves to the RPC jsonb
+     * ({ store_id, status, plan, current_period_ends_at? }).
+     */
+    async redeemKey(rawKey, storeId = null) {
+      const args = { p_key: String(rawKey ?? '') };
+      if (storeId) args.p_store_id = storeId;
+      const { data, error } = await client.rpc('redeem_license_key', args);
+      if (error) throw licenseError(error);
+      // Failures come back as jsonb (not exceptions) so the server-side
+      // throttle counter survives them; rethrow in the coded shape.
+      if (data && data.ok === false) throw licenseError(new Error(String(data.error || 'license-key')));
+      return data;
+    },
+
+    /** PLATFORM MASTER ONLY. Returns the raw keys — shown once, never stored. */
+    async generateKeys(count, plan, termMonths = null) {
+      const args = { p_count: count, p_plan: plan };
+      if (plan === 'term') args.p_term_months = termMonths;
+      const { data, error } = await client.rpc('generate_license_keys', args);
+      if (error) throw licenseError(error);
+      return data ?? [];
+    },
+
+    /** PLATFORM MASTER ONLY. Hints + status only; raw keys never come back. */
+    async listKeys(limit = 200) {
+      const { data, error } = await client.rpc('list_license_keys', { p_limit: limit });
+      if (error) throw licenseError(error);
+      return data ?? [];
+    },
+
+    /** PLATFORM MASTER ONLY. Revoking a used key locks that shop again. */
+    async revokeKey(keyId) {
+      const { error } = await client.rpc('revoke_license_key', { p_key_id: keyId });
+      if (error) throw licenseError(error);
+    },
+  };
+
+  // ---- customer: per-shop customer identity -----------------------------------
+  // One login for customers too (2026-10-01): a confirmed customer account
+  // links itself to a shop's customer list (public.shop_customers) the
+  // first time they visit the shop page. The customers worker builds orders
+  // on top of this table.
+  const customer = {
+    // Link the signed-in user to a shop's customer list. Idempotent —
+    // returns the link row. Throws for unpublished/unknown slugs.
+    async linkShopCustomer(slug) {
+      const clean = String(slug ?? '').trim();
+      if (!clean) throw new Error('linkShopCustomer needs a shop slug.');
+      const { data, error } = await client.rpc('link_shop_customer', { p_slug: clean });
+      if (error) throw new Error(`Could not link your account to this shop: ${error.message}`);
+      return data;
+    },
+  };
+
   return {
     kind: 'supabase',
     note: null,
@@ -5305,6 +6807,7 @@ export function createSupabaseBackend() {
     profile,
     settings,
     files,
+    shopFiles,
     spaces,
     pins,
     helm,
@@ -5314,5 +6817,7 @@ export function createSupabaseBackend() {
     bouquinerie,
     support,
     feedback,
+    license,
+    customer,
   };
 }

@@ -75,7 +75,7 @@ export default function Desktop() {
           konamiRef.current = 0;
           if (!isPOSLocked) {
             playSound('success');
-            push('Secret unlocked', '↑↑↓↓←→←→BA — the Konami code works in Drift. You have excellent taste.');
+            push('Secret unlocked', '↑↑↓↓←→←→BA — the Konami code works in Vendra. You have excellent taste.');
           }
         }
       } else {
@@ -515,7 +515,7 @@ export default function Desktop() {
       <WelcomeTour />
     </div>
   ) : (
-    // Drift: taskbar dockable to any edge.
+    // Vendra: taskbar dockable to any edge.
     <div className={`${rootCls} ${barRow ? 'flex-row' : 'flex-col'}`} style={zoomStyle}>
       {barFirst && <Taskbar key="taskbar" />}
       {desktopArea}

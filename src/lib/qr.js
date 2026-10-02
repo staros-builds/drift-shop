@@ -1,5 +1,5 @@
 /* QR code helper — wraps the vendored qrcode-generator (MIT) with a tiny
- * Drift-flavored API. Used for digital receipts in POS and anywhere else a
+ * Vendra-flavored API. Used for digital receipts in POS and anywhere else a
  * scannable code is handy. Pure functions; safe to call anywhere.
  */
 import qrcode from 'qrcode-generator';

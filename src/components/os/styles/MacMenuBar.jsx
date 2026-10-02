@@ -50,7 +50,7 @@ export default function MacMenuBar({ onSpotlight }) {
   const activeWin = spaceWindows
     .filter((w) => !w.minimized)
     .reduce((a, b) => (!a || b.z > a.z ? b : a), null);
-  let activeAppName = 'Drift Shop';
+  let activeAppName = 'Vendra';
   if (activeWin) {
     try {
       activeAppName = getApp(activeWin.appId).title || activeWin.title;
@@ -83,9 +83,9 @@ export default function MacMenuBar({ onSpotlight }) {
       {
         id: 'drift',
         label: <DriftMark size={15} />,
-        aria: 'Drift Shop menu',
+        aria: 'Vendra menu',
         items: [
-          { label: 'About This Drift Shop', fn: () => openApp('settings') },
+          { label: 'About This Vendra', fn: () => openApp('settings') },
           { label: 'Settings…', fn: () => openApp('settings') },
           { sep: true },
           {
@@ -133,7 +133,7 @@ export default function MacMenuBar({ onSpotlight }) {
         label: 'Help',
         items: [
           {
-            label: 'Drift Shop Guide',
+            label: 'Vendra Guide',
             fn: () => {
               setOpenMenu(null);
               window.dispatchEvent(new Event('drift:show-welcome'));

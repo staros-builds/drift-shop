@@ -1,9 +1,12 @@
 /**
- * PWA install + offline helpers.
+ * PWA install helpers.
  *
  * - registerServiceWorker(): registers /sw.js once; resolves with the
  *   registration (or null when unsupported / failed). Safe to call once at
- *   boot — it never throws.
+ *   boot — it never throws. The service worker caches the app shell
+ *   (HTML/JS/CSS/icons) only: every business read and write goes to the
+ *   cloud, and the boot self-check refuses to open the app when the cloud
+ *   can't be reached. There is no offline business mode.
  * - beforeinstallprompt capture: the browser fires it when the app is
  *   installable. We stash it so Settings can show a real "Install" button.
  * - isInstalled(): standalone display mode (Android/desktop) or
@@ -70,9 +73,9 @@ export function isIOS() {
 
 export function installInstructions() {
   if (isIOS()) {
-    return 'On iPhone/iPad: tap Share, then “Add to Home Screen”. Drift will open full-screen like a native app.';
+    return 'On iPhone/iPad: tap Share, then “Add to Home Screen”. Vendra will open full-screen like a native app.';
   }
-  return 'In your browser menu choose “Install Drift” (or “Add to Home Screen” on Android). Drift will open in its own window like a native app.';
+  return 'In your browser menu choose “Install Vendra” (or “Add to Home Screen” on Android). Vendra will open in its own window like a native app.';
 }
 
 let swPromise = null;
@@ -93,13 +96,4 @@ export function registerServiceWorker() {
     }
   })();
   return swPromise;
-}
-
-/** True once a service worker controls this page (offline shell is live). */
-export function isOfflineReady() {
-  try {
-    return !!(typeof window !== 'undefined' && window.navigator.serviceWorker && window.navigator.serviceWorker.controller);
-  } catch {
-    return false;
-  }
 }

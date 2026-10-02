@@ -1,8 +1,14 @@
 /**
- * Drift backend adapter layer — interface docs + factory.
+ * Vendra backend adapter layer — interface docs + factory.
  *
- * Drift Shop is cloud-only: the only adapter is Supabase. The old localStorage
+ * Vendra is cloud-only: the only adapter is Supabase. The old localStorage
  * ("This device") and Replit adapters have been removed.
+ *
+ * Scale note: shops can later be spread across several Supabase
+ * projects. The routing seam for that is ./directory.js
+ * (slug → backend config, falling back to the build-time pair below).
+ * Nothing consults the directory yet, so every install still boots
+ * against the single build-time backend exactly as before.
  *
  * Every adapter exposes the SAME shape:
  *
@@ -17,6 +23,13 @@
  *       signOut() -> void
  *       getUser() -> { user } | null         // sync ok
  *       onAuthChange(cb) -> unsubscribe      // cb(user|null), sync ok
+ *       // One login (2026-10-01): email signup with confirmation.
+ *       signUpWithEmail({ email, password, displayName, kind, slug })
+ *         -> { status: 'signed-in', user } | { status: 'needs-confirmation', email }
+ *       resendConfirmation({ email, kind, slug }) -> void
+ *       consumeAuthCallback()                 // email-link landing router
+ *         -> { kind: 'confirmed', flow } | { kind: 'recovery' }
+ *          | { kind: 'error', errorCode } | { kind: 'none' }
  *     },
  *     profile: {
  *       // Display identity only — never roles/paid/lock state.
@@ -166,7 +179,14 @@
  *                                       reason, byName }) -> movement
  *       refundSale(storeId, saleId, { lines, reason, asCreditNote, idemKey,
  *                    customerId, customerName }) -> { refund, creditNote }
- *     }
+ *     },
+ *     customer: {
+ *       // Per-shop customer identity (migration 073, one login 2026-10-01).
+ *       // A confirmed customer account links itself to a shop the first
+ *       // time it visits the shop's page; the customers worker builds
+ *       // orders on top of the shop_customers table.
+ *       linkShopCustomer(slug) -> row                     // idempotent
+ *     },
  *   }
  *
  * All functions are async unless noted. All throw real Errors on failure —
@@ -188,23 +208,47 @@ function env(name) {
 }
 
 /**
+ * The build-time default connection pair { url, anonKey } from the
+ * environment, without throwing. Used by the backend directory
+ * (./directory.js) as the fallback every lookup lands on when no
+ * directory is configured — pass to resolveBackendForSlug().
+ */
+export function buildDefaultBackendConfig() {
+  return { url: env('VITE_SUPABASE_URL'), anonKey: env('VITE_SUPABASE_ANON_KEY') };
+}
+
+/**
  * Build the Supabase backend adapter.
  *
  * Throws an honest error when the Supabase env vars are absent — there is
  * no silent local fallback anymore (that split is exactly what confused
  * users between two separate accounts and data stores).
+ *
+ * The optional second argument is the scale groundwork: an explicit
+ * { url, key } pair for a different project than the build-time one
+ * (see ./directory.js). No caller passes it yet, so behavior today is
+ * the env pair, unchanged.
  */
-export function createBackend(kind) {
+export function createBackend(kind, config = null) {
   if (kind === BackendKinds.SUPABASE) {
+    if (config) {
+      if (!config.url || !config.key) {
+        throw new Error(
+          'Supabase is not configured (explicit backend settings are incomplete). ' +
+          'Drift Shop needs its cloud backend to sign in.'
+        );
+      }
+      return createSupabaseBackend({ url: config.url, key: config.key });
+    }
     const url = env('VITE_SUPABASE_URL');
     const key = env('VITE_SUPABASE_ANON_KEY');
     if (!url || !key) {
       throw new Error(
         'Supabase is not configured (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY missing). ' +
-        'Drift Shop needs its cloud backend to sign in.'
+        'Vendra needs its cloud backend to sign in.'
       );
     }
     return createSupabaseBackend();
   }
-  throw new Error(`Unknown backend kind "${kind}" — Drift Shop only supports Supabase.`);
+  throw new Error(`Unknown backend kind "${kind}" — Vendra only supports Supabase.`);
 }

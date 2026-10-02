@@ -322,7 +322,7 @@ export default function Spotlight() {
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium text-ink">{appTitle(app)}</span>
-                  <span className="block text-xs text-muted">{app.category ? (t('categories.' + app.category) !== 'categories.' + app.category ? t('categories.' + app.category) : app.category) : (lang === 'en' ? 'App' : 'Appli')}</span>
+                  <span className="block text-xs text-muted">{app.category ? (t('categories.' + app.category) !== 'categories.' + app.category ? t('categories.' + app.category) : app.category) : t('common.appWord')}</span>
                 </span>
                 {i === clampedActive && <CornerDownLeft size={14} className="shrink-0 text-muted" />}
               </button>

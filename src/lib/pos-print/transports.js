@@ -1,4 +1,4 @@
-/* Printer transports for Drift POS.
+/* Printer transports for Vendra POS.
  *
  * Four ways to reach a receipt printer, widest compatibility first:
  *

@@ -6,6 +6,7 @@ import { backend } from '../lib/backend/current.js';
 import { useNotifications } from '../os/NotificationsContext.jsx';
 import { useLang } from '../lib/i18n.jsx';
 import { ConfirmDialog } from '../components/os/dialogs.jsx';
+import { shrinkImageFile } from '../lib/imageShrink.js';
 
 const KINDS = [
   { id: 'all', key: 'all' },
@@ -204,8 +205,13 @@ export default function PinboardApp({ windowApi, composer: composerProp }) {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const dataUrl = await readAsDataUrl(file);
-      const info = { name: file.name, dataUrl, mime: file.type || '', size: file.size };
+      // Pinboard imports are stored as data URLs — shrink photos to a
+      // sensible size BEFORE encoding so both the upload and the
+      // stored copy stay small. Returns the original for anything
+      // else (and on any failure), so picking a file never breaks.
+      const working = await shrinkImageFile(file);
+      const dataUrl = await readAsDataUrl(working);
+      const info = { name: file.name, dataUrl, mime: working?.type || file.type || '', size: working?.size ?? file.size };
       if (forEdit) setEFile(info);
       else {
         setCFile(info);

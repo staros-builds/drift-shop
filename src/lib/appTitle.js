@@ -1,5 +1,11 @@
 import { getLang } from './i18n.jsx';
 import { getApp } from '../apps/registry.jsx';
+import { fr } from './locales/fr.js';
+import { en } from './locales/en.js';
+import { es } from './locales/es.js';
+import { pt } from './locales/pt.js';
+
+const APPS_NAMES = { fr: fr.apps, en: en.apps, es: es.apps, pt: pt.apps };
 
 // Resolve an app's display title for the current language without needing
 // a React hook at every render site. Components re-render on language
@@ -7,6 +13,8 @@ import { getApp } from '../apps/registry.jsx';
 // choice during render always yields the fresh value.
 export function appTitle(app) {
   if (!app) return '';
+  const fromApps = APPS_NAMES[getLang()]?.[app.id];
+  if (fromApps) return fromApps;
   if (getLang() === 'en' && app.titleEn) return app.titleEn;
   return app.title;
 }

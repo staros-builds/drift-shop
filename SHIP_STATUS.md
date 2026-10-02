@@ -1,4 +1,4 @@
-# Drift Shop — Build 3 baseline (2026-10-01)
+# Vendra — Build 3 baseline (2026-10-01)
 
 Generic, unbranded, shippable spin-off of the hardened bookstore build (build 2).
 The tree is the fully-hardened code with all branding stripped and
@@ -8,7 +8,7 @@ shop-specific pieces generalized; every build-2 hardening fix is preserved.
 
 `src/lib/brand.js` — `BRAND` object:
 
-- `name`: `'Drift Shop'` (login screen, toasts, titles, manual)
+- `name`: `'Vendra'` (login screen, toasts, titles, manual)
 - `taglineEn` / `taglineFr`: product taglines
 - `accountsDomain`: `'drift-shop.app'` — synthetic email domain for the
   username→email login mapping (`src/os/AuthContext.jsx`)
@@ -32,7 +32,7 @@ name/tagline; all other user-visible copy lives in the locales (EN/FR).
 - Service worker cache prefix `driftshop-`, app-update probe
   `?__driftshop_build=`, base path `/drift-shop/`.
 - Built-in manual replaced with a short generic getting-started guide:
-  `public/manual/drift-shop-manual.pdf` + regenerated `manual-index.json`.
+  `public/manual/vendra-manual.pdf` + regenerated `manual-index.json`.
 
 ## Backend bundle
 

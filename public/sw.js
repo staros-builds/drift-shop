@@ -1,13 +1,17 @@
-/* Drift Shop offline service worker.
+/* Vendra service worker — app-shell cache ONLY.
  *
- * Caches the app shell (same-origin GETs) so Drift Shop keeps opening with no
- * connection. Offline, the app runs in This-device mode — Cloud (Supabase)
- * data needs the network and the app says so honestly instead of failing
- * silently.
+ * CLOUD-ONLY CONTRACT: this worker caches same-origin static files
+ * (HTML/JS/CSS/icons and other app assets) so repeat opens are instant.
+ * It never caches business data. API and database traffic runs on a
+ * different origin (the shop's Supabase project), and the worker only
+ * handles same-origin GETs — non-GETs, range requests (media streaming),
+ * and the app-update probe (__driftshop_build) always go to the network.
+ * With no connection the boot self-check refuses to open the app and shows
+ * the honest cannot-reach screen — the cache can never serve a working
+ * app, because every read and write needs the cloud.
  *
  * Bump CACHE_VERSION when shipping a new build so clients pick up fresh
- * assets. Only same-origin requests are ever cached; API calls, range
- * requests (media streaming), and non-GETs always go to the network.
+ * assets (the build substitutes __BUILD_ID__ via vite.config.js).
  */
 
 const CACHE_VERSION = 'driftshop-__BUILD_ID__';

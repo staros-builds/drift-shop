@@ -1,5 +1,5 @@
 /**
- * src/lib/sound.js — Drift's synthesized UI sound effects.
+ * src/lib/sound.js — Vendra's synthesized UI sound effects.
  *
  * Zero audio assets: every sound is built at play time from Web Audio
  * oscillators and filtered noise. No dependencies beyond React (for the

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  Gamepad2, Crown, Circle, Layers, Zap, Bomb, Grid3x3, Trophy, Play, Skull,
+  Gamepad2, Crown, Circle, Layers, Zap, Bomb, Grid3x3, Trophy, Play,
 } from 'lucide-react';
 import ChessGame from './games/ChessGame.jsx';
 import CheckersGame from './games/CheckersGame.jsx';
@@ -8,7 +8,6 @@ import KlondikeGame from './games/KlondikeGame.jsx';
 import SnakeGame from './games/SnakeGame.jsx';
 import MinesweeperGame from './games/MinesweeperGame.jsx';
 import Game2048 from './games/Game2048.jsx';
-import DuskfallGame from './games/DuskfallGame.jsx';
 import { useScores, loadScores, scoreSummary } from './games/scores.js';
 import { useAuth } from '../os/AuthContext.jsx';
 
@@ -42,11 +41,6 @@ const GAMES = [
     id: 'game2048', title: '2048', icon: Grid3x3,
     desc: 'Slide and merge tiles all the way to 2048.',
     component: Game2048, tile: 'from-orange-500/80 to-amber-700/80',
-  },
-  {
-    id: 'duskfall', title: 'Duskfall', icon: Skull,
-    desc: 'A first-person corridor crawler. Three sectors, keycards, and things that move in the dark.',
-    component: DuskfallGame, tile: 'from-red-900/90 to-stone-900/90',
   },
 ];
 

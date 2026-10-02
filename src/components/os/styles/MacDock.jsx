@@ -160,7 +160,7 @@ export default function MacDock() {
       >
         {apps.map(renderIcon)}
         <div className="mac-dock-divider" aria-hidden="true" />
-        {/* Trash: opens Files (Drift has no Trash folder yet). */}
+        {/* Trash: opens Files (Vendra has no Trash folder yet). */}
         <div className="group relative flex flex-col items-center">
           <span className="pointer-events-none absolute -top-8 whitespace-nowrap rounded-md bg-black/70 px-2 py-0.5 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100">
             Trash

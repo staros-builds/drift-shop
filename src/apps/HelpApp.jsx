@@ -392,7 +392,7 @@ const SECTIONS = [
             'Or just type in the search box at the top of this Help app — it searches the manual\'s full text too, and each result opens the PDF at the right page.',
           ] },
           { t: 'pdf', text: 'Open the getting-started guide (PDF)' },
-          { t: 'tip', text: 'Drift Shop is cloud-only: you need an internet connection, and everything is stored in the one cloud database shared by every app.' },
+          { t: 'tip', text: 'Vendra is cloud-only: you need an internet connection, and everything is stored in the one cloud database shared by every app.' },
         ],
       },
     ],
@@ -468,7 +468,7 @@ function Block({ block, shortcuts }) {
       <div className="mb-3">
         <button
           type="button"
-          onClick={() => window.open('manual/drift-shop-manual.pdf', '_blank', 'noopener')}
+          onClick={() => window.open('manual/vendra-manual.pdf', '_blank', 'noopener')}
           className="flex items-center gap-2 rounded-os bg-accent px-4 py-2 text-sm font-semibold text-white duration-160 hover:opacity-90"
         >
           <FileText size={16} /> {block.text || 'Open the getting-started guide (PDF)'}
@@ -812,7 +812,7 @@ export default function HelpApp({ windowApi }) {
                   sub={a.manual ? `User manual · page ${a.page}` : null}
                   onOpen={() => {
                     if (a.manual) {
-                      window.open(`manual/drift-shop-manual.pdf#page=${a.page}`, '_blank', 'noopener');
+                      window.open(`manual/vendra-manual.pdf#page=${a.page}`, '_blank', 'noopener');
                     } else {
                       setSectionId(s.id); setOpenArticle(a.id); setQuery('');
                     }

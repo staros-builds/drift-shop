@@ -4,3 +4,8 @@ dist
 .env.local
 *.log
 .DS_Store
+# Full-database dumps (tools/sync exports, db-backup workflow) contain
+# the entire shop — never commit them.
+backup-out/
+*.dump.sql
+drift-*.sql

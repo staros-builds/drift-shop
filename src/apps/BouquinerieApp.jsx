@@ -1007,8 +1007,15 @@ function SaleModal({ fair, onClose, onSaved }) {
   const [title, setTitle] = useState('');
   const [qty, setQty] = useState(1);
   const [unitPrice, setUnitPrice] = useState('');
+  const [method, setMethod] = useState('cash');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // One idempotency key per "record a sale" attempt: if the save is
+  // retried after a lost response, the ledger reuses the first sale
+  // instead of recording it twice (migration 064).
+  const [idemKey] = useState(() => (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `fair-${Date.now()}-${Math.random().toString(36).slice(2)}`));
 
   useEffect(() => {
     let cancelled = false;
@@ -1040,13 +1047,15 @@ function SaleModal({ fair, onClose, onSaved }) {
     }
     setBusy(true);
     try {
-      await bq().recordFairSale(fair.id, {
+      const result = await bq().recordFairSale(fair.id, {
         itemId: itemId || null,
         title: title.trim(),
         qty: Math.max(1, Number(qty) || 1),
         unitPrice: Number(unitPrice) || 0,
+        method,
+        idempotencyKey: idemKey,
       });
-      onSaved();
+      onSaved(result);
     } catch (err) {
       setError(bqErr(t, err, 'inventory.errorPrefix'));
     } finally {
@@ -1082,13 +1091,21 @@ function SaleModal({ fair, onClose, onSaved }) {
             <input type="number" min="0" step="0.01" inputMode="decimal" value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} className={inputCls} />
           </div>
         </div>
+        <div>
+          <label className={labelCls}>{t('inventory.saleMethod')}</label>
+          <select value={method} onChange={(e) => setMethod(e.target.value)} className={inputCls}>
+            <option value="cash">{t('pos.tender.cash')}</option>
+            <option value="card">{t('pos.tender.card')}</option>
+            <option value="other">{t('pos.tender.other')}</option>
+          </select>
+        </div>
         <ErrorNote message={error} />
         <div className="flex items-center justify-between rounded-os bg-surface px-3 py-2">
           <span className="text-xs text-muted">{t('common.total')}</span>
           <span className="text-sm font-semibold text-ink">{fmtMoney((Number(qty) || 0) * (Number(unitPrice) || 0))}</span>
         </div>
         <button type="button" onClick={save} disabled={busy} className={`${btnPrimary} w-full py-2.5`}>
-          {busy ? t('common.working') : t('common.save')}
+          {busy ? t('common.working') : t('inventory.saleSave')}
         </button>
       </div>
     </Modal>
@@ -1234,6 +1251,14 @@ function FairTab() {
                         <span className="min-w-0 flex-1 truncate text-ink">
                           <span className="font-medium">{s.title}</span>
                           <span className="ml-1.5 text-muted">{s.qty} × {fmtMoney(s.unitPrice)}</span>
+                          {s.voided && (
+                            <span className="ml-1.5 rounded-os bg-osborder/50 px-1.5 py-0.5 text-[10px] font-medium text-muted">{t('pos.tabs2.voided')}</span>
+                          )}
+                          {!s.voided && s.refundedCents > 0 && (
+                            <span className="ml-1.5 rounded-os bg-accent/15 px-1.5 py-0.5 text-[10px] font-medium text-accent">
+                              {s.refundedCents >= Math.round(s.qty * s.unitPrice * 100) ? t('pos.refund.refundedBadge') : t('pos.refund.partialBadge')}
+                            </span>
+                          )}
                         </span>
                         <span className="font-semibold text-ink">{fmtMoney((Number(s.qty) || 0) * (Number(s.unitPrice) || 0))}</span>
                       </li>
@@ -1252,7 +1277,14 @@ function FairTab() {
         <SaleModal
           fair={selected}
           onClose={() => setShowSale(false)}
-          onSaved={() => { setShowSale(false); loadDetail(selectedId); }}
+          onSaved={(res) => {
+            setShowSale(false);
+            loadDetail(selectedId);
+            const warns = res?.sale?.stockWarnings || [];
+            if (warns.length) {
+              setError(t('inventory.saleStockWarn', { names: warns.map((w) => w.name).join(', ') }));
+            }
+          }}
         />
       )}
       {pendingDelete && (
@@ -1274,11 +1306,37 @@ const ORDER_FLOW = ['requested', 'ordered', 'received'];
 function OrderModal({ order, onClose, onSaved }) {
   const { t } = useLang();
   const [form, setForm] = useState(order ? { ...order } : {
-    customerName: '', customerPhone: '', title: '', author: '', notes: '', status: 'requested',
+    customerName: '', customerPhone: '', title: '', author: '', notes: '', status: 'requested', customerId: '',
   });
+  const [customers, setCustomers] = useState([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  // Migration 065: offer the shop's saved customers as a picker. Typing a
+  // name by hand (walk-in) works exactly as before — the picker only
+  // fills the fields in.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const store = await bq().myStore();
+        if (!store?.id) return;
+        const list = await backend.pos.listCustomers(store.id);
+        if (!cancelled) setCustomers(list || []);
+      } catch {
+        if (!cancelled) setCustomers([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const pickCustomer = (id) => {
+    const c = customers.find((x) => x.id === id);
+    setForm((f) => (c
+      ? { ...f, customerId: c.id, customerName: c.name || f.customerName, customerPhone: c.phone || f.customerPhone }
+      : { ...f, customerId: '' }));
+  };
 
   const save = async () => {
     setBusy(true);
@@ -1296,6 +1354,17 @@ function OrderModal({ order, onClose, onSaved }) {
   return (
     <Modal title={order ? t('inventory.editOrder') : t('inventory.newOrder')} onClose={onClose}>
       <div className="space-y-3">
+        {customers.length > 0 && (
+          <div>
+            <label className={labelCls}>{t('inventory.orderCustomerLabel')}</label>
+            <select value={form.customerId || ''} onChange={(e) => pickCustomer(e.target.value)} className={inputCls}>
+              <option value="">{t('inventory.orderWalkIn')}</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={labelCls}>{t('common.customer')}</label>
@@ -1486,6 +1555,7 @@ function OrdersTab() {
 function bqErr(t, err, fallbackKey) {
   const code = err && err.code;
   if (code === 'bq_customer_required') return t('inventory.errCustomerRequired');
+  if (code === 'bq_customer_gone') return t('inventory.errCustomerGone');
   if (code === 'bq_title_required') return t('inventory.errTitleRequired');
   if (code === 'bq_no_shop') return t('inventory.errNoShop');
   if (code === 'bq_not_member') return t('inventory.errNotMember');

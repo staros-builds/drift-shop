@@ -8,7 +8,7 @@ import {
 import { backend } from './backend/current.js';
 
 /**
- * Web apps: websites installed into Drift like real OS apps (Roku-style).
+ * Web apps: websites installed into Vendra like real OS apps (Roku-style).
  *
  * The catalog below was verified live (2026-09-28) with curl: every entry
  * qualifies only if X-Frame-Options is absent (or ALLOWALL) and there is no

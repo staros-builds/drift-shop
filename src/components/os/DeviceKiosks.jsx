@@ -3,7 +3,7 @@ import { Check, Clock3, KeyRound, Loader2, Lock, LogOut, X } from 'lucide-react'
 import POSApp from '../../apps/POSApp.jsx';
 import { useAuth } from '../../os/AuthContext.jsx';
 import { backend } from '../../lib/backend/current.js';
-import { useLang } from '../../lib/i18n.jsx';
+import { useLang, tagFor } from '../../lib/i18n.jsx';
 
 /**
  * Device kiosks: fullscreen, single-purpose screens for device accounts.
@@ -29,7 +29,7 @@ const KIOSK_COOLDOWN_MS = 20_000;
 
 function fmtTime(ts, lang) {
   try {
-    return new Date(ts).toLocaleTimeString(lang === 'fr' ? 'fr-CA' : 'en-CA', {
+    return new Date(ts).toLocaleTimeString(tagFor(lang), {
       hour: 'numeric',
       minute: '2-digit',
     });
@@ -325,7 +325,7 @@ function ClockTick() {
   }, []);
   return (
     <p className="shrink-0 text-sm font-medium tabular-nums text-muted">
-      {now.toLocaleTimeString(lang === 'fr' ? 'fr-CA' : 'en-CA', {
+      {now.toLocaleTimeString(tagFor(lang), {
         hour: 'numeric',
         minute: '2-digit',
       })}

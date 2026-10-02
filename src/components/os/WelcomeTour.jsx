@@ -9,6 +9,10 @@ const SHOW_EVENT = 'drift:show-tour';
 
 import { fr as frDict } from '../../lib/locales/fr.js';
 import { en as enDict } from '../../lib/locales/en.js';
+import { es as esDict } from '../../lib/locales/es.js';
+import { pt as ptDict } from '../../lib/locales/pt.js';
+
+const TOUR_DICTS = { fr: frDict, en: enDict, es: esDict, pt: ptDict };
 
 // Icons are keyed by step index; titles/texts come from the locale dicts.
 const STEP_ICONS = [null, LayoutGrid, Palette, Cloud, Check];
@@ -77,7 +81,7 @@ export function useWelcomeTourState() {
 
 export default function WelcomeTour() {
   const { lang, t } = useLang();
-  const STEPS = (lang === 'en' ? enDict : frDict).tour.steps;
+  const STEPS = (TOUR_DICTS[lang] || frDict).tour.steps;
   const { open, setOpen, close } = useWelcomeTourState();
   const [step, setStep] = useState(0);
   const [dontShow, setDontShow] = useState(true);

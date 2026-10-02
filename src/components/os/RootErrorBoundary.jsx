@@ -49,7 +49,7 @@ export function resetCrashCount() {
 }
 
 /**
- * Top-level crash catcher for the entire Drift Shop shell.
+ * Top-level crash catcher for the entire Vendra shell.
  *
  * If ANY uncaught error is thrown during render (login screen, desktop,
  * auth state transitions), React would otherwise unmount the whole tree

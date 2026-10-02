@@ -7,48 +7,35 @@
  * BEFORE the action runs, using the existing exportStore() mechanism
  * (the same dump the manual backup produces).
  *
- * Snapshots are kept device-local in localStorage, bounded to the last
- * few, so they never grow without limit. They are a safety net, not a
- * replacement for the manual "Download account backup" in Settings.
+ * CLOUD-ONLY CONTRACT: snapshots live IN MEMORY ONLY — a session-scoped
+ * ring of at most 3. Nothing is written to localStorage or anywhere else
+ * on this device: the cloud database is the only data store, and an
+ * un-downloaded snapshot vanishes the moment this session ends. The real
+ * protection is the owner's downloaded backup file; factory reset's
+ * safety net is the auto-downloaded account backup (which aborts the
+ * reset if it fails), not this session cache.
  *
  * Everything here is best-effort and time-boxed: a backup that fails or
  * times out must NEVER block the action it protects.
  */
 
 import { backend } from './backend/current.js';
-import { BRAND } from './brand.js';
 
-const SNAP_KEY = `${BRAND.storagePrefix}_auto_backups`;
+const LEGACY_SNAP_KEY = 'driftshop_auto_backups';
+try {
+  // Purge any snapshot ring stored by older builds: business data must not
+  // live on this device.
+  localStorage.removeItem(LEGACY_SNAP_KEY);
+} catch {
+  /* storage unavailable — nothing to purge */
+}
+
 const MAX_SNAPS = 3; // ring buffer: oldest snapshot is evicted
 const SNAPSHOT_TIMEOUT_MS = 15000;
 const FRESH_ENOUGH_MS = 5 * 60 * 1000; // skip if a fresh snapshot already exists
 
-function loadSnaps() {
-  try {
-    const raw = localStorage.getItem(SNAP_KEY);
-    const arr = raw ? JSON.parse(raw) : [];
-    return Array.isArray(arr) ? arr : [];
-  } catch {
-    return [];
-  }
-}
-
-function storeSnaps(snaps) {
-  const slim = snaps.slice(-MAX_SNAPS);
-  const payload = JSON.stringify(slim);
-  try {
-    localStorage.setItem(SNAP_KEY, payload);
-  } catch (err) {
-    // Quota exceeded — drop the oldest and retry once; if that fails,
-    // the snapshot is skipped (the action still proceeds).
-    try {
-      localStorage.setItem(SNAP_KEY, JSON.stringify(slim.slice(-1)));
-    } catch {
-      console.warn('[driftshop] auto-backup: localStorage full, snapshot skipped');
-    }
-  }
-  return slim;
-}
+// Session-only store. Never persisted — this dies with the tab.
+const sessionSnaps = [];
 
 function withTimeout(promise, ms, label) {
   let timer = null;
@@ -63,6 +50,7 @@ function withTimeout(promise, ms, label) {
 /**
  * Take a snapshot of a store's data right now. Returns the snapshot
  * descriptor { label, at, tables } or null if it failed (never throws).
+ * The snapshot is kept only in memory for this session.
  */
 export async function snapshotStore(storeId, label) {
   if (!storeId) return null;
@@ -78,10 +66,9 @@ export async function snapshotStore(storeId, label) {
       storeId,
       dump,
     };
-    const snaps = loadSnaps();
-    snaps.push(snap);
-    storeSnaps(snaps);
-    console.info(`[driftshop] auto-backup: snapshot "${snap.label}" saved`);
+    sessionSnaps.push(snap);
+    while (sessionSnaps.length > MAX_SNAPS) sessionSnaps.shift();
+    console.info(`[driftshop] auto-backup: session snapshot "${snap.label}" saved`);
     return snap;
   } catch (err) {
     // Best-effort: a failed snapshot must not block the action it protects.
@@ -97,8 +84,7 @@ export async function snapshotStore(storeId, label) {
  */
 export async function snapshotBeforeDestructive(storeId, label) {
   try {
-    const snaps = loadSnaps();
-    const latest = snaps[snaps.length - 1];
+    const latest = sessionSnaps[sessionSnaps.length - 1];
     if (latest && latest.storeId === storeId && Date.now() - new Date(latest.at).getTime() < FRESH_ENOUGH_MS) {
       return latest;
     }
@@ -109,7 +95,7 @@ export async function snapshotBeforeDestructive(storeId, label) {
 /** List saved auto-backup snapshots (newest last). Never throws. */
 export function listAutoBackups() {
   try {
-    return loadSnaps().map((s) => ({ label: s.label, at: s.at, storeId: s.storeId }));
+    return sessionSnaps.map((s) => ({ label: s.label, at: s.at, storeId: s.storeId }));
   } catch {
     return [];
   }
@@ -121,8 +107,7 @@ export function listAutoBackups() {
  * oldest (0) — use listAutoBackups() to pick.
  */
 export function downloadAutoBackup(index) {
-  const snaps = loadSnaps();
-  const snap = snaps[index];
+  const snap = sessionSnaps[index];
   if (!snap) throw new Error('No such auto-backup snapshot.');
   const blob = new Blob([JSON.stringify(snap.dump, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -139,9 +124,7 @@ export function downloadAutoBackup(index) {
   return snap;
 }
 
-/** Discard all auto-backup snapshots on this device. */
+/** Discard all auto-backup snapshots held in this session. */
 export function clearAutoBackups() {
-  try {
-    localStorage.removeItem(SNAP_KEY);
-  } catch {}
+  sessionSnaps.length = 0;
 }

@@ -1,9 +1,11 @@
 import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import { fr } from './locales/fr.js';
 import { en } from './locales/en.js';
+import { es } from './locales/es.js';
+import { pt } from './locales/pt.js';
 
 /* ------------------------------------------------------------------ */
-/* Bilingual system (FR/EN toggle) for the Drift Shop build.                  */
+/* Multilingual system (FR/EN/ES/PT) for the Vendra build.              */
 /*                                                                      */
 /* - LanguageProvider wraps the whole app; setLang() re-renders the     */
 /*   tree so every surface updates instantly.                           */
@@ -12,10 +14,16 @@ import { en } from './locales/en.js';
 /*   (e.g. appTitle() used at window-open time).                        */
 /* ------------------------------------------------------------------ */
 
-import { LANG_KEY, getLang, localeTag } from './localeTag.js';
+import { LANG_KEY, LANGS, getLang, localeTag, tagFor } from './localeTag.js';
 import { resiliency } from './locales/resiliency.js'; // resiliency UI strings, merged below (kept out of en.js/fr.js)
-export { LANG_KEY, getLang, localeTag };
-const DICTS = { fr: { ...fr, resiliency: resiliency.fr }, en: { ...en, resiliency: resiliency.en } };
+import { licensing } from './locales/licensing.js'; // licensing UI strings, same merge pattern
+export { LANG_KEY, LANGS, getLang, localeTag, tagFor };
+const DICTS = {
+  fr: { ...fr, resiliency: resiliency.fr, licensing: licensing.fr },
+  en: { ...en, resiliency: resiliency.en, licensing: licensing.en },
+  es: { ...es, resiliency: resiliency.es, licensing: licensing.es },
+  pt: { ...pt, resiliency: resiliency.pt, licensing: licensing.pt },
+};
 
 function lookup(dict, key) {
   return key.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : undefined), dict);
@@ -29,7 +37,7 @@ export function LanguageProvider({ children }) {
   const applyHtmlLang = useCallback((l) => {
     // Keep <html lang> honest for screen readers (initial mount + changes).
     try {
-      document.documentElement.lang = l === 'en' ? 'en-CA' : 'fr-CA';
+      document.documentElement.lang = tagFor(l);
     } catch {
       /* noop */
     }
@@ -40,7 +48,7 @@ export function LanguageProvider({ children }) {
   }, [lang, applyHtmlLang]);
 
   const setLang = useCallback((l) => {
-    const next = l === 'en' ? 'en' : 'fr';
+    const next = LANGS.includes(l) ? l : 'fr';
     setLangState(next);
     try {
       localStorage.setItem(LANG_KEY, next);

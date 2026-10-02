@@ -372,7 +372,7 @@ export default function MusicApp({ windowApi, path: initialPath }) {
   useEffect(() => {
     if (!('mediaSession' in navigator) || !current) return;
     try {
-      navigator.mediaSession.metadata = new MediaMetadata({ title: current.name, artist: 'Drift Shop Music' });
+      navigator.mediaSession.metadata = new MediaMetadata({ title: current.name, artist: 'Vendra Music' });
       navigator.mediaSession.setActionHandler('play', togglePlay);
       navigator.mediaSession.setActionHandler('pause', togglePlay);
       navigator.mediaSession.setActionHandler('previoustrack', prev);

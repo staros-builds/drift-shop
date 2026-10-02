@@ -1,6 +1,6 @@
 import { localeTag } from './localeTag.js';
 /**
- * Drift Helm — local deterministic command parser + tool definitions.
+ * Vendra Helm — local deterministic command parser + tool definitions.
  *
  * Two engines:
  * - Local (on-device): understands a documented set of command patterns,
@@ -149,7 +149,7 @@ export const HELM_TOOLS = [
   },
   {
     name: 'troubleshoot',
-    description: 'Help with a Drift problem from the built-in troubleshooting guide.',
+    description: 'Help with a Vendra problem from the built-in troubleshooting guide.',
     params: ['topic'],
   },
 ];
@@ -157,7 +157,7 @@ export const HELM_TOOLS = [
 const THEMES = { nightshift: 'Nightshift (dark)', daybreak: 'Daybreak (light)' };
 const WALLPAPERS = ['paper-grain', 'linen', 'dusk', 'plain'];
 const TASKBAR_POSITIONS = ['top', 'bottom', 'left', 'right'];
-const UI_STYLES = { drift: 'Drift', windows11: 'Windows 11', macosx: 'Mac OS X 10.6' };
+const UI_STYLES = { drift: 'Vendra', windows11: 'Windows 11', macosx: 'Mac OS X 10.6' };
 
 /**
  * Short human label for a tool execution, rendered as a receipt chip.
@@ -235,7 +235,7 @@ export function formatToolReceipt(tool, args = {}, result, t) {
 const HELP_TEXT =
   "Here's what I can do:\n" +
   '• Apps: "open <app>", "close <app>", "minimize <app>", "what windows are open", "close all windows"\n' +
-  '• Look & feel: "dark mode" / "light mode", "move the taskbar to the left", "switch to the Mac look" (or Windows 11, or Drift)\n' +
+  '• Look & feel: "dark mode" / "light mode", "move the taskbar to the left", "switch to the Mac look" (or Windows 11, or Vendra)\n' +
   '• Spaces: "list spaces", "go to space <name>"\n' +
   '• Files: "list files in <path>", "read file <path>", "find file <name>", "new note <text>", "create file <name> with <text>"\n' +
   '• Pins: "pin this: <text>", "search pins for <query>"\n' +
@@ -341,19 +341,19 @@ export async function webLookup(query) {
   };
 }
 
-// Compact Drift briefing baked into the cloud system prompt so cloud mode
-// can genuinely help with Drift problems without inventing OS state.
+// Compact Vendra briefing baked into the cloud system prompt so cloud mode
+// can genuinely help with Vendra problems without inventing OS state.
 const CLOUD_SYSTEM =
-  'You are Helm, the in-OS companion inside Drift, a calm paper-and-ink cloud desktop OS. ' +
+  'You are Helm, the in-OS companion inside Vendra, a calm paper-and-ink cloud desktop OS. ' +
   'Talk like a friendly shop assistant: warm, direct, a little playful, real opinions, zero corporate filler. ' +
   'Never open with "Great question!" or "I\'d be happy to help!" — just help. ' +
   'Be concise and plain-spoken. You cannot see the user\'s files, pins, or screen beyond the live context below — ' +
   'never invent their contents; if you don\'t know, say so honestly and offer the closest useful thing. ' +
-  'For doing things in Drift, give the exact command the user can say to you, e.g. "open files", "pin this: buy milk", ' +
+  'For doing things in Vendra, give the exact command the user can say to you, e.g. "open files", "pin this: buy milk", ' +
   '"search the web for mars rovers", "dark mode", "move the taskbar to the left", "switch to the mac look". ' +
   'Never ask for or repeat passwords. ' +
   'Troubleshooting reference: accounts and data are separate between the Cloud and This-device login modes — if files seem missing, check the login mode. ' +
-  'Uploads accept any file type up to 500 MB per file. If a website shows blank inside an App Store web app it blocks embedding: use "Try text view" or open it in a new tab. ' +
+  'Uploads accept any file type up to 50 MB per file. If a website shows blank inside an App Store web app it blocks embedding: use "Try text view" or open it in a new tab. ' +
   'In Point of Sale, cashiers only see their own sales; managers and owners see everything. ' +
   'If an app misbehaves, closing and reopening it (or reloading the page) fixes most issues.';
 
@@ -472,14 +472,14 @@ const TROUBLESHOOTING = [
     keys: ['upload', 'file too large', 'failed to upload', "won't upload"],
     title: 'uploads',
     answer:
-      'Uploads accept any file type up to 500 MB per file. If one fails: check the size, ' +
+      'Uploads accept any file type up to 50 MB per file. If one fails: check the size, ' +
       'check your connection, and make sure you\'re still signed in. Big files take a while — give it a minute before retrying.',
   },
   {
     keys: ['web app', 'blank page', 'website', "won't load", 'embedding', 'youtube', 'video'],
     title: 'websites not loading in a web app',
     answer:
-      'Some sites refuse to be embedded — that\'s your browser enforcing their rules, not Drift being broken. When a page stays blank, ' +
+      'Some sites refuse to be embedded — that\'s your browser enforcing their rules, not Vendra being broken. When a page stays blank, ' +
       'hit "Try text view" for a readable version, or "Open in new tab" to see it properly. YouTube, Vimeo, Twitch and Google Docs links ' +
       'get converted to their embeddable versions automatically.',
   },
@@ -488,7 +488,7 @@ const TROUBLESHOOTING = [
     title: 'missing files',
     answer:
       'Files live separately in each login mode — Cloud files and This-device files are two different sets. If yours seem gone, ' +
-      'you\'re probably in the other mode: sign out and back in with the right one. Drift never deletes files on its own.',
+      'you\'re probably in the other mode: sign out and back in with the right one. Vendra never deletes files on its own.',
   },
   {
     keys: ['pos', 'sale', 'register', 'cashier', 'checkout', 'receipt'],
@@ -631,7 +631,7 @@ export async function runLocalHelm(text, ctx) {
       low.match(/\bdefault\b[^.?!]{0,20}\b(look|style|theme)\b/);
   if (m) {
     const r = await run('set_ui_style', { style: 'drift' }, () => ctx.setUiStyle('drift'));
-    return { reply: r.ok ? 'Back to classic Drift.' : fail(r), receipts };
+    return { reply: r.ok ? 'Back to classic Vendra.' : fail(r), receipts };
   }
 
   // ---- taskbar position -----------------------------------------------------

@@ -1,4 +1,4 @@
-# Drift Shop backend contract
+# Vendra backend contract
 
 This file is the source of truth for the backend module boundary.
 `src/lib/backend/index.js` carries the full interface docs; this file states

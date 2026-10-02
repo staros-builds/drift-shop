@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FilePlus, FolderPlus, Upload, Pencil, Trash2, ChevronRight,
   FileText, Folder as FolderIcon, Save, X, FileWarning, Download, ExternalLink,
@@ -11,6 +11,7 @@ import { UploadJobsPanel } from './UploadJobsPanel.jsx';
 import { useNotifications } from '../os/NotificationsContext.jsx';
 import { useToasts } from '../os/ToastContext.jsx';
 import { useWindows } from '../os/WindowsContext.jsx';
+import { shrinkImageFile } from '../lib/imageShrink.js';
 
 function joinPath(dir, name) {
   return dir === '/' ? `/${name}` : `${dir}/${name}`;
@@ -44,31 +45,31 @@ function splitName(name) {
  * byte path the preview/download panel uses (fileUrl -> fetch -> Blob ->
  * upload), so bytes survive the copy on both adapters. Folders recurse.
  */
-async function copyEntry(entry, destPath) {
+async function copyEntry(entry, destPath, fs) {
   if (entry.type === 'folder') {
-    await backend.files.mkdir(destPath);
-    const children = await backend.files.list(entry.path);
+    await fs.mkdir(destPath);
+    const children = await fs.list(entry.path);
     for (const child of children) {
-      await copyEntry(child, joinPath(destPath, child.name));
+      await copyEntry(child, joinPath(destPath, child.name), fs);
     }
     return;
   }
   try {
-    const { text } = await backend.files.read(entry.path);
-    await backend.files.write(destPath, text);
+    const { text } = await fs.read(entry.path);
+    await fs.write(destPath, text);
   } catch (err) {
     if (err?.code !== 'IS_BINARY') throw err;
     // Binary: resolve the bytes exactly like the preview panel does, then
     // re-upload under the new name. fetch() handles both the local data URL
     // and the Supabase signed URL.
-    const { url } = await backend.files.fileUrl(entry.path);
+    const { url } = await fs.fileUrl(entry.path);
     const blob = await (await fetch(url)).blob();
-    await backend.files.upload(destPath, blob);
+    await fs.upload(destPath, blob);
   }
 }
 
 /** Preview/download panel for binary files (images, PDFs, …). */
-function BinaryPanel({ path, size, onClose }) {
+function BinaryPanel({ path, size, onClose, fs }) {
   const { t } = useLang();
   const [resolved, setResolved] = useState(null); // { url, mime, name }
   const [error, setError] = useState('');
@@ -77,7 +78,7 @@ function BinaryPanel({ path, size, onClose }) {
     let live = true;
     setResolved(null);
     setError('');
-    backend.files
+    fs
       .fileUrl(path)
       .then((r) => {
         if (live) setResolved(r);
@@ -149,7 +150,7 @@ function BinaryPanel({ path, size, onClose }) {
 }
 
 /** Destination picker for "Move to": a navigable folder list in a modal. */
-function MoveDialog({ entry, startDir, onConfirm, onClose }) {
+function MoveDialog({ entry, startDir, onConfirm, onClose, fs }) {
   const { t } = useLang();
   const [dir, setDir] = useState(startDir);
   const [folders, setFolders] = useState(null);
@@ -159,7 +160,7 @@ function MoveDialog({ entry, startDir, onConfirm, onClose }) {
     let live = true;
     setFolders(null);
     setError('');
-    backend.files
+    fs
       .list(dir)
       .then((list) => {
         if (!live) return;
@@ -182,7 +183,7 @@ function MoveDialog({ entry, startDir, onConfirm, onClose }) {
     return () => {
       live = false;
     };
-  }, [dir, entry]);
+  }, [dir, entry, fs]);
 
   const alreadyHere = dir === parentOf(entry.path);
   const label = dir === '/' ? t('files.home') : dir;
@@ -535,7 +536,7 @@ function AddressBar({ path, onGo }) {
  * folder; the cache is dropped whenever `treeBump` changes (a mutation
  * happened) so renames/moves/deletes show up.
  */
-function FolderTree({ cwd, onNavigate, treeBump }) {
+function FolderTree({ cwd, onNavigate, treeBump, fs }) {
   const { t } = useLang();
   const [expanded, setExpanded] = useState(() => new Set(['/']));
   const [kids, setKids] = useState({}); // path -> [child folder names]
@@ -545,7 +546,7 @@ function FolderTree({ cwd, onNavigate, treeBump }) {
   useEffect(() => {
     setKids({});
     setFailed({});
-  }, [treeBump]);
+  }, [treeBump, fs]);
 
   // Keep the ancestor chain of the current folder expanded.
   useEffect(() => {
@@ -569,7 +570,7 @@ function FolderTree({ cwd, onNavigate, treeBump }) {
     (async () => {
       for (const p of wanted) {
         try {
-          const list = await backend.files.list(p);
+          const list = await fs.list(p);
           if (!live) return;
           const names = list
             .filter((e) => e.type === 'folder')
@@ -585,7 +586,7 @@ function FolderTree({ cwd, onNavigate, treeBump }) {
     return () => {
       live = false;
     };
-  }, [expanded, kids, failed, treeBump]);
+  }, [expanded, kids, failed, treeBump, fs]);
 
   const toggle = (p) => {
     setExpanded((prev) => {
@@ -667,6 +668,44 @@ export default function FilesApp({ windowApi }) {
     setNavState(next);
     setCwd(target);
   };
+  // File scope: 'personal' is the user's own private area; 'shop' is the
+  // shared area every member of the user's shop can see (migration 066).
+  const [scope, setScope] = useState('personal');
+  const [shop, setShop] = useState(undefined); // undefined = loading, null = no shop
+  useEffect(() => {
+    let live = true;
+    backend.bouquinerie
+      .myStore()
+      .then((s) => {
+        if (live) setShop(s ?? null);
+      })
+      .catch(() => {
+        if (live) setShop(null);
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
+  // The active filesystem: personal (backend.files) or the shop adapter.
+  // Shop scope with no shop falls back to the personal API object but the
+  // body below renders the no-shop note instead of a listing.
+  const fs = useMemo(
+    () =>
+      scope === 'shop' && shop?.id
+        ? {
+            list: (p) => backend.shopFiles.list(shop.id, p),
+            read: (p) => backend.shopFiles.read(shop.id, p),
+            write: (p, text) => backend.shopFiles.write(shop.id, p, text),
+            upload: (p, blob, onProgress) => backend.shopFiles.upload(shop.id, p, blob, onProgress),
+            downloadBlob: (p) => backend.shopFiles.downloadBlob(shop.id, p),
+            fileUrl: (p) => backend.shopFiles.fileUrl(shop.id, p),
+            mkdir: (p) => backend.shopFiles.mkdir(shop.id, p),
+            remove: (p) => backend.shopFiles.remove(shop.id, p),
+            rename: (o, n) => backend.shopFiles.rename(shop.id, o, n),
+          }
+        : backend.files,
+    [scope, shop]
+  );
   // Bumped after every tree mutation so the folder tree drops its cache.
   const [treeBump, setTreeBump] = useState(0);
   const bumpTree = useCallback(() => setTreeBump((b) => b + 1), []);
@@ -701,7 +740,16 @@ export default function FilesApp({ windowApi }) {
       setListLoading(true);
       setListError('');
       try {
-        const list = await backend.files.list(path);
+        // Shop scope without a shop: nothing to list — the body shows a
+        // friendly note instead.
+        if (scope === 'shop' && !shop?.id) {
+          if (gen === listGen.current) {
+            setEntries([]);
+            setSelected(null);
+          }
+          return;
+        }
+        const list = await fs.list(path);
         if (gen !== listGen.current) return; // stale — a newer listing won
         setEntries(list);
         setSelected(null);
@@ -713,7 +761,7 @@ export default function FilesApp({ windowApi }) {
         if (gen === listGen.current) setListLoading(false);
       }
     },
-    [fail]
+    [fail, fs, scope, shop]
   );
 
   useEffect(() => {
@@ -758,6 +806,24 @@ export default function FilesApp({ windowApi }) {
     });
   };
 
+  // Switch between personal and shop files. The folder view resets to the
+  // root so personal paths never linger in the shop area (and vice versa).
+  const switchScope = (next) => {
+    if (next === scope) return;
+    withCleanEditor(() => {
+      setEditor(null);
+      setBinaryView(null);
+      setSelected(null);
+      setScope(next);
+      applyNav({ hist: ['/'], idx: 0 }, '/');
+      bumpTree();
+    });
+  };
+
+  // In shop scope without a shop, the actions have no target: the body shows
+  // the no-shop note instead, so disable creation/deletion.
+  const shopReady = scope !== 'shop' || !!shop?.id;
+
   // Walk the history stack without pushing (Back / Forward buttons).
   const travel = (delta) => {
     withCleanEditor(() => {
@@ -780,7 +846,7 @@ export default function FilesApp({ windowApi }) {
   // shows a notice instead of stranding the view on a dead path.
   const goToAddress = async (path) => {
     try {
-      await backend.files.list(path);
+      await fs.list(path);
     } catch (err) {
       push(t('files.notifNotFound'), t('files.notFoundMsg', { path }));
       return;
@@ -796,16 +862,16 @@ export default function FilesApp({ windowApi }) {
     try {
       // Defense in depth: the dialog already checked, but re-check here in
       // case the folder changed between dialog open and submit.
-      const existing = new Set((await backend.files.list(cwd)).map((e) => e.name));
+      const existing = new Set((await fs.list(cwd)).map((e) => e.name));
       if (existing.has(name)) {
         fail(kind === 'folder' ? 'files.errCreateFolder' : 'files.errCreateFile',
           new Error(t('files.nameExists', { name })));
         return;
       }
       if (kind === 'folder') {
-        await backend.files.mkdir(joinPath(cwd, name));
+        await fs.mkdir(joinPath(cwd, name));
       } else {
-        await backend.files.write(joinPath(cwd, name), '');
+        await fs.write(joinPath(cwd, name), '');
       }
       await refresh(cwd);
       bumpTree();
@@ -859,7 +925,7 @@ export default function FilesApp({ windowApi }) {
         // over an existing file would silently destroy data.
         const name = (rawName === '.' || rawName === '..') ? t('files.uploadedDefault') : rawName;
         const dest = joinPath(cwd, name);
-        const existing = await backend.files.list(cwd).catch(() => []);
+        const existing = await fs.list(cwd).catch(() => []);
         if (existing.some((e) => e.name.toLowerCase() === name.toLowerCase())) {
           fail('files.errUploadCollision', new Error(name));
           continue;
@@ -870,9 +936,13 @@ export default function FilesApp({ windowApi }) {
           TEXT_EXTENSIONS.test(name);
         if (looksText) {
           const text = await file.text();
-          await backend.files.write(dest, text);
+          await fs.write(dest, text);
         } else {
-          await backend.files.upload(dest, file, onProgress);
+          // Shrink photos before they cost storage quota. Never blocks
+          // the upload: shrinkImageFile returns the original untouched
+          // for non-photos and on any failure.
+          const toUpload = await shrinkImageFile(file);
+          await fs.upload(dest, toUpload, onProgress);
         }
         ok += 1;
         mark('done');
@@ -892,6 +962,7 @@ export default function FilesApp({ windowApi }) {
     // the input's value below empties it, so Array.from() must run before.
     const picked = Array.from(e.target.files || []);
     e.target.value = '';
+    if (!shopReady) return; // shop scope without a shop: nowhere to upload
     await uploadFiles(picked);
   };
 
@@ -919,6 +990,7 @@ export default function FilesApp({ windowApi }) {
     e.stopPropagation();
     dragCounter.current = 0;
     setDragActive(false);
+    if (!shopReady) return; // shop scope without a shop: nowhere to drop
     await uploadFiles(e.dataTransfer?.files);
   };
 
@@ -962,7 +1034,7 @@ export default function FilesApp({ windowApi }) {
     }
     withCleanEditor(async () => {
       try {
-        const { text } = await backend.files.read(path);
+        const { text } = await fs.read(path);
         setBinaryView(null);
         setEditor({ path, text, original: text });
       } catch (err) {
@@ -979,7 +1051,7 @@ export default function FilesApp({ windowApi }) {
   const handleSaveEditor = async () => {
     if (!editor) return;
     try {
-      await backend.files.write(editor.path, editor.text);
+      await fs.write(editor.path, editor.text);
       setEditor({ ...editor, original: editor.text });
       await refresh(cwd);
     } catch (err) {
@@ -1027,7 +1099,7 @@ export default function FilesApp({ windowApi }) {
       const entry = entries.find((e) => e.name === renaming);
       if (!entry) return;
       const newPath = joinPath(parentOf(entry.path), name);
-      await backend.files.rename(entry.path, newPath);
+      await fs.rename(entry.path, newPath);
       if (editor && editor.path === entry.path) {
         setEditor((ed) => ({ ...ed, path: newPath }));
       }
@@ -1042,7 +1114,7 @@ export default function FilesApp({ windowApi }) {
 
   const handleCopy = async (entry) => {
     try {
-      const existing = new Set((await backend.files.list(cwd)).map((e) => e.name));
+      const existing = new Set((await fs.list(cwd)).map((e) => e.name));
       const { stem, ext } = splitName(entry.name);
       let candidate = t('files.copyName', { stem, ext });
       let n = 2;
@@ -1050,7 +1122,7 @@ export default function FilesApp({ windowApi }) {
         candidate = t('files.copyNameN', { stem, ext, n });
         n += 1;
       }
-      await copyEntry(entry, joinPath(cwd, candidate));
+      await copyEntry(entry, joinPath(cwd, candidate), fs);
       push(t('files.notifCopied'), t('files.copiedMsg', { name: entry.name, candidate }));
       await refresh(cwd);
       bumpTree();
@@ -1068,7 +1140,7 @@ export default function FilesApp({ windowApi }) {
     // NUCLEAR FAILSAFE: check for collision before moving. Moving onto an
     // existing entry would silently destroy data.
     try {
-      const destEntries = await backend.files.list(destDir);
+      const destEntries = await fs.list(destDir);
       const existing = new Set(destEntries.map((e) => e.name.toLowerCase()));
       if (existing.has(entry.name.toLowerCase())) {
         fail('files.errMoveCollision');
@@ -1079,7 +1151,7 @@ export default function FilesApp({ windowApi }) {
       return;
     }
     try {
-      await backend.files.rename(entry.path, destPath);
+      await fs.rename(entry.path, destPath);
       // Keep any open panes pointing at the moved entry.
       const rebase = (p) =>
         p === entry.path || (entry.type === 'folder' && p.startsWith(`${entry.path}/`))
@@ -1114,12 +1186,12 @@ export default function FilesApp({ windowApi }) {
     if (entry.type !== 'file') return null;
     if (entry.size != null && entry.size > UNDO_STASH_LIMIT) return null;
     try {
-      const { text } = await backend.files.read(entry.path);
+      const { text } = await fs.read(entry.path);
       return { kind: 'text', text };
     } catch (err) {
       if (err?.code !== 'IS_BINARY') return null;
       try {
-        const { url } = await backend.files.fileUrl(entry.path);
+        const { url } = await fs.fileUrl(entry.path);
         const res = await fetch(url);
         if (!res.ok) return null;
         return { kind: 'binary', blob: await res.blob() };
@@ -1135,7 +1207,7 @@ export default function FilesApp({ windowApi }) {
     if (!entry) return;
     const stash = await stashFileContents(entry);
     try {
-      await backend.files.remove(entry.path);
+      await fs.remove(entry.path);
       if (editor?.path === entry.path) setEditor(null);
       if (binaryView?.path === entry.path) setBinaryView(null);
       await refresh(cwd);
@@ -1148,9 +1220,9 @@ export default function FilesApp({ windowApi }) {
           onAction: async () => {
             try {
               if (stash.kind === 'text') {
-                await backend.files.write(entry.path, stash.text);
+                await fs.write(entry.path, stash.text);
               } else {
-                await backend.files.upload(entry.path, stash.blob);
+                await fs.upload(entry.path, stash.blob);
               }
               await refresh(cwd);
               push(t('files.notifRestored'), t('files.restoredMsg', { name: entry.name }));
@@ -1210,6 +1282,38 @@ export default function FilesApp({ windowApi }) {
       )}
       {/* Toolbar: navigation + actions */}
       <div className="flex items-center gap-1.5 border-b border-osborder bg-surface px-3 py-2">
+        {/* Scope toggle: personal files vs the shop's shared files. */}
+        <div
+          role="tablist"
+          aria-label={t('files.scopeLabel')}
+          className="flex shrink-0 items-center rounded-os border border-osborder bg-paper p-0.5"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={scope === 'personal'}
+            onClick={() => switchScope('personal')}
+            title={t('files.scopePersonalTitle')}
+            className={`rounded-os px-2.5 py-1.5 text-sm font-medium transition-colors duration-160 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+              scope === 'personal' ? 'bg-accent text-white' : 'text-ink hover:bg-surface'
+            }`}
+          >
+            {t('files.scopePersonal')}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={scope === 'shop'}
+            onClick={() => switchScope('shop')}
+            title={t('files.scopeShopTitle')}
+            className={`rounded-os px-2.5 py-1.5 text-sm font-medium transition-colors duration-160 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+              scope === 'shop' ? 'bg-accent text-white' : 'text-ink hover:bg-surface'
+            }`}
+          >
+            {t('files.scopeShop')}
+          </button>
+        </div>
+        <span aria-hidden className="mx-1 h-5 w-px shrink-0 bg-osborder" />
         <button
           onClick={goBack}
           disabled={navState.idx <= 0}
@@ -1240,26 +1344,29 @@ export default function FilesApp({ windowApi }) {
         <span aria-hidden className="mx-1 h-5 w-px shrink-0 bg-osborder" />
         <button
           onClick={() => setNamePrompt('file')}
-          className="flex items-center gap-1.5 rounded-os border border-osborder bg-paper px-2.5 py-1.5 text-sm transition-colors duration-160 hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          disabled={!shopReady}
+          className="flex items-center gap-1.5 rounded-os border border-osborder bg-paper px-2.5 py-1.5 text-sm transition-colors duration-160 hover:bg-surface disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           <FilePlus size={15} /> {t('files.newFile')}
         </button>
         <button
           onClick={() => setNamePrompt('folder')}
-          className="flex items-center gap-1.5 rounded-os border border-osborder bg-paper px-2.5 py-1.5 text-sm transition-colors duration-160 hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          disabled={!shopReady}
+          className="flex items-center gap-1.5 rounded-os border border-osborder bg-paper px-2.5 py-1.5 text-sm transition-colors duration-160 hover:bg-surface disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           <FolderPlus size={15} /> {t('files.newFolder')}
         </button>
         <button
           onClick={() => fileInputRef.current?.click()}
+          disabled={!shopReady}
           title={t('files.uploadTitle')}
-          className="flex items-center gap-1.5 rounded-os bg-accent px-2.5 py-1.5 text-sm font-medium text-white transition-colors duration-160 hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="flex items-center gap-1.5 rounded-os bg-accent px-2.5 py-1.5 text-sm font-medium text-white transition-colors duration-160 hover:opacity-90 disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           <Upload size={15} /> {t('files.upload')}
         </button>
         <button
           onClick={() => selectedEntry && setDeleteTarget(selectedEntry)}
-          disabled={!selectedEntry}
+          disabled={!selectedEntry || !shopReady}
           title={selectedEntry ? t('files.delSelTitle', { name: selectedEntry.name }) : t('files.delNoneTitle')}
           aria-label={selectedEntry ? t('files.delSelAria', { name: selectedEntry.name }) : t('files.delNoneAria')}
           className="flex items-center gap-1.5 rounded-os border border-osborder bg-paper px-2.5 py-1.5 text-sm transition-colors duration-160 hover:bg-surface disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
@@ -1273,10 +1380,23 @@ export default function FilesApp({ windowApi }) {
       <AddressBar path={cwd} onGo={goToAddress} />
 
       {/* Body */}
+      {scope === 'shop' && !shop?.id ? (
+        // Shop scope without a shop: explain what this area is and how to get
+        // one, instead of showing a confusingly empty listing.
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-6 py-12 text-center">
+          <FolderIcon size={40} className="text-muted/60" aria-hidden />
+          <div>
+            <p className="text-sm font-medium text-ink">
+              {shop === undefined ? t('files.checkingShop') : t('files.noShopTitle')}
+            </p>
+            {shop === null && <p className="mt-1 max-w-md text-sm text-muted">{t('files.noShopBody')}</p>}
+          </div>
+        </div>
+      ) : (
       <div className="flex min-h-0 flex-1">
         {/* Folder tree */}
         <div className="hidden w-44 shrink-0 sm:block md:w-52">
-          <FolderTree cwd={cwd} onNavigate={navigate} treeBump={treeBump} />
+          <FolderTree cwd={cwd} onNavigate={navigate} treeBump={treeBump} fs={fs} />
         </div>
         <div
           className={`${editor || binaryView ? 'w-1/2 border-r border-osborder' : 'w-full'} min-w-0 overflow-y-auto outline-none`}
@@ -1456,9 +1576,11 @@ export default function FilesApp({ windowApi }) {
             path={binaryView.path}
             size={binaryView.size}
             onClose={() => setBinaryView(null)}
+            fs={fs}
           />
         )}
       </div>
+      )}
 
       {/* Status bar */}
       <div className="flex shrink-0 items-center justify-between gap-3 border-t border-osborder bg-surface px-3 py-1 text-xs text-muted">
@@ -1484,6 +1606,7 @@ export default function FilesApp({ windowApi }) {
           startDir={cwd}
           onConfirm={handleMoveConfirm}
           onClose={() => setMoveEntry(null)}
+          fs={fs}
         />
       )}
 
@@ -1494,7 +1617,7 @@ export default function FilesApp({ windowApi }) {
           onSubmit={handleNamePromptSubmit}
           onClose={() => setNamePrompt(null)}
           checkExists={async (name) => {
-            const existing = new Set((await backend.files.list(cwd)).map((e) => e.name));
+            const existing = new Set((await fs.list(cwd)).map((e) => e.name));
             return existing.has(name);
           }}
         />

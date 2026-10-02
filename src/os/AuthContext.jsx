@@ -3,11 +3,12 @@ import { backend } from '../lib/backend/current.js';
 import { evaluateAccess, ACCESS_CHECK_MS, TRIAL_USED_KEY } from './accessPolicy.js';
 import { loginIdToEmail } from '../lib/loginId.js';
 import { assertSanePassword } from '../lib/passwordPolicy.js';
+import { savePendingFlow, clearPendingFlow } from '../lib/authFlow.js';
 
 const AuthContext = createContext(null);
 
 /**
- * Auth state for the Drift OS shell.
+ * Auth state for the Vendra OS shell.
  * loading stays true until the first getUser()/onAuthChange settles.
  * All auth errors propagate as thrown Errors — LoginScreen displays them.
  *
@@ -205,6 +206,47 @@ export function AuthProvider({ children }) {
     }
   }, [runAccessCheck, waitForAccessProfile]);
 
+  // One-login email signup (2026-10-01): real email + confirmation email.
+  // kind: 'owner' (default, in-app signup) | 'customer' (from a shop page).
+  // Returns { status: 'needs-confirmation', email } — the caller shows the
+  // check-your-email panel — or { status: 'signed-in', user } when the
+  // project has confirmation off, in which case the normal access-checked
+  // sign-in path runs. The pending flow is saved BEFORE the backend call so
+  // the confirmation landing can route even if this tab is closed.
+  const signUpEmail = useCallback(async ({ email, password, displayName, kind, slug }) => {
+    assertSanePassword(password);
+    const accountKind = kind === 'customer' ? 'customer' : 'owner';
+    savePendingFlow({ kind: accountKind, slug });
+    explicitAuthRef.current = true;
+    try {
+      const res = await backend.auth.signUpWithEmail({
+        email,
+        password,
+        displayName,
+        kind: accountKind,
+        slug,
+      });
+      if (res.status === 'signed-in') {
+        const u = res.user;
+        setAccessBlock(null);
+        setAccessChecked(false);
+        await waitForAccessProfile(u.id);
+        const block = await runAccessCheck(u);
+        if (!block) setUser(u);
+        clearPendingFlow();
+        return { status: 'signed-in', user: u };
+      }
+      return res;
+    } catch (e) {
+      // Don't leave a stale pending record behind a failed signup — the
+      // next confirmation landing would otherwise misroute.
+      clearPendingFlow();
+      throw e;
+    } finally {
+      explicitAuthRef.current = false;
+    }
+  }, [runAccessCheck, waitForAccessProfile]);
+
   const signIn = useCallback(async (email, password) => {
     explicitAuthRef.current = true;
     try {
@@ -275,7 +317,7 @@ export function AuthProvider({ children }) {
     setProfile((p) => (p ? { ...p, must_change_password: false } : p));
   }, []);
 
-  const value = { user, loading, signUp, signIn, signInGuest, signOut, completePasswordChange, accessBlock, clearAccessBlock, isAdmin, profile, accessChecked, authEpoch };
+  const value = { user, loading, signUp, signUpEmail, signIn, signInGuest, signOut, completePasswordChange, accessBlock, clearAccessBlock, isAdmin, profile, accessChecked, authEpoch };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

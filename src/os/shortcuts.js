@@ -2,7 +2,7 @@ import { backend } from '../lib/backend/current.js';
 import { getApp } from '../apps/registry.jsx';
 
 /* ============================================================================
- * Drift keyboard shortcut layer + shared search helpers.
+ * Vendra keyboard shortcut layer + shared search helpers.
  *
  * SHORTCUTS is the single source of truth for the OS-level shortcuts that
  * GlobalShortcuts dispatches. HelpApp imports this list so the docs never

@@ -47,6 +47,13 @@ export function evaluateAccess(profile) {
         messageKey: 'login.blockTrialEndedMsg',
       };
     }
+    // One-login email signup (2026-10-01): a fresh OWNER account has no
+    // trial and is not paid yet — but it must reach the desktop to CREATE
+    // its shop (the shop's 30-day trial starts at shop creation, per the
+    // licensing model). Blocking here would dead-end every new signup.
+    // Locked/disabled checks above still apply; the licensing gate handles
+    // shop-level locks after merge.
+    if (profile.account_kind === 'owner') return null;
     return {
       kind: 'unpaid',
       titleKey: 'login.blockUnpaidTitle',

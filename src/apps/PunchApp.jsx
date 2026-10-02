@@ -6,7 +6,7 @@ import {
   HeartHandshake, Printer,
 } from 'lucide-react';
 import { backend } from '../lib/backend/current.js';
-import { useLang, localeTag } from '../lib/i18n.jsx';
+import { useLang, localeTag, tagFor } from '../lib/i18n.jsx';
 import { sha256hex } from '../lib/sha256.js';
 
 /* ------------------------------------------------------------------ */
@@ -31,7 +31,7 @@ function fmtDay(iso, lang) {
   if (!iso) return '—';
   const d = new Date(iso);
   if (!Number.isFinite(d.getTime())) return '—';
-  const loc = lang === 'en' ? 'en-CA' : 'fr-CA';
+  const loc = tagFor(lang);
   return d.toLocaleDateString(loc, { weekday: 'short', month: 'short', day: 'numeric' });
 }
 function fmtDur(ms) {
@@ -258,7 +258,7 @@ function dailyHours(punches, breaks, nowMs) {
 // One worker's attestation section: header + daily table + totals.
 function attestationSection({ t, lang, workerName, org, days, totalMs, assignedHours }) {
   const h2 = (ms) => (ms / 3600000).toFixed(2);
-  const loc = lang === 'en' ? 'en-CA' : 'fr-CA';
+  const loc = tagFor(lang);
   const fDay = (ymd) => {
     // NUCLEAR FAILSAFE: guard against null/malformed dates in attestation print.
     if (!ymd || typeof ymd !== 'string') return '—';
@@ -290,9 +290,9 @@ function attestationSection({ t, lang, workerName, org, days, totalMs, assignedH
 // Full A4 attestation document (FR/EN) with signature block — one worker
 // or a whole organization group (sectionsHtml).
 function attestationDoc({ t, lang, storeName, subtitle, periodFrom, periodTo, sectionsHtml }) {
-  const loc = lang === 'en' ? 'en-CA' : 'fr-CA';
+  const loc = tagFor(lang);
   return `<!DOCTYPE html>
-<html lang="${lang === 'en' ? 'en-CA' : 'fr-CA'}"><head><meta charset="utf-8">
+<html lang="${tagFor(lang)}"><head><meta charset="utf-8">
 <title>${escHtml(t('punch.attestationTitle'))}</title>
 <style>
   @page { size: A4; margin: 18mm 15mm; }
@@ -2246,7 +2246,7 @@ function fmtMinutes(m) {
 // entries grouped by organization. Reuses printHtmlDoc; visually matches
 // the payroll attestation but is a separate document.
 function communityAttestationDoc({ t, lang, storeName, personName, periodFrom, periodTo, groups, totalMinutes }) {
-  const loc = lang === 'en' ? 'en-CA' : 'fr-CA';
+  const loc = tagFor(lang);
   const fDay = (ymd) => {
     // NUCLEAR FAILSAFE: guard against null/malformed dates in attestation print.
     if (!ymd || typeof ymd !== 'string') return '—';
@@ -2272,7 +2272,7 @@ function communityAttestationDoc({ t, lang, storeName, personName, periodFrom, p
   </table>
   </div>`).join('');
   return `<!DOCTYPE html>
-<html lang="${lang === 'en' ? 'en-CA' : 'fr-CA'}"><head><meta charset="utf-8">
+<html lang="${tagFor(lang)}"><head><meta charset="utf-8">
 <title>${escHtml(t('punch.community.certTitle'))} — ${escHtml(personName)}</title>
 <style>
   @page { size: A4; margin: 18mm 15mm; }
@@ -2459,7 +2459,7 @@ function CommunityTab({ store }) {
     }
     const groups = [...byOrg.values()].sort((a, b) => (a.orgName || '').localeCompare(b.orgName || ''));
     const total = mine.reduce((s, e) => s + e.minutes, 0);
-    const loc = lang === 'en' ? 'en-CA' : 'fr-CA';
+    const loc = tagFor(lang);
     const fRange = (ymd) => {
       if (!ymd) return '—';
       const [y, m, d] = ymd.split('-').map(Number);

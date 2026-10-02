@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  Play, Pause, RotateCcw, ArrowLeft, Volume2, VolumeX, Skull,
+  Play, Pause, RotateCcw, X, Volume2, VolumeX, Skull,
   ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Crosshair, DoorOpen, Repeat,
 } from 'lucide-react';
 import { Game, renderFrame, LEVELS } from './duskfall/engine.js';
 import { playSound, isEnabled, setEnabled, initAudio } from '../../lib/sound.js';
 import { recordBest, useScores } from './scores.js';
 import { useAuth } from '../../os/AuthContext.jsx';
+import { useLang } from '../../lib/i18n.jsx';
 
 const QUALITY = {
   high: { w: 480, label: 'High' },
@@ -38,6 +39,7 @@ const blankInput = () => ({
 
 export default function DuskfallGame({ onExit }) {
   const { user } = useAuth();
+  const { t } = useLang();
   const [scores] = useScores(user?.id);
   const best = scores?.duskfall?.best || 0;
 
@@ -63,6 +65,8 @@ export default function DuskfallGame({ onExit }) {
   const emaRef = useRef(16);
   const slowFramesRef = useRef(0);
   const clearTimerRef = useRef(0);
+  const mouseTurnRef = useRef(0);
+  const pauseRef = useRef(null);
   screenRef.current = screen;
   qualityRef.current = quality;
 
@@ -120,6 +124,7 @@ export default function DuskfallGame({ onExit }) {
         }
       } else slowFramesRef.current = 0;
 
+      if (mouseTurnRef.current) g.angle += mouseTurnRef.current * dt * 1.9;
       g.update(dt, inputRef.current);
       for (const ev of g.events.splice(0)) {
         const fn = EVENT_SOUNDS[ev.type];
@@ -161,6 +166,7 @@ export default function DuskfallGame({ onExit }) {
   };
 
   const togglePause = () => {
+    mouseTurnRef.current = 0;
     if (screenRef.current === 'playing') {
       setScreen('paused');
       cancelAnimationFrame(rafRef.current);
@@ -170,10 +176,23 @@ export default function DuskfallGame({ onExit }) {
       setTimeout(() => { lastRef.current = performance.now(); startLoop(); wrapRef.current?.focus(); }, 30);
     }
   };
+  pauseRef.current = togglePause;
 
   useEffect(() => () => {
     cancelAnimationFrame(rafRef.current);
     clearTimeout(clearTimerRef.current);
+  }, []);
+
+  // Grab keyboard focus on mount so game keys work immediately, and
+  // pause automatically whenever the tab/window loses visibility —
+  // the game must never keep running (or firing) in the background.
+  useEffect(() => {
+    wrapRef.current?.focus();
+    const onVis = () => {
+      if (document.hidden && screenRef.current === 'playing') pauseRef.current?.();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
   }, []);
 
   const setKey = (code, down) => {
@@ -193,6 +212,7 @@ export default function DuskfallGame({ onExit }) {
 
   const onKeyDown = (e) => {
     if (screenRef.current !== 'playing') {
+      if (e.code === 'Escape') { e.preventDefault(); onExit?.(); return; }
       if ((e.code === 'Enter' || e.code === 'Space') && (screenRef.current === 'title' || screenRef.current === 'dead' || screenRef.current === 'win')) {
         e.preventDefault(); startGame();
       }
@@ -216,6 +236,32 @@ export default function DuskfallGame({ onExit }) {
     setMuted(!next);
   };
 
+  // Mouse look + fire (desktop): moving the mouse toward the edges
+  // of the viewport steers, clicking the view fires. Only the canvas
+  // itself fires — clicks on HUD buttons never discharge a weapon.
+  const onPointerDown = (e) => {
+    if (e.pointerType !== 'mouse' || e.button !== 0) return;
+    if (screenRef.current !== 'playing') return;
+    if (e.target === canvasRef.current) inputRef.current.fire = true;
+  };
+  const onPointerUp = (e) => {
+    if (e.pointerType === 'mouse') inputRef.current.fire = false;
+  };
+  const onPointerMove = (e) => {
+    if (e.pointerType !== 'mouse' || screenRef.current !== 'playing') {
+      if (e.pointerType === 'mouse') mouseTurnRef.current = 0;
+      return;
+    }
+    const rect = wrapRef.current?.getBoundingClientRect();
+    if (!rect || !rect.width) return;
+    const rel = (e.clientX - rect.left) / rect.width - 0.5;
+    mouseTurnRef.current = Math.abs(rel) < 0.09 ? 0 : Math.max(-1, Math.min(1, rel * 2.2));
+  };
+  const onPointerLeave = () => {
+    mouseTurnRef.current = 0;
+    inputRef.current.fire = false;
+  };
+
   const hold = (name) => ({
     onPointerDown: (e) => { e.preventDefault(); inputRef.current[name] = true; },
     onPointerUp: () => { inputRef.current[name] = false; },
@@ -233,8 +279,8 @@ export default function DuskfallGame({ onExit }) {
     <div className="flex h-full flex-col bg-[#0b0708] text-[#e8ded2]">
       {/* top bar */}
       <div className="flex items-center gap-2 border-b border-[#2a1d18] px-3 py-2">
-        <button onClick={onExit} className="rounded p-1.5 text-[#a89880] hover:bg-[#1d1310] hover:text-white" aria-label="Back to Arcade" title="Back to Arcade">
-          <ArrowLeft size={16} />
+        <button onClick={onExit} className="rounded p-1.5 text-[#a89880] hover:bg-[#1d1310] hover:text-white" aria-label={t('egg.close')} title={`${t('egg.close')} (Esc)`}>
+          <X size={16} />
         </button>
         <Skull size={16} className="text-[#c0392b]" />
         <span className="text-sm font-bold tracking-[0.2em]">DUSKFALL</span>
@@ -266,9 +312,13 @@ export default function DuskfallGame({ onExit }) {
         tabIndex={0}
         onKeyDown={onKeyDown}
         onKeyUp={onKeyUp}
+        onPointerDown={onPointerDown}
+        onPointerUp={onPointerUp}
+        onPointerMove={onPointerMove}
+        onPointerLeave={onPointerLeave}
         onBlur={() => { if (screenRef.current === 'playing') togglePause(); }}
         className="relative flex-1 select-none overflow-hidden bg-black outline-none"
-        style={{ touchAction: 'none' }}
+        style={{ touchAction: 'none', cursor: inGame ? 'crosshair' : undefined }}
       >
         <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" style={{ imageRendering: 'pixelated' }} />
 
@@ -349,6 +399,7 @@ export default function DuskfallGame({ onExit }) {
                 and the surface lift — and something is moving in the dark.
                 Find keycards, conserve shells, and reach the green exit glow.
               </p>
+              <p className="mt-2 text-xs italic text-[#5a4a3c]">{t('egg.found')}</p>
               <div className="mx-auto mt-4 grid max-w-xs grid-cols-2 gap-x-4 gap-y-1 text-left text-xs text-[#a89880]">
                 <span><b className="text-[#e8ded2]">WASD</b> move / strafe</span>
                 <span><b className="text-[#e8ded2]">← →</b> turn</span>
@@ -380,6 +431,9 @@ export default function DuskfallGame({ onExit }) {
                 <button onClick={startGame} className="inline-flex items-center gap-2 rounded border border-[#2a1d18] px-4 py-2 text-sm text-[#a89880] hover:text-white">
                   <RotateCcw size={15} /> Restart
                 </button>
+                <button onClick={onExit} className="inline-flex items-center gap-2 rounded border border-[#2a1d18] px-4 py-2 text-sm text-[#a89880] hover:text-white">
+                  <X size={15} /> {t('egg.quit')}
+                </button>
               </div>
             </div>
           </div>
@@ -396,7 +450,7 @@ export default function DuskfallGame({ onExit }) {
                 <button onClick={startGame} className="inline-flex items-center gap-2 rounded bg-[#c0392b] px-5 py-2 text-sm font-bold text-white hover:bg-[#a93226]">
                   <RotateCcw size={15} /> Try again
                 </button>
-                <button onClick={onExit} className="rounded border border-[#2a1d18] px-4 py-2 text-sm text-[#a89880] hover:text-white">Arcade</button>
+                <button onClick={onExit} className="rounded border border-[#2a1d18] px-4 py-2 text-sm text-[#a89880] hover:text-white">{t('egg.quit')}</button>
               </div>
             </div>
           </div>
@@ -414,7 +468,7 @@ export default function DuskfallGame({ onExit }) {
                 <button onClick={startGame} className="inline-flex items-center gap-2 rounded bg-[#c0392b] px-5 py-2 text-sm font-bold text-white hover:bg-[#a93226]">
                   <RotateCcw size={15} /> Play again
                 </button>
-                <button onClick={onExit} className="rounded border border-[#2a1d18] px-4 py-2 text-sm text-[#a89880] hover:text-white">Arcade</button>
+                <button onClick={onExit} className="rounded border border-[#2a1d18] px-4 py-2 text-sm text-[#a89880] hover:text-white">{t('egg.quit')}</button>
               </div>
             </div>
           </div>
@@ -423,7 +477,7 @@ export default function DuskfallGame({ onExit }) {
 
       {/* footer hints */}
       <div className="hidden border-t border-[#2a1d18] px-3 py-1.5 text-[11px] text-[#5a4a3c] sm:block">
-        WASD move · ←/→ turn · Space fire · E doors · 1/2 weapons · Shift run · P pause
+        WASD move · ←/→ turn · Mouse steer, click fires · Space fire · E doors · 1/2 weapons · Shift run · P pause · Esc close
       </div>
     </div>
   );

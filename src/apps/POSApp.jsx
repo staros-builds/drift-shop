@@ -26,6 +26,7 @@ import {
   taxLinesFor, taxTotalFor, TAX_PRESETS, OUTDATED_PRESETS,
   outdatedPresetFor, presetLabel, presetRateName,
 } from '../lib/taxMath.js';
+import { acquireUpdateLock } from '../lib/updateGuard.js';
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
@@ -53,13 +54,22 @@ function todayKey(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-const ROLE_LABEL = { owner: 'Owner', manager: 'Manager', cashier: 'Cashier' };
+// Role/method labels are localized at render time (QA: hardcoded EN
+// leaked into the FR UI). Call sites pass the component's t().
+const roleLabel = (t, role) =>
+  role === 'owner' ? t('pos.ui.roleOwner')
+    : role === 'manager' ? t('pos.ui.roleManager')
+    : role === 'cashier' ? t('pos.ui.roleCashier')
+    : (role || '');
+const methodLabel = (t, method) =>
+  method === 'cash' ? t('pos.tender.cash')
+    : method === 'card' ? t('pos.tender.card')
+    : method === 'other' ? t('pos.tender.other')
+    : (method || '');
 const canManage = (role) => role === 'owner' || role === 'manager';
 
 // Tax math (taxLinesFor, taxTotalFor, TAX_PRESETS, outdatedPresetFor, …)
 // lives in ../lib/taxMath.js so it can be unit-tested in node.
-
-const METHOD_LABEL = { cash: 'Cash', card: 'Card', other: 'Other' };
 
 function cartLineKey(productId, variantId) {
   return `${productId}::${variantId || ''}`;
@@ -132,7 +142,7 @@ function PinPadModal({ title, subtitle, error, busy, onSubmit, onClose }) {
 /* Small UI pieces                                                     */
 /* ------------------------------------------------------------------ */
 
-function TabButton({ id, label, icon: Icon, active, onClick }) {
+function TabButton({ id, label, icon: Icon, active, onClick, badge }) {
   return (
     <button
       type="button"
@@ -143,6 +153,11 @@ function TabButton({ id, label, icon: Icon, active, onClick }) {
     >
       <Icon size={16} />
       {label}
+      {badge > 0 && (
+        <span className="rounded-full bg-danger px-1.5 py-0.5 text-[11px] font-bold leading-none text-white">
+          {badge}
+        </span>
+      )}
     </button>
   );
 }
@@ -253,6 +268,12 @@ function SellTab({ products, store, v4, customers, customerId, onCustomerChange,
   const [orgOpen, setOrgOpen] = useState(false);
   const [discountForKey, setDiscountForKey] = useState(null);
   const [notice, setNotice] = useState('');
+  // NUCLEAR FAILSAFE: one stable idempotency key per checkout attempt
+  // (migration 050). Minted on the first completion try for a given cart
+  // payload and cleared on success — a retry after a lost response presents
+  // the SAME key, so the server returns the already-recorded sale instead
+  // of double-selling. { key, fingerprint } — a changed payload re-mints.
+  const checkoutIdem = useRef(null);
   // NUCLEAR FAILSAFE: cart draft auto-save. If the app crashes, the browser
   // closes, or the network dies mid-sale, the in-progress cart is recovered
   // on next POS open. A sale in progress is NEVER lost.
@@ -596,6 +617,8 @@ function SellTab({ products, store, v4, customers, customerId, onCustomerChange,
   }, [seedLines]);
 
   const completeSale = async ({ method, tenderedCents, adjustments = [] }) => {
+    // Never let an app self-update reload the till mid-sale.
+    const releaseSaleLock = acquireUpdateLock('pos-sale');
     const adjCents = adjustments.reduce((s, a) => s + (Math.max(0, Math.round(Number(a.cents) || 0)) || 0), 0);
     const due = Math.max(0, total - adjCents);
     // Reverse debited tender instruments (gift card / credit note / deposit /
@@ -692,6 +715,18 @@ function SellTab({ products, store, v4, customers, customerId, onCustomerChange,
       orgType: activeOrg?.type || null,
       taxExempt: !!activeOrg?.taxExempt,
     };
+    // Bind this attempt to ONE idempotency key, reused verbatim across
+    // retries of the same payload (see checkoutIdem above). The backend
+    // (supabase.js recordSale + migration 050's unique index) turns a
+    // duplicate key into "return the existing sale", never a second sale.
+    const checkoutFingerprint = JSON.stringify([sale.items, sale.subtotalCents, sale.discountCents, sale.taxCents, sale.totalCents, sale.method, sale.adjustments]);
+    if (!checkoutIdem.current || checkoutIdem.current.fingerprint !== checkoutFingerprint) {
+      const key = (typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : `sale-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      checkoutIdem.current = { key, fingerprint: checkoutFingerprint };
+    }
+    sale.idempotencyKey = checkoutIdem.current.key;
     let recorded;
     try {
       recorded = await onSaleComplete(sale);
@@ -703,10 +738,11 @@ function SellTab({ products, store, v4, customers, customerId, onCustomerChange,
       // stays open; the cart is left exactly as it was (nothing has been
       // cleared or persisted anywhere) so the cashier can simply retry.
       await reverseRedemptions(redeemed);
-      if (isTimeoutError(err)) throw err;
+      if (isTimeoutError(err)) { releaseSaleLock(); throw err; }
       // A raw fetch failure ("Failed to fetch") means nothing to a cashier —
       // translate network-class failures into a clear, honest message. Any
       // other error (stock conflict, validation) is rethrown as-is.
+      releaseSaleLock();
       if (/network|offline|failed to fetch|load failed/i.test(err?.message || '')) {
         const wrapped = new Error(t('err.saleNotRecorded'));
         wrapped.cause = err;
@@ -715,11 +751,17 @@ function SellTab({ products, store, v4, customers, customerId, onCustomerChange,
       throw err;
     }
     // Best-effort audit link: tie each redeemed gift card back to this sale
-    // in its ledger history. Never fails the sale.
+    // in its ledger history. Never fails the sale — the sale is already
+    // recorded at this point, so a throw here would make a completed sale
+    // look failed and invite a retry that re-redeems the tenders.
     if (recorded && recorded.id) {
       for (const r of redeemed) {
         if (r.kind === 'giftcard') {
-          await backend.pos.linkGiftCardSale(store.id, r.refId, r.cents, recorded.id);
+          try {
+            await backend.pos.linkGiftCardSale(store.id, r.refId, r.cents, recorded.id);
+          } catch (err) {
+            console.error('[drift] gift card sale link failed:', r.refId, err);
+          }
         }
       }
     }
@@ -741,6 +783,8 @@ function SellTab({ products, store, v4, customers, customerId, onCustomerChange,
       w.error ? `${w.name}: stock could not be updated (${w.error})` : `${w.name}: sold more than was on hand — please recount`
     );
     const receiptData = { ...recorded, taxLines, customerName: selectedCustomer?.name || recorded.customerName || null, stockWarnings };
+    checkoutIdem.current = null; // attempt completed — next sale mints a fresh key
+    releaseSaleLock();
     setReceipt(receiptData);
     setCart([]);
     setDiscount({ type: 'amount', value: '' });
@@ -1175,6 +1219,7 @@ function SellTab({ products, store, v4, customers, customerId, onCustomerChange,
               type="button"
               onClick={() => {
                 setCart([]);
+                checkoutIdem.current = null; // manual cart reset retires the checkout attempt
                 // Clear must reset the discount too — otherwise a discount
                 // silently persists and applies to the next sale (money bug).
                 setDiscount({ type: 'amount', value: '' });
@@ -2585,7 +2630,7 @@ function ReceiptModal({ receipt, store, onClose }) {
             <TotalsRow label="Change" value={fmt(receipt.changeCents, store.currency)} />
           </>
         ) : (
-          <TotalsRow label="Paid by" value={METHOD_LABEL[receipt.method] || 'Card'} />
+          <TotalsRow label={t('pos.receipt.paidBy')} value={methodLabel(t, receipt.method)} />
         )}
         {receipt.stockWarnings && receipt.stockWarnings.length > 0 && (
           <div className="mt-3 rounded-os border border-amber-500/50 bg-amber-500/10 p-3 text-xs text-ink">
@@ -3020,7 +3065,7 @@ function HistoryTab({ store, sales, memberName, onVoid, onRefund, onExchange, se
   const [exchangeSel, setExchangeSel] = useState({});
   const manager = canManage(role);
   // Cashiers see only their own sales — never anyone else's, and never
-  // store-wide figures. PIN cashiers share one Drift account on a shared
+  // store-wide figures. PIN cashiers share one Vendra account on a shared
   // device, so they are scoped by cashier name; everyone else by user id.
   const ownOnly = role === 'cashier';
   const scopedSales = ownOnly
@@ -3042,14 +3087,14 @@ function HistoryTab({ store, sales, memberName, onVoid, onRefund, onExchange, se
 
   const stats = ownOnly
     ? [
-        { label: 'My sales today', value: String(todaySales.length) },
-        { label: 'My gross today', value: fmt(todayNet, store.currency) },
-        { label: 'My all-time gross', value: fmt(allNet, store.currency) },
+        { label: t('pos.reports.mySalesToday'), value: String(todaySales.length) },
+        { label: t('pos.reports.myGrossToday'), value: fmt(todayNet, store.currency) },
+        { label: t('pos.reports.myAllTimeGross'), value: fmt(allNet, store.currency) },
       ]
     : [
-        { label: "Today's sales", value: String(todaySales.length) },
-        { label: "Today's gross", value: fmt(todayNet, store.currency) },
-        { label: 'All-time gross', value: fmt(allNet, store.currency) },
+        { label: t('pos.reports.todaySales'), value: String(todaySales.length) },
+        { label: t('pos.reports.todayGross'), value: fmt(todayNet, store.currency) },
+        { label: t('pos.reports.allTimeGross'), value: fmt(allNet, store.currency) },
       ];
   if (extras && todayRefunded > 0) {
     stats.push({ label: t('pos.refund.refundsToday'), value: fmt(todayRefunded, store.currency) });
@@ -3205,9 +3250,14 @@ function HistoryTab({ store, sales, memberName, onVoid, onRefund, onExchange, se
                           {t('pos.org.exemptBadge')}
                         </span>
                       )}
+                      {s.channel === 'fair' && (
+                        <span className="ml-2 rounded-os bg-accent/15 px-2 py-0.5 text-xs font-medium text-accent">
+                          {t('pos.fair.badge')}{s.fairName ? ` · ${s.fairName}` : ''}
+                        </span>
+                      )}
                     </p>
                     <p className="text-xs text-muted">
-                      {dt.toLocaleDateString(localeTag())} {dt.toLocaleTimeString(localeTag(), { hour: '2-digit', minute: '2-digit' })} · {METHOD_LABEL[s.method] || s.method} · {s.items.reduce((n, i) => n + i.qty, 0)} items
+                      {dt.toLocaleDateString(localeTag())} {dt.toLocaleTimeString(localeTag(), { hour: '2-digit', minute: '2-digit' })} · {methodLabel(t, s.method)} · {t('pos.ui.itemsCount', { n: s.items.reduce((n, i) => n + i.qty, 0) })}
                       {who && ` · ${who}`}
                       {s.customerName && ` · ${s.customerName}`}
                       {s.orgName && ` · ${t('pos.org.billedTo')}: ${s.orgName}`}
@@ -3421,6 +3471,391 @@ function HistoryTab({ store, sales, memberName, onVoid, onRefund, onExchange, se
     </div>
   );
 }
+/* ------------------------------------------------------------------ */
+/* Online orders inbox (migration 071)                          */
+/*                                                                     */
+/* Orders customers placed on the shop's public web page. Staff accept */
+/* them through the status buttons; "Convert to sale" rings the order  */
+/* up in the till as a normal sale (channel 'online') in ONE atomic    */
+/* RPC — the till's own stock function decrements stock exactly once,  */
+/* so double-tapping can never create a second sale.                   */
+/* ------------------------------------------------------------------ */
+
+const ORDER_STATUS_STYLE = {
+  received: 'bg-amber-100 text-amber-900',
+  preparing: 'bg-sky-100 text-sky-900',
+  ready: 'bg-emerald-100 text-emerald-900',
+  done: 'bg-osborder/50 text-muted',
+  cancelled: 'bg-osborder/50 text-muted',
+};
+
+function OnlineOrdersPanel({ store, onChanged }) {
+  const { t } = useLang();
+  const [open, setOpen] = useState(null);
+  const [archive, setArchive] = useState(null);
+  const [showArchive, setShowArchive] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [busyId, setBusyId] = useState(null);
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [converting, setConverting] = useState(null);
+  const [method, setMethod] = useState('cash');
+  const [tendered, setTendered] = useState('');
+  const [convertBusy, setConvertBusy] = useState(false);
+  const [convertError, setConvertError] = useState('');
+  const [convertResult, setConvertResult] = useState(null);
+
+  const load = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [o, a] = await Promise.all([
+        backend.pos.listOnlineOrders(store.id),
+        backend.pos.archiveOnlineOrders(store.id, 50),
+      ]);
+      setOpen(o);
+      setArchive(a);
+    } catch (e) {
+      setError(e.message || t('onlineOrders.loadFail'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store.id]);
+
+  const setStatus = async (order, status) => {
+    setBusyId(order.id);
+    try {
+      await backend.pos.setOnlineOrderStatus(order.id, status);
+      await load();
+    } catch (e) {
+      setError(e.message || t('onlineOrders.loadFail'));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const confirmCancel = async () => {
+    if (!cancelTarget) return;
+    setBusyId(cancelTarget.id);
+    try {
+      await backend.pos.setOnlineOrderStatus(cancelTarget.id, 'cancelled');
+      setCancelTarget(null);
+      await load();
+    } catch (e) {
+      setError(e.message || t('onlineOrders.loadFail'));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const openConvert = (order) => {
+    setConverting(order);
+    setMethod('cash');
+    setTendered((order.total_cents / 100).toFixed(2));
+    setConvertError('');
+    setConvertResult(null);
+  };
+
+  const doConvert = async () => {
+    if (!converting || convertBusy) return;
+    const tenderedCents =
+      method === 'cash'
+        ? Math.round(Number(String(tendered).replace(',', '.')) * 100)
+        : converting.total_cents;
+    if (method === 'cash' && !(tenderedCents >= converting.total_cents)) {
+      setConvertError(t('onlineOrders.underpaid'));
+      return;
+    }
+    setConvertBusy(true);
+    setConvertError('');
+    try {
+      const res = await backend.pos.convertOnlineOrder(converting.id, {
+        method,
+        tenderedCents,
+      });
+      setConvertResult(res);
+      await load();
+      if (onChanged) await onChanged();
+    } catch (e) {
+      setConvertError(e.message || t('onlineOrders.loadFail'));
+    } finally {
+      setConvertBusy(false);
+    }
+  };
+
+  const statusLabel = (s) => t(`onlineOrders.${s}`) || s;
+  const fmtWhen = (iso) => {
+    try {
+      return new Date(iso).toLocaleString(undefined, {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      });
+    } catch {
+      return '';
+    }
+  };
+
+  const renderOrder = (o) => (
+    <div key={o.id} className="rounded-os border border-osborder bg-paper p-4">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <p className="text-base font-bold text-ink">{t('onlineOrders.orderNumber', { n: o.number })}</p>
+          <p className="text-xs text-muted">{t('onlineOrders.placed', { when: fmtWhen(o.placed_at) })}</p>
+        </div>
+        <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${ORDER_STATUS_STYLE[o.status] || ''}`}>
+          {statusLabel(o.status)}
+        </span>
+      </div>
+      {(o.customer_name || o.customer_phone) && (
+        <p className="mt-2 text-sm text-ink">
+          <span className="font-semibold">{t('onlineOrders.customer')}: </span>
+          {o.customer_name || ''}
+          {o.customer_phone ? ` · ${o.customer_phone}` : ''}
+        </p>
+      )}
+      {o.pickup_note ? (
+        <p className="mt-1 text-sm text-ink">
+          <span className="font-semibold">{t('onlineOrders.pickupNote')}: </span>
+          {o.pickup_note}
+        </p>
+      ) : null}
+      <ul className="mt-2 space-y-1 text-sm text-ink">
+        {(o.items || []).map((it, i) => (
+          <li key={i} className="flex justify-between gap-2">
+            <span>{it.qty} × {it.name}</span>
+            <span className="text-muted">{fmt(it.line_total_cents, store.currency)}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-2 space-y-0.5 border-t border-osborder/60 pt-2 text-sm">
+        <div className="flex justify-between text-muted">
+          <span>{t('onlineOrders.subtotal')}</span>
+          <span>{fmt(o.subtotal_cents, store.currency)}</span>
+        </div>
+        {(o.tax_lines || []).map((r, i) => (
+          <div key={i} className="flex justify-between text-muted">
+            <span>{r.name} ({r.rate}%)</span>
+            <span>{fmt(r.cents, store.currency)}</span>
+          </div>
+        ))}
+        <div className="flex justify-between text-base font-bold text-ink">
+          <span>{t('onlineOrders.total')}</span>
+          <span>{fmt(o.total_cents, store.currency)}</span>
+        </div>
+      </div>
+      {o.status !== 'done' && o.status !== 'cancelled' && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {o.status === 'received' && (
+            <button
+              type="button"
+              disabled={busyId === o.id}
+              onClick={() => setStatus(o, 'preparing')}
+              className="rounded-os bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {t('onlineOrders.startPreparing')}
+            </button>
+          )}
+          {(o.status === 'received' || o.status === 'preparing') && (
+            <button
+              type="button"
+              disabled={busyId === o.id}
+              onClick={() => setStatus(o, 'ready')}
+              className="rounded-os border border-accent px-4 py-2 text-sm font-semibold text-accent disabled:opacity-50"
+            >
+              {t('onlineOrders.markReady')}
+            </button>
+          )}
+          {o.status === 'ready' && (
+            <button
+              type="button"
+              disabled={busyId === o.id}
+              onClick={() => openConvert(o)}
+              className="rounded-os bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {t('onlineOrders.convertToSale')}
+            </button>
+          )}
+          <button
+            type="button"
+            disabled={busyId === o.id}
+            onClick={() => setCancelTarget(o)}
+            className="rounded-os border border-osborder px-4 py-2 text-sm font-medium text-muted hover:text-ink disabled:opacity-50"
+          >
+            {t('onlineOrders.cancelOrder')}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 className="text-lg font-bold text-ink">{t('onlineOrders.inboxTitle')}</h2>
+          <p className="text-xs text-muted">{t('onlineOrders.inboxIntro')}</p>
+        </div>
+        <button
+          type="button"
+          onClick={load}
+          className="rounded-os border border-osborder px-3 py-1.5 text-sm font-medium text-ink hover:border-accent"
+        >
+          {t('onlineOrders.refresh')}
+        </button>
+      </div>
+      {error && <ErrorNote message={error} />}
+      {loading ? (
+        <p className="text-sm text-muted">{t('onlineOrders.loading')}</p>
+      ) : (
+        <>
+          <h3 className="text-sm font-bold text-ink">{t('onlineOrders.openOrders')}</h3>
+          {(open || []).length === 0 ? (
+            <div className="rounded-os border border-osborder bg-paper p-4">
+              <p className="text-sm font-medium text-ink">{t('onlineOrders.empty')}</p>
+              <p className="mt-1 text-xs text-muted">{t('onlineOrders.emptyHint')}</p>
+            </div>
+          ) : (
+            <div className="grid gap-3 lg:grid-cols-2">{open.map(renderOrder)}</div>
+          )}
+          <button
+            type="button"
+            onClick={() => setShowArchive((v) => !v)}
+            className="text-sm font-semibold text-accent hover:underline"
+          >
+            {t('onlineOrders.finished')} ({(archive || []).length})
+          </button>
+          {showArchive && (
+            <div>
+              <p className="mb-2 text-xs text-muted">{t('onlineOrders.finishedHint')}</p>
+              {(archive || []).length === 0 ? (
+                <p className="text-sm text-muted">—</p>
+              ) : (
+                <div className="grid gap-3 lg:grid-cols-2">{archive.map(renderOrder)}</div>
+              )}
+            </div>
+          )}
+        </>
+      )}
+
+      {cancelTarget && (
+        <Modal title={t('onlineOrders.confirmCancelTitle')} onClose={() => setCancelTarget(null)}>
+          <p className="text-sm text-ink">{t('onlineOrders.confirmCancelBody')}</p>
+          <div className="mt-4 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setCancelTarget(null)}
+              className="rounded-os border border-osborder px-4 py-2 text-sm font-medium text-ink"
+            >
+              {t('onlineOrders.keepOrder')}
+            </button>
+            <button
+              type="button"
+              onClick={confirmCancel}
+              disabled={busyId === cancelTarget.id}
+              className="rounded-os bg-danger px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {t('onlineOrders.yesCancel')}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {converting && (
+        <Modal title={t('onlineOrders.convertTitle', { n: converting.number })} onClose={() => setConverting(null)} wide>
+          {convertResult ? (
+            <div className="space-y-3">
+              <p className="text-sm font-semibold text-ink">
+                {t('onlineOrders.saleRecorded', { n: convertResult.sale_number })}
+              </p>
+              {(convertResult.stock || []).some((r) => r.oversold) && (
+                <div className="rounded-os border border-amber-300 bg-amber-50 px-3 py-2">
+                  <p className="text-sm font-bold text-amber-900">{t('onlineOrders.oversoldTitle')}</p>
+                  <p className="mt-1 text-xs text-amber-900">{t('onlineOrders.oversoldBody')}</p>
+                  <ul className="mt-1 text-xs text-amber-900">
+                    {convertResult.stock.filter((r) => r.oversold).map((r, i) => (
+                      <li key={i}>• {r.name}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setConverting(null)}
+                  className="rounded-os bg-accent px-4 py-2 text-sm font-semibold text-white"
+                >
+                  {t('common.ok')}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-xs text-muted">{t('onlineOrders.convertIntro')}</p>
+              <p className="text-base font-bold text-ink">
+                {t('onlineOrders.total')}: {fmt(converting.total_cents, store.currency)}
+              </p>
+              <div>
+                <p className="mb-1 text-xs font-semibold text-muted">{t('onlineOrders.payMethod')}</p>
+                <div className="flex gap-2">
+                  {['cash', 'card'].map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setMethod(m)}
+                      className={`rounded-os border px-4 py-2 text-sm font-semibold ${
+                        method === m ? 'border-accent bg-accent/10 text-accent' : 'border-osborder text-muted'
+                      }`}
+                    >
+                      {t(m === 'cash' ? 'onlineOrders.payCash' : 'onlineOrders.payCard')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {method === 'cash' && (
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-muted">
+                    {t('onlineOrders.cashReceived')}
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={tendered}
+                      onChange={(e) => setTendered(e.target.value)}
+                      className="mt-1 block w-40 rounded-os border border-osborder bg-surface px-3 py-2 text-sm text-ink outline-none"
+                    />
+                  </label>
+                </div>
+              )}
+              {convertError && <ErrorNote message={convertError} />}
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConverting(null)}
+                  className="rounded-os border border-osborder px-4 py-2 text-sm font-medium text-ink"
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  type="button"
+                  onClick={doConvert}
+                  disabled={convertBusy}
+                  className="rounded-os bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                >
+                  {t('onlineOrders.convertToSale')}
+                </button>
+              </div>
+            </div>
+          )}
+        </Modal>
+      )}
+    </div>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* Customers tab (v4)                                                  */
 /* ------------------------------------------------------------------ */
@@ -4177,6 +4612,17 @@ function ReportsTab({ store, sales, memberName, extras }) {
     return { gross, discounts, tax, items, refunds, count: live.length, avg: live.length ? Math.round(gross / live.length) : 0 };
   }, [live]);
 
+  // Fair sales (migration 064) are part of every total above — this just
+  // splits them out so the fair's take is visible at a glance.
+  const fairStats = useMemo(() => {
+    const fair = live.filter((s) => s.channel === 'fair');
+    const net = fair.reduce(
+      (n, s) => n + s.totalCents - (s.refunds || []).reduce((a, r) => a + (r.refundedCents || 0), 0),
+      0
+    );
+    return { count: fair.length, net };
+  }, [live]);
+
   // Acomba/QuickBooks-shaped journal export (date, account, debit, credit,
   // description). Balanced double-entry per sale; refunds post as returns.
   const exportCsv = () => {
@@ -4191,7 +4637,9 @@ function ReportsTab({ store, sales, memberName, extras }) {
       // Tax-exempt sales are distinguishable in the journal: dedicated
       // revenue account + explicit marker on every line of the entry.
       const exemptTag = s.taxExempt ? ' (exonéré / tax exempt)' : '';
-      const label = `Vente / Sale #${s.number}${exemptTag}`;
+      // Fair sales (migration 064) carry the same kind of marker.
+      const fairTag = s.channel === 'fair' ? ' (foire / fair)' : '';
+      const label = `Vente / Sale #${s.number}${exemptTag}${fairTag}`;
       const isLiabilitySale = s.items.some((i) => String(i.productId || '').startsWith('giftcard:') || String(i.productId || '').startsWith('deposit:'));
       const revenueAcct = s.taxExempt
         ? '4001 - Ventes exonérées / Exempt sales'
@@ -4269,24 +4717,27 @@ function ReportsTab({ store, sales, memberName, extras }) {
   }, [live, memberName]);
 
   const cards = [
-    { label: 'Gross sales', value: fmt(totals.gross, store.currency), icon: TrendingUp },
-    { label: 'Transactions', value: String(totals.count), icon: Receipt },
-    { label: 'Average ticket', value: fmt(totals.avg, store.currency), icon: CircleDollarSign },
-    { label: 'Items sold', value: String(totals.items), icon: Package },
-    { label: 'Discounts given', value: fmt(totals.discounts, store.currency), icon: Percent },
-    { label: 'Tax collected', value: fmt(totals.tax, store.currency), icon: Hash },
+    { label: t('pos.reports.grossSales'), value: fmt(totals.gross, store.currency), icon: TrendingUp },
+    { label: t('pos.reports.transactions'), value: String(totals.count), icon: Receipt },
+    { label: t('pos.reports.avgTicket'), value: fmt(totals.avg, store.currency), icon: CircleDollarSign },
+    { label: t('pos.reports.itemsSold'), value: String(totals.items), icon: Package },
+    { label: t('pos.reports.discountsGiven'), value: fmt(totals.discounts, store.currency), icon: Percent },
+    { label: t('pos.reports.taxCollected'), value: fmt(totals.tax, store.currency), icon: Hash },
   ];
   if (totals.refunds > 0) {
     cards.splice(1, 0, { label: t('pos.refund.refundsToday'), value: `−${fmt(totals.refunds, store.currency)}`, icon: Undo2 });
+  }
+  if (fairStats.count > 0) {
+    cards.push({ label: t('pos.fair.reportCard', { count: fairStats.count }), value: fmt(fairStats.net, store.currency), icon: StoreIcon });
   }
 
   return (
     <div className="h-full overflow-y-auto pr-1">
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {[
-          { id: 'today', label: 'Today' },
-          { id: '7', label: 'Last 7 days' },
-          { id: '30', label: 'Last 30 days' },
+          { id: 'today', label: t('pos.period.today') },
+          { id: '7', label: t('pos.period.last7') },
+          { id: '30', label: t('pos.period.last30') },
         ].map((r) => (
           <button
             key={r.id}
@@ -4363,7 +4814,7 @@ function ReportsTab({ store, sales, memberName, extras }) {
             <div className="space-y-2">
               {Object.entries(byMethod).map(([m, e]) => (
                 <div key={m} className="flex items-center justify-between text-sm">
-                  <span className="text-ink">{METHOD_LABEL[m] || m}</span>
+                  <span className="text-ink">{methodLabel(t, m)}</span>
                   <span className="text-muted">{e.count} sale{e.count === 1 ? '' : 's'} · <span className="font-medium text-ink">{fmt(e.total, store.currency)}</span></span>
                 </div>
               ))}
@@ -4529,7 +4980,7 @@ function StaffPinSection({ store, canManageStaff }) {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-ink">{m.name}</p>
-                <p className="text-xs text-muted">{ROLE_LABEL[m.role] || m.role}{m.active ? '' : ' · inactive'}</p>
+                <p className="text-xs text-muted">{roleLabel(t, m.role)}{m.active ? '' : ` · ${t('pos.ui.inactive')}`}</p>
               </div>
               {canManageStaff && (
                 <>
@@ -4648,7 +5099,7 @@ function TeamTab({ store, members, selfId, v4, onInvite, onRevokeInvite, onSetRo
                   {m.username}
                   {m.userId === selfId && <span className="ml-2 text-xs text-muted">{t('pos.tabs2.youBadge')}</span>}
                 </p>
-                <p className="text-xs text-muted">{ROLE_LABEL[m.role] || m.role}</p>
+                <p className="text-xs text-muted">{roleLabel(t, m.role)}</p>
               </div>
               {isOwner && m.userId !== selfId && (
                 <select
@@ -4730,7 +5181,7 @@ function TeamTab({ store, members, selfId, v4, onInvite, onRevokeInvite, onSetRo
                   <div key={inv.id} className="flex items-center justify-between rounded-os bg-surface px-3 py-2 text-sm">
                     <span className="font-mono font-semibold tracking-wider text-ink">{inv.code}</span>
                     <span className="text-xs text-muted">
-                      {ROLE_LABEL[inv.role]} · used {inv.uses}{inv.maxUses ? `/${inv.maxUses}` : '×'}
+                      {roleLabel(t, inv.role)} · {t('pos.ui.inviteUsed', { uses: inv.uses, max: inv.maxUses ? `/${inv.maxUses}` : '×' })}
                       {inv.expiresAt ? ` · expires ${new Date(inv.expiresAt).toLocaleDateString(localeTag())}` : ''}
                     </span>
                     <button
@@ -5869,7 +6320,7 @@ function ClockTab({ store }) {
         ) : (
           <div className="mt-3 rounded-os border border-osborder bg-surface p-4 text-center">
             <p className="text-lg font-semibold text-ink">{who.name}</p>
-            <p className="text-xs text-muted">{ROLE_LABEL[who.role] || who.role}</p>
+            <p className="text-xs text-muted">{roleLabel(t, who.role)}</p>
             {openPunch ? (
               <p className="mt-2 text-sm text-ink">
                 {t('punch.onShiftSince')} <span className="font-medium">{fmtClockTime(openPunch.punchIn)}</span>
@@ -5908,8 +6359,8 @@ function ClockTab({ store }) {
             <h3 className="text-sm font-semibold text-ink">{t('pos.tabs2.hours')}</h3>
             <div className="flex gap-1 rounded-os bg-surface p-0.5">
               {[
-                { id: 'today', label: 'Today' },
-                { id: 'week', label: 'Last 7 days' },
+                { id: 'today', label: t('pos.period.today') },
+                { id: 'week', label: t('pos.period.last7') },
               ].map((r) => (
                 <button
                   key={r.id}
@@ -6105,6 +6556,10 @@ export default function POSApp({
   const giftCards = !!caps?.giftCards;
   const orgsOk = !!caps?.orgs;
   const clockOk = !!caps?.timeClock;
+  // Online ordering inbox (migration 071). Gated on the backend
+  // capability so pre-migration databases never show a dead tab.
+  const ordersOk = !!caps?.onlineOrders;
+  const [newOrderCount, setNewOrderCount] = useState(0);
   const memberName = (userId) => members.find((m) => m.userId === userId)?.username || null;
   // A PIN login can step a shared device *down* to cashier (or up for a
   // manager PIN on a cashier's device); it never grants more than the store
@@ -6187,7 +6642,36 @@ export default function POSApp({
   useEffect(() => {
     if (caps && !caps.v4 && (tab === 'customers' || tab === 'drawer')) setTab('sell');
     if (caps && !caps.timeClock && tab === 'clock') setTab('sell');
+    if (caps && !caps.onlineOrders && tab === 'orders') setTab('sell');
   }, [caps, tab]);
+
+  // Online-orders badge: poll the count of brand-new orders so the till
+  // notices without being reloaded. Best-effort and quiet — the inbox
+  // itself is the source of truth.
+  useEffect(() => {
+    if (!ordersOk || !storeId || kiosk) return;
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const n = await backend.pos.countNewOnlineOrders(storeId);
+        if (!cancelled) setNewOrderCount(n);
+      } catch {
+        /* pre-migration or transient failure — badge stays quiet */
+      }
+    };
+    tick();
+    const id = setInterval(tick, 30000);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') tick();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeId, ordersOk, kiosk]);
 
   const refreshStores = async (selectId) => {
     const list = await backend.pos.listStores();
@@ -6322,8 +6806,25 @@ export default function POSApp({
     setProducts((list) => list.map((x) => (x.id === updated.id ? updated : x)));
   };
 
-  const voidSale = async (id, reason) => {
-    // Returns the RPC result { voided, warnings } so the history tab can
+  // An online order was converted to a sale: refresh the till's sales
+  // list and product stock so History/Reports/sell stay truthful.
+  const refreshAfterOnlineSale = async () => {
+    try {
+      setSales(await backend.pos.listSales(store.id, { limit: 500 }));
+    } catch {
+      /* best-effort */
+    }
+    if (v4) {
+      backend.pos.listProducts(store.id).then(setProducts).catch(() => {});
+    }
+    try {
+      setNewOrderCount(await backend.pos.countNewOnlineOrders(store.id));
+    } catch {
+      /* best-effort */
+    }
+  };
+
+  const voidSale = async (id, reason) => {    // Returns the RPC result { voided, warnings } so the history tab can
     // surface restock warnings; throws on failure (already voided, not a
     // manager) so the dialog can show the error instead of closing.
     const res = await backend.pos.voidSale(store.id, id, reason);
@@ -6562,6 +7063,16 @@ export default function POSApp({
         <TabButton id="history" label={t("pos.tabs.history")} icon={Receipt} active={tab === 'history'} onClick={setTab} />
         {v4 && <TabButton id="customers" label={t("pos.tabs.customers")} icon={UserCheck} active={tab === 'customers'} onClick={setTab} />}
         {v4 && <TabButton id="drawer" label={t("pos.tabs.drawer")} icon={Wallet} active={tab === 'drawer'} onClick={setTab} />}
+        {ordersOk && !kiosk && (
+          <TabButton
+            id="orders"
+            label={t('pos.tabs.orders')}
+            icon={Bell}
+            active={tab === 'orders'}
+            onClick={setTab}
+            badge={newOrderCount}
+          />
+        )}
         {clockOk && <TabButton id="clock" label={t("pos.tabs.clock")} icon={Clock3} active={tab === 'clock'} onClick={setTab} />}
         {manager && <TabButton id="reports" label={t("pos.tabs.reports")} icon={BarChart3} active={tab === 'reports'} onClick={setTab} />}
         <TabButton id="team" label={t("pos.tabs.team")} icon={Users} active={tab === 'team'} onClick={setTab} />
@@ -6578,7 +7089,7 @@ export default function POSApp({
               >
                 <KeyRound size={13} className="text-accent" />
                 {pinStaff.name}
-                <span className="text-muted">· {ROLE_LABEL[pinStaff.role]}</span>
+                <span className="text-muted">· {roleLabel(t, pinStaff.role)}</span>
                 <X size={13} className="text-muted" />
               </button>
             ) : (
@@ -6625,9 +7136,9 @@ export default function POSApp({
               <Plus size={15} />
             </button>
           )}
-          <span className="hidden items-center gap-1.5 text-xs text-muted sm:flex" title={`Your role: ${ROLE_LABEL[effectiveRole]}`}>
+          <span className="hidden items-center gap-1.5 text-xs text-muted sm:flex" title={t('pos.ui.yourRole', { role: roleLabel(t, effectiveRole) })}>
             <span className="font-medium text-ink">{store.name}</span>
-            <span className="rounded-os bg-paper px-1.5 py-0.5">{ROLE_LABEL[effectiveRole]}</span>
+            <span className="rounded-os bg-paper px-1.5 py-0.5">{roleLabel(t, effectiveRole)}</span>
           </span>
         </div>
       </div>
@@ -6721,6 +7232,9 @@ export default function POSApp({
             )}
             {tab === 'drawer' && v4 && (
               <DrawerTab store={store} sales={sales} role={effectiveRole} cashierName={cashierName} extras={extras} />
+            )}
+            {tab === 'orders' && ordersOk && !kiosk && (
+              <OnlineOrdersPanel store={store} onChanged={refreshAfterOnlineSale} />
             )}
             {tab === 'clock' && clockOk && (
               <ClockTab store={store} />

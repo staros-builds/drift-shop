@@ -1,15 +1,32 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Download, Upload, Sun, Moon, MonitorSmartphone, Check, HardDrive, RefreshCw, Maximize, Trash2, LayoutGrid, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Download, Upload, Sun, Moon, MonitorSmartphone, Check, HardDrive, RefreshCw, Maximize, Trash2, LayoutGrid, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, CloudUpload, CloudDownload, Link2, Unlink } from 'lucide-react';
 import { backend } from '../lib/backend/current.js';
-import { savePrinterConfig } from '../lib/pos-print/index.js';
 import { exportAccountBackup, downloadBackupFile } from '../lib/accountBackup.js';
+import { validateBackup } from '../lib/backupRestore.js';
+import {
+  CloudBackupError,
+  backUpNowToDrive,
+  connectGoogleDrive,
+  disconnectGoogleDrive,
+  downloadCloudBackup,
+  ensureGoogleDriveToken,
+  getCloudBackupState,
+  getDriveAbout,
+  isCloudBackupConfigured,
+  isGoogleDriveConnected,
+  listCloudBackups,
+  maybeAutoCloudBackup,
+  setCloudBackupState,
+} from '../lib/cloudBackup.js';
 import { useSettings } from '../os/SettingsContext.jsx';
 import { useNotifications } from '../os/NotificationsContext.jsx';
 import { useAuth } from '../os/AuthContext.jsx';
-import { useLang } from '../lib/i18n.jsx';
+import { useLang, localeTag } from '../lib/i18n.jsx';
 import { appTitle } from '../lib/appTitle.js';
 import { ConfirmDialog } from '../components/os/dialogs.jsx';
+import LicensePlanSection from '../components/LicensePlanSection.jsx';
 import { isEnabled as soundOn, setEnabled as setSoundOn, playSound, getVolume, setVolume } from '../lib/sound.js';
+import { UNLOCK_EVENT } from '../lib/easterEgg.js';
 import { listLaunchableApps } from './registry.jsx';
 // NOTE: do not import APPS here — registry.jsx imports SettingsApp, so this
 // module evaluates while the registry is still initializing and reading APPS
@@ -63,11 +80,24 @@ export default function SettingsApp({ windowApi }) {
   const { lang, setLang, t } = useLang();
   const [storageBytes, setStorageBytes] = useState(null);
   const [exporting, setExporting] = useState(false);
-  const [importing, setImporting] = useState(false);
   const [erasing, setErasing] = useState(false);
   const [confirmErase, setConfirmErase] = useState(false);
   const [soundTick, setSoundTick] = useState(0); // re-render the sound toggle
   void soundTick;
+  // Easter egg: 7 quick taps on the About version line opens the hidden
+  // game. Visually identical to a plain version label — no menu entry,
+  // no hint.
+  const versionTapsRef = useRef({ count: 0, last: 0 });
+  const tapVersion = () => {
+    const now = Date.now();
+    const s = versionTapsRef.current;
+    s.count = now - s.last < 1200 ? s.count + 1 : 1;
+    s.last = now;
+    if (s.count >= 7) {
+      s.count = 0;
+      window.dispatchEvent(new CustomEvent(UNLOCK_EVENT));
+    }
+  };
   const [volume, setVolumeState] = useState(() => getVolume());
   const flipSound = () => {
     setSoundOn(!soundOn());
@@ -79,9 +109,44 @@ export default function SettingsApp({ windowApi }) {
     setVolumeState(getVolume());
     playSound('click');
   };
-  const [pendingImport, setPendingImport] = useState(null); // parsed backup awaiting replace-confirm
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const fileInputRef = useRef(null);
+
+  // Cloud backup (optional Google Drive second copy — lib/cloudBackup.js)
+  const [cloudBusy, setCloudBusy] = useState(''); // ''|'connect'|'backup'|'list'|'restore:<id>'
+  const [cloudConnected, setCloudConnected] = useState(() => isGoogleDriveConnected());
+  const [cloudAbout, setCloudAbout] = useState(null);
+  const [cloudState, setCloudStateUi] = useState(() => getCloudBackupState());
+  const [driveListOpen, setDriveListOpen] = useState(false);
+  const [driveFiles, setDriveFiles] = useState(null); // null = not loaded yet
+
+  // On open: surface an existing Google session, then quietly run the
+  // weekly automatic backup if one is due (silent by design — no popups).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!isCloudBackupConfigured()) return;
+      if (isGoogleDriveConnected()) {
+        const token = await ensureGoogleDriveToken();
+        if (token && !cancelled) {
+          const about = await getDriveAbout(token);
+          if (!cancelled) {
+            setCloudConnected(true);
+            setCloudAbout(about);
+          }
+        }
+      }
+      const ran = await maybeAutoCloudBackup(exportAccountBackup);
+      if (ran && !cancelled) {
+        const s = getCloudBackupState();
+        setCloudStateUi(s);
+        push(t('settings.cloudBackup.doneTitle'), t('settings.cloudBackup.doneBody', { name: s.lastName || '' }));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Install app (PWA install + service worker update status)
   const [installState, setInstallState] = useState('unknown'); // unknown|installed|prompt|manual
@@ -313,328 +378,240 @@ export default function SettingsApp({ windowApi }) {
     }
   };
 
-  // ---- whole-account backup (v2.1.0) ---------------------------------------
+  // ---- whole-account backup (v2.2.0) ---------------------------------------
   // Implemented in src/lib/accountBackup.js so the factory-reset flow can
   // reuse the exact same export code path; exportData below is the thin
   // Settings button wrapper around it.
 
-  const dataUrlToBlob = (dataUrl) => {
-    const comma = dataUrl.indexOf(',');
-    const head = comma >= 0 ? dataUrl.slice(0, comma) : '';
-    const b64 = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
-    const mime = /data:(.*?);base64/.exec(head)?.[1] || 'application/octet-stream';
-    const bin = atob(b64);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return new Blob([bytes], { type: mime });
-  };
-
-  const exportData = async () => {
-    setExporting(true);
-    try {
-      const data = await exportAccountBackup();
-      downloadBackupFile(data, `drift-backup-${new Date().toISOString().slice(0, 10)}.json`);
-      push(t('settings.sections.backupComplete'), t('settings.sections.backupCompleteBody'));
-    } catch (err) {
-      push('Error', `Could not export data: ${err?.message || err}`);
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  const hasExistingData = async () => {
-    const [root, pins, threads] = await Promise.all([
-      backend.files.list('/'),
-      backend.pins.list({}),
-      backend.helm.threads(),
-    ]);
-    return root.length > 0 || pins.length > 0 || threads.length > 0;
-  };
-
-  // The destructive half of importData: wipes the current tree and restores
-  // the parsed backup. Throws on failure so both entry points report the
-  // same way.
-  const runImport = async (data) => {
-    const report = {
-      filesRestored: 0, filesSkipped: [],
-      pinsRestored: 0, pinErrors: 0,
-      spacesRestored: 0, profileNote: null,
-      highscoresRestored: 0, notificationsRestored: 0,
-    };
-
-    // Settings first: an invalid settings object aborts before any wipe.
-    // Applied through the context so the live UI updates too.
-    await updateSettings(data.settings);
-
-    // Profile: display identity only (never roles/paid/lock state).
-    if (data.profile && typeof data.profile === 'object' && backend.profile?.update) {
-      try {
-        const patch = {};
-        if (data.profile.username !== undefined) patch.username = data.profile.username;
-        if (data.profile.displayName !== undefined) patch.displayName = data.profile.displayName;
-        if (data.profile.avatarUrl !== undefined) patch.avatarUrl = data.profile.avatarUrl;
-        const res = await backend.profile.update(patch);
-        if (res?.usernameConflict) {
-          report.profileNote = `username "${data.profile.username}" was taken — profile restored with your current username`;
-        }
-      } catch (err) {
-        report.profileNote = `profile not restored (${err?.message || err})`;
-      }
-    }
-
-    // Files: wipe the current tree, then restore parent-first (export order).
-    // Text restores inline; embedded binaries re-upload byte-identical;
-    // skipped binaries are reported, never fatal.
-    const rootEntries = await backend.files.list('/');
-    for (const e of rootEntries) await backend.files.remove(e.path);
-    for (const f of data.files) {
-      try {
-        if (f.type === 'folder') {
-          await backend.files.mkdir(f.path); // idempotent — safe if a parent was auto-created
-        } else if (typeof f.text === 'string') {
-          await backend.files.write(f.path, f.text);
-          report.filesRestored++;
-        } else if (f.binary && typeof f.data === 'string') {
-          await backend.files.upload(f.path, dataUrlToBlob(f.data));
-          report.filesRestored++;
-        } else {
-          // Skipped (too large / not embedded): the bytes can't be restored,
-          // but the parent folder is still created so the tree structure
-          // survives the round trip. The summary tells the user what was lost.
-          try {
-            const parent = f.path.slice(0, f.path.lastIndexOf('/')) || '/';
-            if (parent !== '/' && f.path) await backend.files.mkdir(parent);
-          } catch { /* best effort — the skip report matters, not the folder */ }
-          report.filesSkipped.push({ path: f.path, reason: f.skipped || f.note || 'binary not embedded in backup' });
-        }
-      } catch (err) {
-        report.filesSkipped.push({ path: f.path, reason: err?.message || String(err) });
-      }
-    }
-
-    // Pins: wipe, then re-create (ids are regenerated). File/image pins
-    // carry their bytes as dataUrl — without it create() would throw.
-    const oldPins = await backend.pins.list({});
-    for (const p of oldPins) await backend.pins.remove(p.id);
-    for (const p of data.pins) {
-      const isFile = p.kind === 'file' || p.kind === 'image';
-      try {
-        await backend.pins.create({
-          kind: p.kind || 'text',
-          title: p.title,
-          body: isFile ? undefined : p.body,
-          url: p.url,
-          tags: Array.isArray(p.tags) ? p.tags : [],
-          sourceApp: p.sourceApp,
-          dataUrl: isFile ? p.dataUrl || p.body : undefined,
-          mime: p.mime,
-          sizeBytes: p.sizeBytes,
-        });
-        report.pinsRestored++;
-      } catch (err) {
-        report.pinErrors++;
-      }
-    }
-
-    // Helm threads: wipe, then re-create with their messages in order
-    // (user/assistant/tool roles and toolCalls preserved).
-    const oldThreads = await backend.helm.threads();
-    for (const t of oldThreads) await backend.helm.removeThread(t.id);
-    for (const t of data.helmThreads) {
-      const thread = await backend.helm.createThread(t.title || 'Conversation');
-      for (const m of t.messages || []) {
-        await backend.helm.addMessage(thread.id, {
-          role: m.role,
-          content: m.content,
-          toolCalls: m.toolCalls,
-        });
-      }
-    }
-
-    // Spaces: replace the whole set in one shot (names, wallpaper, accent,
-    // icon, window layouts). replaceAll never trips the starter-space
-    // reseed, so a backup containing Main/Focus/Play restores cleanly.
-    if (Array.isArray(data.spaces) && data.spaces.length > 0) {
-      if (backend.spaces.replaceAll) {
-        const restored = await backend.spaces.replaceAll(data.spaces);
-        report.spacesRestored = restored.length;
-      } else {
-        report.profileNote = (report.profileNote ? report.profileNote + '; ' : '') +
-          'spaces not restored (backend too old)';
-      }
-    }
-
-    // Highscores + notifications: merge-only (never wipe), idempotent.
-    try {
-      if (backend.highscores?.importAll && Array.isArray(data.highscores)) {
-        report.highscoresRestored = (await backend.highscores.importAll(data.highscores)).inserted;
-      }
-    } catch { /* non-fatal */ }
-    try {
-      if (backend.notifications?.importAll && Array.isArray(data.notifications)) {
-        report.notificationsRestored = (await backend.notifications.importAll(data.notifications)).inserted;
-      }
-    } catch { /* non-fatal */ }
-
-    // POS stores + support: merge-only restores (never wipe). Each store
-    // dump is imported by ID — missing rows are added, existing rows are
-    // left untouched. Returns a per-store report for the summary.
-    const posReports = [];
-    for (const dump of Array.isArray(data.posStores) ? data.posStores : []) {
-      if (!dump || typeof dump !== 'object' || dump.__exportError) {
-        posReports.push({ name: dump?.store?.name || 'store', error: dump?.__exportError || 'bad dump' });
-        continue;
-      }
-      try {
-        const r = await backend.pos.importStore(dump);
-        posReports.push({ name: dump.store?.name || 'store', ...r });
-        // Restore the device-local printer prefs the backup carried.
-        if (dump.printer && typeof dump.printer === 'object' && r.storeId) {
-          try { savePrinterConfig(r.storeId, dump.printer); } catch { /* best effort */ }
-        }
-      } catch (err) {
-        posReports.push({ name: dump.store?.name || 'store', error: err?.message || String(err) });
-      }
-    }
-    const supportReport = { tickets: null, feedback: null };
-    if (data.support && typeof data.support === 'object') {
-      try {
-        if (backend.support?.importMine) {
-          supportReport.tickets = await backend.support.importMine(data.support.tickets);
-        }
-      } catch (err) {
-        supportReport.tickets = { error: err?.message || String(err) };
-      }
-      try {
-        if (backend.feedback?.importMine) {
-          supportReport.feedback = await backend.feedback.importMine(data.support.feedback);
-        }
-      } catch (err) {
-        supportReport.feedback = { error: err?.message || String(err) };
-      }
-    }
-    return { posReports, supportReport, ...report };
-  };
-
-  // Human-readable summary of a restore: the replace-half counts plus the
-  // merge-half (POS stores + support) report.
-
-  // Human-readable summary of a restore: the replace-half counts plus the
-  // merge-half (POS stores + support) report.
-  const summarizeRestore = ({ posReports = [], supportReport = {}, filesRestored = 0, filesSkipped = [],
-      pinsRestored = 0, pinErrors = 0, spacesRestored = 0, profileNote = null,
-      highscoresRestored = 0, notificationsRestored = 0 } = {}) => {
-    const parts = [];
-    parts.push(`${filesRestored} file${filesRestored === 1 ? '' : 's'} restored`);
-    if (filesSkipped.length > 0) parts.push(`${filesSkipped.length} file${filesSkipped.length === 1 ? '' : 's'} skipped (${filesSkipped[0].reason})`);
-    parts.push(`${pinsRestored} pin${pinsRestored === 1 ? '' : 's'} restored`);
-    if (pinErrors > 0) parts.push(`${pinErrors} pin${pinErrors === 1 ? '' : 's'} could not be restored`);
-    if (spacesRestored > 0) parts.push(`${spacesRestored} space${spacesRestored === 1 ? '' : 's'} restored with layouts`);
-    if (profileNote) parts.push(profileNote);
-    if (highscoresRestored > 0) parts.push(`${highscoresRestored} highscore${highscoresRestored === 1 ? '' : 's'} restored`);
-    if (notificationsRestored > 0) parts.push(`${notificationsRestored} notification${notificationsRestored === 1 ? '' : 's'} restored`);
-    for (const r of posReports) {
-      if (r.error) {
-        parts.push(`${r.name}: restore failed (${r.error})`);
-        continue;
-      }
-      const n = Object.values(r.inserted || {}).reduce((a, b) => a + b, 0);
-      const label = r.store === 'created' ? 'new store restored' : 'merged';
-      parts.push(n > 0 ? `${r.name}: ${label}, ${n} record${n === 1 ? '' : 's'} added` : `${r.name}: already up to date`);
-      // Surface per-table partial failures so a half-restored table can't
-      // pass silently (e.g. gift cards failed but sales succeeded).
-      for (const [t, msg] of Object.entries(r.errors || {})) {
-        if (msg) parts.push(`${r.name}: ${t} had errors (${msg})`);
-      }
-    }
-    const t = supportReport.tickets;
-    if (t && !t.error && t.inserted) parts.push(`${t.inserted} support request${t.inserted === 1 ? '' : 's'} restored`);
-    const f = supportReport.feedback;
-    if (f && !f.error && f.inserted) parts.push(`${f.inserted} feedback note${f.inserted === 1 ? '' : 's'} restored`);
-    for (const [k, v] of [['tickets', t], ['feedback', f]]) {
-      if (v && v.error) parts.push(`${k} restore failed (${v.error})`);
-    }
-    return parts.length ? parts.join('. ') + '.' : 'No store or support data in this backup.';
-  };
-
-  // Continuation for the import replace gate: runs when the user confirms
-  // the in-app dialog.
-  const confirmImport = () => {
-    const data = pendingImport?.data;
-    setPendingImport(null);
-    if (!data) return;
-    setImporting(true);
-    runImport(data)
-      .then(async (summary) => {
-        push(t('settings.sections.importComplete'), t('settings.sections.importCompleteBody') + summarizeRestore(summary));
-        await computeStorage();
-      })
-      .catch((err) => push('Error', `Could not import data: ${err?.message || err}`))
-      .finally(() => setImporting(false));
-  };
-
-  // S1: restore a drift-backup-<date>.json backup produced by exportData.
-  // Export shape (v2.1.0): { exportedAt, version, kind: 'drift-backup',
-  //   settings, profile: { username, displayName, avatarUrl } | null,
-  //   spaces: [{ name, icon, wallpaper, accent, windowStates: [...] }],
-  //   files: [{path,type:'folder'} | {path,type:'file',text}
-  //          | {path,type:'file',binary:true,data,mime,sizeBytes}
-  //          | {path,type:'file',binary:true,skipped|note}],
-  //   pins: [...] (file/image pins carry dataUrl),
-  //   helmThreads: [{...thread, messages: [...]}],
-  //   highscores: [...], notifications: [...] (merge-only),
-  //   posStores: [store dumps from backend.pos.exportStore] (v2+),
-  //   support: { tickets: [...], feedback: [...] } (v2+, cloud only) }
-  // v2.0.0 backups (no profile/highscores/notifications, binaries as stubs)
-  // and v1 backups (version '0.1.0', no posStores/support) still restore.
-  const importData = async (file) => {
-    if (!file) return;
-    setImporting(true);
-    try {
-      let data;
-      try {
-        data = JSON.parse(await file.text());
-      } catch {
-        throw new Error('That file is not valid JSON.');
-      }
-      const valid =
-        data && typeof data === 'object' &&
-        Array.isArray(data.files) &&
-        Array.isArray(data.pins) &&
-        Array.isArray(data.helmThreads) &&
-        Array.isArray(data.spaces) &&
-        data.settings && typeof data.settings === 'object' &&
-        (data.profile === undefined || (data.profile && typeof data.profile === 'object')) &&
-        (data.highscores === undefined || Array.isArray(data.highscores)) &&
-        (data.notifications === undefined || Array.isArray(data.notifications)) &&
-        (data.posStores === undefined || Array.isArray(data.posStores)) &&
-        (data.support === undefined || (data.support && typeof data.support === 'object'));
-      if (!valid) {
-        throw new Error('Not a Drift Shop backup file — expected settings, spaces, files, pins, and helmThreads.');
-      }
-
-      if (await hasExistingData()) {
-        // Replacing live data is gated on an in-app confirmation (never
-        // window.confirm()): the parsed backup waits in pendingImport and
-        // the import resumes when the user confirms.
-        setImporting(false);
-        setPendingImport({ data });
-        return;
-      }
-
-      const summary = await runImport(data);
-
-      push(t('settings.sections.importComplete'), t('settings.sections.importCompleteBody') + summarizeRestore(summary));
-    } catch (err) {
-      push('Error', `Could not import data: ${err?.message || err}`);
-    } finally {
-      setImporting(false);
-    }
-  };
-
   // S2: wipe everything, gated on a single explicit danger dialog.
   // Resetting settings to defaults also clears welcome_seen, so the welcome
   // guide replays once — a full wipe is a fresh start.
+  // --- Cloud backup (Google Drive) -------------------------------------
+
+  const cloudErrorToast = (err) => {
+    const code = err?.code;
+    if (code === 'auth') push(t('settings.cloudBackup.errSigninTitle'), t('settings.cloudBackup.errSigninBody'));
+    else if (code === 'full') push('Error', t('settings.cloudBackup.errFull'));
+    else if (code === 'network') push('Error', t('settings.cloudBackup.errOffline'));
+    else if (code === 'badfile') push('Error', t('settings.cloudBackup.errBadFile'));
+    else push('Error', t('settings.cloudBackup.errGeneric', { msg: err?.message || String(err) }));
+  };
+
+  const handleCloudConnect = async () => {
+    setCloudBusy('connect');
+    try {
+      const { about } = await connectGoogleDrive();
+      setCloudConnected(true);
+      setCloudAbout(about);
+    } catch (err) {
+      cloudErrorToast(err);
+    } finally {
+      setCloudBusy('');
+    }
+  };
+
+  const handleCloudBackupNow = async () => {
+    setCloudBusy('backup');
+    try {
+      const data = await exportAccountBackup();
+      const { name } = await backUpNowToDrive(data, { interactive: true });
+      setCloudConnected(true);
+      setCloudStateUi(getCloudBackupState());
+      push(t('settings.cloudBackup.doneTitle'), t('settings.cloudBackup.doneBody', { name }));
+    } catch (err) {
+      cloudErrorToast(err);
+    } finally {
+      setCloudBusy('');
+    }
+  };
+
+  const handleCloudDisconnect = () => {
+    disconnectGoogleDrive();
+    setCloudConnected(false);
+    setCloudAbout(null);
+    setDriveListOpen(false);
+    setDriveFiles(null);
+  };
+
+  const handleToggleDriveRestore = async () => {
+    if (driveListOpen) {
+      setDriveListOpen(false);
+      return;
+    }
+    setDriveListOpen(true);
+    setCloudBusy('list');
+    try {
+      const token = await ensureGoogleDriveToken({ interactive: true });
+      if (!token) throw new CloudBackupError('auth', 'Google sign-in is needed.');
+      const files = await listCloudBackups(token);
+      setCloudConnected(true);
+      setDriveFiles(files);
+    } catch (err) {
+      cloudErrorToast(err);
+    } finally {
+      setCloudBusy('');
+    }
+  };
+
+  const handleRestoreDriveFile = async (f) => {
+    setCloudBusy(`restore:${f.id}`);
+    try {
+      const token = await ensureGoogleDriveToken({ interactive: true });
+      if (!token) throw new CloudBackupError('auth', 'Google sign-in is needed.');
+      const data = await downloadCloudBackup(token, f.id);
+      // Drive is a SOURCE, never a restore path of its own. Putting a
+      // backup back runs through the owner-only master restore (Admin →
+      // Users → Restore a backup: validate → type RESTORE → safety
+      // backup → wipe → re-import). So: validate the Drive copy with the
+      // same checker, save that exact file onto this device, and point
+      // the owner at the master flow — they pick this file there.
+      const validation = validateBackup(data);
+      if (!validation.ok) throw new CloudBackupError('badfile', 'That backup file could not be read, so nothing was restored.');
+      downloadBackupFile(data, f.name || 'drift-backup.json');
+      setDriveListOpen(false);
+      push(
+        t('settings.cloudBackup.restoreReadyTitle'),
+        t('settings.cloudBackup.restoreReadyBody', { name: f.name || 'drift-backup.json' }),
+      );
+    } catch (err) {
+      cloudErrorToast(err);
+    } finally {
+      setCloudBusy('');
+    }
+  };
+
+  const handleCloudAutoToggle = () => {
+    setCloudStateUi(setCloudBackupState({ auto: !cloudState.auto }));
+  };
+
+  const formatWhen = (iso) => {
+    try {
+      return new Intl.DateTimeFormat(localeTag(), { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
+    } catch {
+      return iso || '';
+    }
+  };
+
+  const cloudCard = (
+    <div className="mt-4 rounded-os border border-osborder bg-surface p-4">
+      <h3 className="text-sm font-semibold text-ink">{t('settings.cloudBackup.title')}</h3>
+      <p className="mt-1 text-xs text-muted">{t('settings.cloudBackup.intro')}</p>
+      <p className="mt-1 text-xs text-muted">{t('settings.cloudBackup.privacy')}</p>
+      {!isCloudBackupConfigured() ? (
+        <p className="mt-3 rounded-os border border-osborder px-3 py-2 text-xs text-muted">{t('settings.cloudBackup.notReady')}</p>
+      ) : !cloudConnected ? (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={handleCloudConnect}
+            disabled={cloudBusy !== ''}
+            className="flex min-h-[44px] items-center gap-2 rounded-os bg-accent px-4 py-2 text-sm font-medium text-white transition-opacity duration-160 hover:opacity-90 disabled:opacity-50"
+          >
+            <Link2 size={15} />
+            {cloudBusy === 'connect' ? t('settings.cloudBackup.connecting') : t('settings.cloudBackup.connect')}
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="mt-3 flex items-center gap-2 text-sm text-ink">
+            <Check size={15} className="shrink-0 text-accent" />
+            <span>
+              {t('settings.cloudBackup.connected')}
+              {cloudAbout?.email ? <span className="text-muted"> · {cloudAbout.email}</span> : null}
+            </span>
+          </div>
+          {cloudAbout?.limit ? (
+            <p className="mt-1 text-xs text-muted">
+              {t('settings.cloudBackup.storageLine', { used: formatBytes(cloudAbout.usage || 0), total: formatBytes(cloudAbout.limit) })}
+            </p>
+          ) : null}
+          <p className="mt-1 text-xs text-muted">
+            {cloudState.lastAt ? t('settings.cloudBackup.lastBackup', { when: formatWhen(cloudState.lastAt) }) : t('settings.cloudBackup.neverBackedUp')}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={handleCloudBackupNow}
+              disabled={cloudBusy !== ''}
+              className="flex min-h-[44px] items-center gap-2 rounded-os bg-accent px-4 py-2 text-sm font-medium text-white transition-opacity duration-160 hover:opacity-90 disabled:opacity-50"
+            >
+              <CloudUpload size={15} />
+              {cloudBusy === 'backup' ? t('settings.cloudBackup.backingUp') : t('settings.cloudBackup.backupNow')}
+            </button>
+            <button
+              type="button"
+              onClick={handleToggleDriveRestore}
+              disabled={cloudBusy !== ''}
+              className="flex min-h-[44px] items-center gap-2 rounded-os border border-osborder px-4 py-2 text-sm font-medium text-ink transition-colors duration-160 hover:bg-surface disabled:opacity-50"
+            >
+              <CloudDownload size={15} />
+              {t('settings.cloudBackup.restore')}
+            </button>
+            <button
+              type="button"
+              onClick={handleCloudDisconnect}
+              disabled={cloudBusy !== ''}
+              className="flex min-h-[44px] items-center gap-2 rounded-os border border-osborder px-4 py-2 text-sm font-medium text-ink transition-colors duration-160 hover:bg-surface disabled:opacity-50"
+            >
+              <Unlink size={15} />
+              {t('settings.cloudBackup.disconnect')}
+            </button>
+          </div>
+          <p className="mt-1 text-xs text-muted">{t('settings.cloudBackup.disconnectHint')}</p>
+          <button
+            type="button"
+            onClick={handleCloudAutoToggle}
+            className="mt-2 flex min-h-[44px] w-full items-center gap-3 rounded-os border border-osborder px-4 py-3 text-left transition-colors duration-160 hover:bg-surface"
+          >
+            <span className="flex-1">
+              <span className="block text-sm font-medium text-ink">{t('settings.cloudBackup.auto')}</span>
+              <span className="block text-xs text-muted">{t('settings.cloudBackup.autoHint')}</span>
+            </span>
+            <span className={`flex h-7 w-12 shrink-0 items-center rounded-full p-1 transition-colors duration-160 ${cloudState.auto ? 'bg-accent' : 'bg-osborder'}`}>
+              <span className={`h-5 w-5 rounded-full bg-white shadow transition-transform duration-160 ${cloudState.auto ? 'translate-x-5' : 'translate-x-0'}`} />
+            </span>
+          </button>
+          {driveListOpen && (
+            <div className="mt-3">
+              {cloudBusy === 'list' ? (
+                <p className="text-xs text-muted">{t('settings.cloudBackup.restoreLoading')}</p>
+              ) : !driveFiles || driveFiles.length === 0 ? (
+                <p className="text-xs text-muted">{t('settings.cloudBackup.restoreNone')}</p>
+              ) : (
+                <>
+                  <p className="text-xs text-muted">{t('settings.cloudBackup.restorePick')}</p>
+                  <div className="mt-2 flex flex-col gap-2">
+                    {driveFiles.map((f, i) => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => handleRestoreDriveFile(f)}
+                        disabled={cloudBusy !== ''}
+                        className="flex min-h-[44px] items-center gap-2 rounded-os border border-osborder px-4 py-2 text-sm text-ink transition-colors duration-160 hover:bg-surface disabled:opacity-50"
+                      >
+                        <CloudDownload size={15} className="shrink-0" />
+                        <span className="flex-1 text-left">
+                          <span className="block font-medium">{formatWhen(f.createdTime)}</span>
+                          <span className="block text-xs text-muted">
+                            {f.name}
+                            {f.size ? ` · ${formatBytes(Number(f.size))}` : ''}
+                          </span>
+                        </span>
+                        {i === 0 && (
+                          <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-white">{t('settings.cloudBackup.newest')}</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+
   const eraseAllData = async () => {
     setErasing(true);
     try {
@@ -665,7 +642,7 @@ export default function SettingsApp({ windowApi }) {
       try {
         window.localStorage.removeItem('drift:welcome_tour_seen');
       } catch { /* ignore */ }
-      push('Data erased', 'All Drift Shop data was permanently deleted.');
+      push('Data erased', 'All Vendra data was permanently deleted.');
       setStorageBytes(0);
     } catch (err) {
       push('Error', `Could not erase data: ${err?.message || err}`);
@@ -685,6 +662,8 @@ export default function SettingsApp({ windowApi }) {
             {[
               { id: 'fr', label: t('lang.french') },
               { id: 'en', label: t('lang.english') },
+              { id: 'es', label: t('lang.spanish') },
+              { id: 'pt', label: t('lang.portuguese') },
             ].map((l) => {
               const active = lang === l.id;
               return (
@@ -1106,41 +1085,32 @@ export default function SettingsApp({ windowApi }) {
               <Download size={15} /> {exporting ? 'Backing up…' : 'Download account backup'}
             </button>
             <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={importing}
-              className="flex items-center gap-2 rounded-os border border-osborder bg-surface px-4 py-2 text-sm transition-colors duration-160 hover:border-accent disabled:opacity-40"
-            >
-              <Upload size={15} /> {importing ? 'Restoring…' : 'Restore backup'}
-            </button>
-            <button
               onClick={() => setConfirmErase(true)}
               disabled={erasing}
               className="flex items-center gap-2 rounded-os border border-osborder bg-surface px-4 py-2 text-sm text-muted transition-colors duration-160 hover:text-ink disabled:opacity-40"
             >
               <Trash2 size={15} /> {erasing ? 'Erasing…' : 'Erase all data'}
             </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".json,application/json"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                e.target.value = '';
-                importData(f);
-              }}
-            />
           </div>
           <p className="mt-2 text-xs text-muted">
             Downloads one backup file with your whole account: settings, profile, files
             (including binary files), pins, spaces with their window layouts, Helm threads,
             highscores, notifications, every POS store (products, sales, customers, staff,
-            time-clock history, appointments, drawer shifts), plus your support requests and
-            feedback. Restoring merges store data by ID — it adds what's missing and never deletes
-            anything. Keep the file somewhere safe: it contains private data such as staff PINs.
+            time-clock history, appointments, drawer shifts, refunds, and shop files), plus
+            your support requests and feedback. To put a backup back, the owner uses
+            Admin → Danger zone → Restore from backup. Keep the file somewhere safe: it
+            contains private data such as staff PINs.
             Erasing deletes everything permanently.
           </p>
+          {cloudCard}
         </section>
+
+        {/* Plan + support (licensing 072): license status, countdown,
+            key entry, and the purchase/support channel. The component
+            renders nothing until the licensing migration is live. */}
+        <div className="mb-8">
+          <LicensePlanSection />
+        </div>
 
         {/* Install app */}
         <section className="mb-8">
@@ -1219,7 +1189,7 @@ export default function SettingsApp({ windowApi }) {
           <dl className="rounded-os border border-osborder bg-surface text-sm">
             <div className="flex justify-between border-b border-osborder px-3 py-2">
               <dt className="text-muted">{t('settings.fields.version')}</dt>
-              <dd>0.1.0</dd>
+              <dd onClick={tapVersion} className="select-none">0.1.0</dd>
             </div>
             <div className="flex justify-between border-b border-osborder px-3 py-2">
               <dt className="text-muted">{t('settings.fields.copyright')}</dt>
@@ -1254,17 +1224,6 @@ export default function SettingsApp({ windowApi }) {
           </dl>
         </section>
       </div>
-      {pendingImport && (
-        <ConfirmDialog
-          title="Replace your current data?"
-          message="Importing will REPLACE your current files, pins, Helm threads, spaces, and settings with this backup. POS stores, support requests, and feedback are merged instead — missing records are added, nothing is deleted. This cannot be undone."
-          confirmLabel="Replace and import"
-          cancelLabel="Keep my data"
-          danger
-          onConfirm={confirmImport}
-          onCancel={() => setPendingImport(null)}
-        />
-      )}
       {confirmErase && (
         <ConfirmDialog
           title="Erase everything?"

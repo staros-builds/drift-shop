@@ -1,5 +1,5 @@
 import { localeTag } from '../localeTag.js';
-/* ESC/POS command builder + receipt composer for Drift POS.
+/* ESC/POS command builder + receipt composer for Vendra POS.
  *
  * Pure module (no DOM, no browser APIs): builds the exact byte stream sent to
  * thermal receipt printers. Works with any ESC/POS-compatible printer

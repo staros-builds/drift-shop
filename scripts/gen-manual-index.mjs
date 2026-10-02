@@ -1,6 +1,6 @@
 // Generates public/manual/manual-index.json from the finalized manual PDF.
 // One entry per page: page number + plain text. Run AFTER the manual PDF is
-// copied into public/manual/drift-shop-manual.pdf.
+// copied into public/manual/vendra-manual.pdf.
 // Usage: node scripts/gen-manual-index.mjs
 import { execFileSync } from 'child_process';
 import { writeFileSync } from 'fs';
@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const pdf = join(root, 'public/manual/drift-shop-manual.pdf');
+const pdf = join(root, 'public/manual/vendra-manual.pdf');
 const out = join(root, 'public/manual/manual-index.json');
 
 const info = execFileSync('pdfinfo', [pdf], { encoding: 'utf8' });

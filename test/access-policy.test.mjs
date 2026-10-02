@@ -134,4 +134,42 @@ check('lock beats temporary disable', () => {
   assert.equal(b.kind, 'locked');
 });
 
+// One-login email signup (2026-10-01): fresh owner accounts reach the
+// desktop to create their shop; customers and legacy accounts do not.
+check('owner-kind account passes the unpaid gate (shop setup)', () => {
+  const b = evaluateAccess({
+    role: 'standard', is_paid: false, is_locked: false,
+    disabled_until: null, trial_ends_at: null, is_guest: false,
+    account_kind: 'owner',
+  });
+  assert.equal(b, null);
+});
+
+check('owner-kind account is still blocked when locked', () => {
+  const b = evaluateAccess({
+    role: 'standard', is_paid: false, is_locked: true,
+    disabled_until: null, trial_ends_at: null, is_guest: false,
+    account_kind: 'owner',
+  });
+  assert.equal(b.kind, 'locked');
+});
+
+check('customer-kind account stays behind the unpaid gate', () => {
+  const b = evaluateAccess({
+    role: 'standard', is_paid: false, is_locked: false,
+    disabled_until: null, trial_ends_at: null, is_guest: false,
+    account_kind: 'customer',
+  });
+  assert.equal(b.kind, 'unpaid');
+});
+
+check('legacy (null kind) unpaid account is still blocked', () => {
+  const b = evaluateAccess({
+    role: 'standard', is_paid: false, is_locked: false,
+    disabled_until: null, trial_ends_at: null, is_guest: false,
+    account_kind: null,
+  });
+  assert.equal(b.kind, 'unpaid');
+});
+
 console.log(process.exitCode ? 'FAILED' : 'all access-policy tests passed');

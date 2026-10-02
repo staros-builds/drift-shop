@@ -1,4 +1,4 @@
-# Drift Shop
+# Vendra
 
 A calm, paper-and-ink small-business hub — point of sale, product catalogue,
 appointments, files, staff time clock with printable certificates, and team
@@ -14,7 +14,7 @@ npm run build    # production build to dist/ (served from the /drift-shop/ base 
 
 ## Backend — cloud-only
 
-Drift Shop always boots against Supabase. There is no local/offline device
+Vendra always boots against Supabase. There is no local/offline device
 mode and no backend toggle: one login, one user list, data follows the
 account on every device.
 

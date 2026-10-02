@@ -3,10 +3,11 @@
  * factory-reset pre-wipe safety net.
  *
  * exportAccountBackup() builds the exact same dump as Settings → "Download
- * account backup" (kind 'drift-backup', version '2.1.0'): settings, profile,
+ * account backup" (kind 'drift-backup', version '2.2.0'): settings, profile,
  * spaces + window states, files (text inline, binaries as data URLs with
  * caps), pins, Helm threads, high scores, notifications, per-store POS
- * dumps, and the user's own support tickets + feedback.
+ * dumps, shared shop files per store (migration 066), and the user's own
+ * support tickets + feedback.
  *
  * It THROWS on failure — callers that must not proceed without a backup
  * (the factory-reset flow) treat a throw as an abort signal.
@@ -131,6 +132,65 @@ export async function exportAccountBackup() {
     posStores.push({ storeId: null, store: null, tables: {}, __exportError: err?.message || String(err) });
   }
 
+  // Shared shop files (migration 066): the walk above only sees the
+  // user's private files (files.list is owner-scoped), so each shop's
+  // shared area is walked separately under its own store id. One bad
+  // store never sinks the export — its error is recorded on the entry,
+  // exactly like the POS dumps below.
+  const shopFiles = [];
+  const walkShop = async (storeId, out) => {
+    let binaryBytes = 0;
+    const walk = async (path) => {
+      const entries = await backend.shopFiles.list(storeId, path);
+      for (const e of entries) {
+        if (e.type === 'folder') {
+          out.push({ path: e.path, type: 'folder' });
+          await walk(e.path);
+        } else {
+          try {
+            const { text } = await backend.shopFiles.read(storeId, e.path);
+            out.push({ path: e.path, type: 'file', text });
+          } catch (err) {
+            if (err?.code !== 'IS_BINARY') {
+              out.push({ path: e.path, type: 'file', binary: true, note: err?.code || 'unreadable' });
+              continue;
+            }
+            const size = e.size || 0;
+            if (size > MAX_BACKUP_FILE_BYTES || binaryBytes + size > MAX_BACKUP_BINARY_TOTAL) {
+              out.push({ path: e.path, type: 'file', binary: true, skipped: 'too large for backup', sizeBytes: size, mime: e.mime });
+              continue;
+            }
+            try {
+              const blob = await backend.shopFiles.downloadBlob(storeId, e.path);
+              binaryBytes += blob.size;
+              out.push({
+                path: e.path, type: 'file', binary: true,
+                data: await blobToDataUrl(blob), mime: e.mime, sizeBytes: blob.size,
+              });
+            } catch (bErr) {
+              out.push({ path: e.path, type: 'file', binary: true, note: bErr?.message || 'unreadable' });
+            }
+          }
+        }
+      }
+    };
+    await walk('/');
+  };
+  try {
+    const stores = await backend.pos.listStores();
+    for (const s of stores) {
+      const entry = { storeId: s.id, storeName: s.name, files: [] };
+      try {
+        await walkShop(s.id, entry.files);
+      } catch (err) {
+        entry.__exportError = err?.message || String(err);
+      }
+      shopFiles.push(entry);
+    }
+  } catch (err) {
+    shopFiles.push({ storeId: null, storeName: null, files: [], __exportError: err?.message || String(err) });
+  }
+
   // Support tickets + feedback (cloud only; the user's own rows).
   let support = null;
   try {
@@ -145,7 +205,7 @@ export async function exportAccountBackup() {
 
   return {
     exportedAt: new Date().toISOString(),
-    version: '2.1.0',
+    version: '2.2.0',
     kind: 'drift-backup',
     settings: await backend.settings.get(),
     profile: backend.profile?.get ? await backend.profile.get().catch(() => null) : null,
@@ -156,6 +216,7 @@ export async function exportAccountBackup() {
     highscores: backend.highscores?.exportAll ? await backend.highscores.exportAll().catch(() => []) : [],
     notifications: backend.notifications?.exportAll ? await backend.notifications.exportAll().catch(() => []) : [],
     posStores,
+    shopFiles,
     support,
   };
 }

@@ -3,6 +3,13 @@ import { LogIn, UserPlus, AlertCircle, Timer, X, Languages, KeyRound, MailQuesti
 import { useAuth, TRIAL_USED_KEY } from '../../os/AuthContext.jsx';
 import { useLang } from '../../lib/i18n.jsx';
 import { backend } from '../../lib/backend/current.js';
+import { getRestorePending } from '../../lib/backupRestore.js';
+import { BRAND } from '../../lib/brand.js';
+import {
+  validateSignupEmail,
+  resendCooldownRemaining,
+  readAndClearAuthNotice,
+} from '../../lib/authFlow.js';
 import { DriftMark } from './BootScreen.jsx';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -39,6 +46,8 @@ function LangToggle() {
       {[
         { id: 'fr', label: 'FR' },
         { id: 'en', label: 'EN' },
+        { id: 'es', label: 'ES' },
+        { id: 'pt', label: 'PT' },
       ].map((l) => (
         <button
           key={l.id}
@@ -379,16 +388,29 @@ function ForgotPasswordDialog({ onClose }) {
  * in with a username or an email address.
  */
 export default function LoginScreen() {
-  const { signIn, signUp, signInGuest, accessBlock, clearAccessBlock } = useAuth();
+  const { signIn, signUpEmail, signInGuest, accessBlock, clearAccessBlock } = useAuth();
   const { t, lang } = useLang();
   const [mode, setMode] = useState('signin'); // 'signin' | 'signup'
   // Single identifier field: accepts a username OR an email address.
   // We detect which one by the presence of '@' — no toggle needed.
   const [identifier, setIdentifier] = useState('');
+  // Signup is email-only (one login, 2026-10-01): a real address the
+  // confirmation email can reach. Sign-in keeps the legacy identifier
+  // field so existing username accounts still work.
+  const [signupEmail, setSignupEmail] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
+  // After signupWithEmail returns needs-confirmation: the check-your-email
+  // panel replaces the form until the user confirms via the email link.
+  const [checkEmail, setCheckEmail] = useState(null); // { email } | null
+  const [lastSentAt, setLastSentAt] = useState(0);
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  // One-time notice from an auth callback landing (e.g. an expired
+  // confirmation link). Read + cleared on mount.
+  const [notice, setNotice] = useState(null);
   // Synchronous guard against rapid double-clicks: React state updates are
   // async, so `busy` alone can't stop two submits dispatched before the
   // re-render. The ref blocks synchronously.
@@ -416,6 +438,33 @@ export default function LoginScreen() {
     }
     return false;
   });
+
+  // A backup restore may be waiting for its second half (phase 1 wiped the
+  // account and signed everyone out). Only READ the flag here — it must
+  // survive until the owner finishes the restore in Admin → Danger zone.
+  const [restoreNotice] = useState(() => {
+    try {
+      return getRestorePending() != null;
+    } catch {
+      return false;
+    }
+  });
+  // One-time auth notice (e.g. expired confirmation link): read + cleared
+  // on mount, exactly like the factory-reset notice below.
+  useEffect(() => {
+    const n = readAndClearAuthNotice();
+    if (n && n.kind === 'expired') {
+      setNotice('expired');
+      setMode('signup');
+    }
+  }, []);
+
+  // Tick the resend cooldown label while the check-email panel is up.
+  useEffect(() => {
+    if (!checkEmail) return undefined;
+    const id = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [checkEmail]);
 
   // Security: never retain a password on the login screen. This runs on every
   // mount (including after logout) and defeats both React state reuse and
@@ -462,11 +511,68 @@ export default function LoginScreen() {
     busyRef.current = true;
     const id = identifier.trim();
     try {
-      if (mode === 'signup') {
-        await signUp(id, password, useUsername ? id : undefined);
-      } else {
-        await signIn(id, password);
+      await signIn(id, password);
+    } catch (err) {
+      setError(friendlyAuthError(err));
+    } finally {
+      setBusy(false);
+      busyRef.current = false;
+    }
+  };
+
+  // Email-only signup (one login, 2026-10-01). The backend sends a
+  // confirmation email; on needs-confirmation the check-email panel takes
+  // over. On signed-in (project has confirmation off) the auth context
+  // already set the user and the shell takes over.
+  const submitSignup = async (e) => {
+    e.preventDefault();
+    if (busyRef.current) return;
+    const v = validateSignupEmail(signupEmail, BRAND.accountsDomain);
+    if (!v.ok) {
+      setError(t(v.code === 'synthetic-domain' ? 'login.errSyntheticEmail' : 'login.errEmail'));
+      return;
+    }
+    if (password.length < 8) {
+      setError(t('login.errPassword'));
+      return;
+    }
+    if (!/\S/.test(password)) {
+      setError(t('login.errPasswordBlank'));
+      return;
+    }
+    setError('');
+    setBusy(true);
+    busyRef.current = true;
+    try {
+      const res = await signUpEmail({
+        email: v.email,
+        password,
+        displayName: displayName.trim() || undefined,
+        kind: 'owner',
+      });
+      if (res && res.status === 'needs-confirmation') {
+        setLastSentAt(Date.now());
+        setNowTick(Date.now());
+        setCheckEmail({ email: res.email });
       }
+    } catch (err) {
+      setError(friendlyAuthError(err));
+    } finally {
+      setBusy(false);
+      busyRef.current = false;
+    }
+  };
+
+  const resendConfirmationEmail = async () => {
+    if (busyRef.current || !checkEmail) return;
+    if (resendCooldownRemaining(lastSentAt, Date.now()) > 0) return;
+    setError('');
+    setBusy(true);
+    busyRef.current = true;
+    try {
+      await backend.auth.resendConfirmation({ email: checkEmail.email, kind: 'owner' });
+      setLastSentAt(Date.now());
+      setNowTick(Date.now());
     } catch (err) {
       setError(friendlyAuthError(err));
     } finally {
@@ -479,6 +585,11 @@ export default function LoginScreen() {
   const friendlyAuthError = (err) => {
     const byCode = {
       'invalid-email': 'login.errEmail',
+      'email-required': 'login.errEmail',
+      'synthetic-domain': 'login.errSyntheticEmail',
+      'email-not-confirmed': 'login.errEmailNotConfirmed',
+      'email-rate-limited': 'login.errRateLimited',
+      'link-expired': 'login.errLinkExpired',
       'weak-password': 'login.errPassword',
       'common-password': 'login.errPasswordCommon',
       'repeating-password': 'login.errPasswordRepeating',
@@ -490,9 +601,16 @@ export default function LoginScreen() {
       'email-taken': 'login.errEmailTaken',
       'username-taken': 'login.errUsernameTaken',
       'invalid-credentials': 'login.errInvalidCreds',
+      'server-config': 'login.errServerConfig',
     };
     if (err && err.code && byCode[err.code]) return t(byCode[err.code]);
     const msg = String(err?.message || '');
+    // The server rejecting the app's own API/access key is a SETUP
+    // problem with the build, not a credential failure — never let it
+    // fall through to the wrong-password message or raw backend text.
+    if (/(api|access)[- ]?key/i.test(msg) && /invalid|rejected|refused|wrong/i.test(msg)) {
+      return t('login.errServerConfig');
+    }
     if (/already exists|déjà/i.test(msg) && /email|courriel/i.test(msg)) return t('login.errEmailTaken');
     if (/taken|pris/i.test(msg) && /username|utilisateur/i.test(msg)) return t('login.errUsernameTaken');
     // Backend throws English ("Enter a valid email address.", "Sign in failed:
@@ -503,6 +621,8 @@ export default function LoginScreen() {
     if (/username-invalid/i.test(msg)) return t('login.errUsernameInvalid');
     if (/profile-missing/i.test(msg)) return t('login.errProfileMissing');
     if (/valid email address|adresse courriel valide/i.test(msg)) return t('login.errEmail');
+    if (/not confirmed|non confirmé/i.test(msg)) return t('login.errEmailNotConfirmed');
+    if (/rate|too many/i.test(msg) && /email|courriel|resend|renvoi/i.test(msg)) return t('login.errRateLimited');
     if (/invalid/i.test(msg) && /email|username|password|credentials|mot de passe|identifiants/i.test(msg)) return t('login.errInvalidCreds');
     // Never surface raw database/PostgREST internals (e.g. "Cannot coerce
     // the result to a single JSON object") — fall back to a generic message.
@@ -519,7 +639,13 @@ export default function LoginScreen() {
       await signInGuest();
       setTrialAvailable(false);
     } catch (err) {
-      setError(err.message || t('login.errGuest'));
+      // A rejected API key is a build setup problem, never a raw backend
+      // string; everything else keeps the honest guest-specific message.
+      if (err && err.code === 'server-config') {
+        setError(t('login.errServerConfig'));
+      } else {
+        setError(err.message || t('login.errGuest'));
+      }
     } finally {
       setBusy(false);
       busyRef.current = false;
@@ -557,6 +683,8 @@ export default function LoginScreen() {
               onClick={() => {
                 setMode(b.id);
                 setError('');
+                setCheckEmail(null);
+                setNotice(null);
               }}
               className={`rounded-os px-3 py-1.5 text-sm font-medium duration-160 ${
                 mode === b.id ? 'bg-surface text-ink shadow-os' : 'text-muted hover:text-ink'
@@ -595,20 +723,102 @@ export default function LoginScreen() {
           </div>
         )}
 
-        <form onSubmit={submit} className="mt-3 space-y-2">
+        {checkEmail ? (
+          <div className="mt-3 space-y-3">
+            <div className="flex flex-col items-center text-center">
+              <span className="text-accent"><CheckCircle2 size={36} /></span>
+              <h2 className="mt-2 text-lg font-semibold text-ink">{t('login.checkEmailTitle')}</h2>
+            </div>
+            <p className="text-sm leading-relaxed text-ink">
+              {t('login.checkEmailBody').replace('{email}', checkEmail.email)}
+            </p>
+            <p className="text-xs leading-relaxed text-muted">
+              {t('login.checkEmailTakenNote')}
+            </p>
+            <p className="text-xs leading-relaxed text-muted">
+              {t('login.checkEmailSpam')}
+            </p>
+            {error && (
+              <div role="alert" className="flex items-start gap-2 rounded-os border border-osborder bg-paper px-3 py-2 text-sm text-ink">
+                <AlertCircle size={16} className="mt-0.5 shrink-0 text-accent" />
+                <span>{error}</span>
+              </div>
+            )}
+            {(() => {
+              const remaining = resendCooldownRemaining(lastSentAt, nowTick);
+              const cooling = remaining > 0;
+              return (
+                <button
+                  type="button"
+                  onClick={resendConfirmationEmail}
+                  disabled={busy || cooling}
+                  className="flex w-full items-center justify-center gap-2 rounded-os bg-accent px-4 py-2 text-sm font-semibold text-accentink duration-160 hover:opacity-90 disabled:opacity-50"
+                >
+                  {busy ? t('common.working') : cooling
+                    ? t('login.resendInSeconds').replace('{s}', String(Math.ceil(remaining / 1000)))
+                    : t('login.resendEmail')}
+                </button>
+              );
+            })()}
+            <button
+              type="button"
+              onClick={() => { setCheckEmail(null); setError(''); }}
+              disabled={busy}
+              className="w-full rounded-os px-4 py-2 text-center text-xs font-medium text-muted duration-160 hover:text-ink disabled:opacity-50"
+            >
+              {t('login.startOver')}
+            </button>
+          </div>
+        ) : (
+        <form onSubmit={mode === 'signup' ? submitSignup : submit} className="mt-3 space-y-2">
           {resetNotice && (
             <div role="status" className="flex items-start gap-2 rounded-os border border-osborder bg-paper px-3 py-2.5 text-sm text-ink">
               <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-accent" />
               <span>{t('adminUsers.factoryResetDoneNotice')}</span>
             </div>
           )}
-          <Field
-            label={t('login.identifier')}
-            value={identifier}
-            onChange={setIdentifier}
-            autoComplete="username"
-            placeholder={t('login.identifierPlaceholder')}
-          />
+          {restoreNotice && (
+            <div role="status" className="flex items-start gap-2 rounded-os border border-osborder bg-paper px-3 py-2.5 text-sm text-ink">
+              <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-accent" />
+              <span>{t('adminUsers.restoreLoginNotice')}</span>
+            </div>
+          )}
+          {notice === 'expired' && mode === 'signup' && (
+            <div role="status" className="flex items-start gap-2 rounded-os border border-osborder bg-paper px-3 py-2.5 text-sm text-ink">
+              <AlertCircle size={16} className="mt-0.5 shrink-0 text-accent" />
+              <span>{t('login.expiredNotice')}</span>
+            </div>
+          )}
+          {mode === 'signup' ? (
+            <>
+              <p className="text-xs leading-relaxed text-muted">
+                {t('login.signupIsEmailOnly')}
+              </p>
+              <Field
+                label={t('login.signupEmailLabel')}
+                type="email"
+                value={signupEmail}
+                onChange={setSignupEmail}
+                autoComplete="email"
+                placeholder={t('login.emailPlaceholder')}
+              />
+              <Field
+                label={t('login.displayName')}
+                value={displayName}
+                onChange={setDisplayName}
+                autoComplete="nickname"
+                placeholder={t('login.displayNamePlaceholder')}
+              />
+            </>
+          ) : (
+            <Field
+              label={t('login.identifier')}
+              value={identifier}
+              onChange={setIdentifier}
+              autoComplete="username"
+              placeholder={t('login.identifierPlaceholder')}
+            />
+          )}
           <Field
             label={t('login.password')}
             type="password"
@@ -646,6 +856,7 @@ export default function LoginScreen() {
             {busy ? t('common.working') : mode === 'signup' ? t('login.createAccount') : t('login.signIn')}
           </button>
         </form>
+        )}
 
         {trialAvailable && (
           <>

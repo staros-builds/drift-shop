@@ -3,7 +3,7 @@ import { createContext, useCallback, useContext, useMemo, useState } from 'react
 /**
  * POS Mode (register lockdown) state.
  *
- * When a shop owner locks a device into POS Mode, the whole Drift shell is
+ * When a shop owner locks a device into POS Mode, the whole Vendra shell is
  * covered by a fullscreen overlay that shows ONLY the point of sale. Staff
  * sign in with their staff PINs inside the POS as usual; everything else —
  * desktop, taskbar, Start menu, Spotlight, spaces, global shortcuts — is
