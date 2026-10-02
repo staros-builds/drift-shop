@@ -1,5 +1,5 @@
 {
-  "$comment": "App-mirror registry — the ONE list of static hosts that carry the identical dist (see docs/redundancy.md). deploy/emit-matrix.mjs turns this into the GitHub Actions fan-out. Rules: secrets/vars are NAMES only (values live in GitHub repo secrets/vars, never here); deploy.codeChanges must be \"none\" for every host (relative base './' + hash routes make the same build run anywhere); max 10 entries. status: live | ready | pending-account | dropped (dropped requires dropReason). This committed registry holds SELECTED doors only: 6 live + 4 pending-account. Dropped hosts (GitLab Pages, Vercel, Azure Static Web Apps, Deno Deploy, Codeberg) are NOT registry entries — their rejection reasons live in the host survey in docs/redundancy.md so the survey never has to be repeated blind. Verdicts verified against vendor docs 2026-10-01; additions verified 2026-10-02.",
+  "$comment": "App-mirror registry — the ONE list of static hosts that carry the identical dist (see docs/redundancy.md). deploy/emit-matrix.mjs turns this into the GitHub Actions fan-out. Rules: secrets/vars are NAMES only (values live in GitHub repo secrets/vars, never here); deploy.codeChanges must be \"none\" for every host (relative base './' + hash routes make the same build run anywhere); max 10 entries. status: live | ready | pending-account | dropped (dropped requires dropReason). This committed registry holds SELECTED doors only: 8 live (7 app + 1 front door); 2 dropped; 1 pending. Dropped hosts (GitLab Pages, Vercel, Azure Static Web Apps, Deno Deploy, Codeberg) are NOT registry entries — their rejection reasons live in the host survey in docs/redundancy.md so the survey never has to be repeated blind. Verdicts verified against vendor docs 2026-10-01; additions verified 2026-10-02.",
   "build": {
     "command": "npm run build",
     "envNames": [
@@ -41,7 +41,7 @@
       "headersNote": "Can send REAL headers via a public/_headers file later; meta CSP works today. Direct Upload project (not git-connected) so the fan-out ships the exact same dist.",
       "id": "cloudflare-pages",
       "limitsNote": "Free: 500 builds/mo; static requests/bandwidth unlimited; 20,000 files/site; 25 MiB max file. Verified 2026-10-01.",
-      "oneTimeSetup": "Done 2026-10-02: Cloudflare account reached via the already signed-in GitHub route (no phone/card/CAPTCHA); Direct Upload Pages project `vendra` created and verified at vendra-1f2.pages.dev. API-token automation (CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID + CLOUDFLARE_PAGES_PROJECT) is still pending for hands-off fan-out.",
+      "oneTimeSetup": "Done 2026-10-02: Cloudflare account reached via the already signed-in GitHub route (no phone/card/CAPTCHA); Direct Upload Pages project `vendra` created and verified at vendra-1f2.pages.dev. API-token automation (CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID + CLOUDFLARE_PAGES_PROJECT) is still pending for hands-off fan-out. Second Pages project `vendra-2` created 2026-10-02 (Direct Upload); live at https://vendra-2.pages.dev.",
       "provider": "Cloudflare Pages",
       "requiredSecrets": [
         "CLOUDFLARE_API_TOKEN",
@@ -112,7 +112,7 @@
       "headersNote": "Real response headers already declared in netlify.toml (nosniff, frame deny, HSTS).",
       "id": "netlify",
       "limitsNote": "CAUTION — new accounts (created on/after 2025-09-04) get 300 credits/mo: a production deploy burns 15 credits, bandwidth 20 credits/GB — roughly ~15 GB bandwidth OR ~20 deploys per month, then the project pauses until next cycle. Tight quota; keep as a backup door, not a primary. Verified 2026-10-01.",
-      "oneTimeSetup": "Done 2026-10-02: Netlify account reached via GitHub (Cooper Assistant / Vendra team); site `vendra-shop` deployed by manual upload of the verified dist and set Public (a private-by-default visibility toggle initially blocked visitors). NETLIFY_AUTH_TOKEN + NETLIFY_SITE_ID are still pending for CLI fan-out automation.",
+      "oneTimeSetup": "Done 2026-10-02: Netlify account reached via GitHub (Cooper Assistant / Vendra team); site `vendra-shop` deployed by manual upload of the verified dist and set Public (a private-by-default visibility toggle initially blocked visitors). NETLIFY_AUTH_TOKEN + NETLIFY_SITE_ID are still pending for CLI fan-out automation. Second site `vendra-shop-2` created 2026-10-02 (manual zip deploy); live at https://vendra-shop-2.netlify.app.",
       "provider": "Netlify",
       "requiredSecrets": [
         "NETLIFY_AUTH_TOKEN",
@@ -165,7 +165,8 @@
       ],
       "role": "mirror",
       "signupCheck": "Atlassian account = email + password with a CAPTCHA and an email confirmation. No phone, no card. If Atlassian bot checks escalate on the flagged network, Jesse completes the CAPTCHA once.",
-      "status": "pending-account"
+      "status": "dropped",
+      "dropReason": "Atlassian refuses the cock.li project domain at signup (4 attempts, identical \"couldn't create your account\" — disposable-domain block), 2026-10-02. Bypassed per redundancy rule; no account was created."
     },
     {
       "address": "https://staros-builds.github.io/",
@@ -227,7 +228,36 @@
       "requiredVars": [],
       "role": "mirror (server-side rebuild)",
       "signupCheck": "Email or Google/GitHub SSO; no card for static sites (the $0 tier is a product, not a trial). If the flow asks for a card, stop and report — that demotes this host to rejected.",
-      "status": "pending-account"
+      "status": "dropped",
+      "dropReason": "Signup mandates a card via Stripe identity verification before any use (no card-free $0 path), 2026-10-02. Stopped immediately; nothing created. Violates the $0 absolute budget."
+    },
+    {
+      "id": "cloudflare-pages-2",
+      "provider": "Cloudflare Pages",
+      "address": "https://vendra-2.pages.dev",
+      "status": "live",
+      "role": "mirror (second project, same account)",
+      "deploy": {
+        "type": "pages-direct-upload",
+        "codeChanges": "none",
+        "mechanism": "Dashboard Direct Upload of the release zip (same as door #1)."
+      },
+      "signupCheck": "Existing account — no new signup.",
+      "oneTimeSetup": "Done 2026-10-02."
+    },
+    {
+      "id": "netlify-2",
+      "provider": "Netlify",
+      "address": "https://vendra-shop-2.netlify.app",
+      "status": "live",
+      "role": "mirror (second site, same Vendra team; quota-tight like door #3)",
+      "deploy": {
+        "type": "netlify-drop",
+        "codeChanges": "none",
+        "mechanism": "Manual zip deploy in the site Deploys section."
+      },
+      "signupCheck": "Existing account — no new signup.",
+      "oneTimeSetup": "Done 2026-10-02."
     }
   ]
 }
