@@ -1,0 +1,125 @@
+# Drift Shop — x10 database mesh: primary -> EVERY configured standby
+#
+# Fans the single-target sync (tools/sync/sync.mjs) out over the
+# standby registry (tools/sync/targets.json): one run copies the live
+# database into each configured target and verifies row counts per
+# target. A target that mismatches or cannot be reached fails the run
+# -> GitHub emails the repo owner. That email is the alarm.
+#
+# This workflow SUPERSEDES the single-target db-sync.yml from the
+# mesh branch (same secrets for target 1: STANDBY_*). Once both are
+# merged, delete db-sync.yml — see docs/redundancy.md "Patch plan".
+#
+# NO-OP GUARD: with no <PREFIX>_DATABASE_URL secrets set, sync-all
+# reports "no targets configured" and exits green in seconds. Safe to
+# merge before any standby project exists.
+#
+# ONE WRITER, ALWAYS: targets receive copies only; restore.mjs has no
+# code path that can write to the primary. See docs/backend-mesh.md
+# for why two live writers would split-brain the shop's numbers.
+#
+# Cost math ($0): public repo -> standard-runner minutes are free and
+# unlimited. Targets sync one after another (each run takes its own
+# read-only pg_dump snapshot of the primary — sequential on purpose,
+# gentle on free-tier compute). Expect a few minutes per target. If
+# this repo ever goes private, the same math as db-sync applies
+# (~2 min/run/target of the 2,000 free monthly minutes) — trim
+# targets or cadence then.
+
+name: db-sync-multi
+
+on:
+  schedule:
+    # Minute 37: off the top of the hour AND off db-sync.yml's :07 so
+    # the two never run at once during the merge transition.
+    - cron: '37 * * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'sync = data only (hourly mode) · seed = rebuild standby schema+data (first run per target, after migrations)'
+        type: choice
+        options: [sync, seed]
+        default: sync
+      with_auth:
+        description: 'Also copy login accounts (auth.users) so staff sign-ins survive failover'
+        type: boolean
+        default: true
+
+# Never overlap two fan-outs against the same targets.
+concurrency:
+  group: db-sync-multi
+  cancel-in-progress: false
+
+jobs:
+  sync-all:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      PRIMARY_URL: ${{ secrets.PRIMARY_SUPABASE_URL }}
+      PRIMARY_ANON_KEY: ${{ secrets.PRIMARY_SUPABASE_ANON_KEY }}
+      PRIMARY_SERVICE_KEY: ${{ secrets.PRIMARY_SUPABASE_SERVICE_KEY }}
+      PRIMARY_DB_URL: ${{ secrets.PRIMARY_DATABASE_URL }}
+      STANDBY_URL: ${{ secrets.STANDBY_SUPABASE_URL }}
+      STANDBY_ANON_KEY: ${{ secrets.STANDBY_SUPABASE_ANON_KEY }}
+      STANDBY_SERVICE_KEY: ${{ secrets.STANDBY_SUPABASE_SERVICE_KEY }}
+      STANDBY_DB_URL: ${{ secrets.STANDBY_DATABASE_URL }}
+      STANDBY2_URL: ${{ secrets.STANDBY2_SUPABASE_URL }}
+      STANDBY2_ANON_KEY: ${{ secrets.STANDBY2_SUPABASE_ANON_KEY }}
+      STANDBY2_SERVICE_KEY: ${{ secrets.STANDBY2_SUPABASE_SERVICE_KEY }}
+      STANDBY2_DB_URL: ${{ secrets.STANDBY2_DATABASE_URL }}
+      STANDBY3_URL: ${{ secrets.STANDBY3_SUPABASE_URL }}
+      STANDBY3_ANON_KEY: ${{ secrets.STANDBY3_SUPABASE_ANON_KEY }}
+      STANDBY3_SERVICE_KEY: ${{ secrets.STANDBY3_SUPABASE_SERVICE_KEY }}
+      STANDBY3_DB_URL: ${{ secrets.STANDBY3_DATABASE_URL }}
+      STANDBY4_URL: ${{ secrets.STANDBY4_SUPABASE_URL }}
+      STANDBY4_ANON_KEY: ${{ secrets.STANDBY4_SUPABASE_ANON_KEY }}
+      STANDBY4_SERVICE_KEY: ${{ secrets.STANDBY4_SUPABASE_SERVICE_KEY }}
+      STANDBY4_DB_URL: ${{ secrets.STANDBY4_DATABASE_URL }}
+      STANDBY5_URL: ${{ secrets.STANDBY5_SUPABASE_URL }}
+      STANDBY5_ANON_KEY: ${{ secrets.STANDBY5_SUPABASE_ANON_KEY }}
+      STANDBY5_SERVICE_KEY: ${{ secrets.STANDBY5_SUPABASE_SERVICE_KEY }}
+      STANDBY5_DB_URL: ${{ secrets.STANDBY5_DATABASE_URL }}
+      STANDBY6_URL: ${{ secrets.STANDBY6_SUPABASE_URL }}
+      STANDBY6_ANON_KEY: ${{ secrets.STANDBY6_SUPABASE_ANON_KEY }}
+      STANDBY6_SERVICE_KEY: ${{ secrets.STANDBY6_SUPABASE_SERVICE_KEY }}
+      STANDBY6_DB_URL: ${{ secrets.STANDBY6_DATABASE_URL }}
+      STANDBY7_URL: ${{ secrets.STANDBY7_SUPABASE_URL }}
+      STANDBY7_ANON_KEY: ${{ secrets.STANDBY7_SUPABASE_ANON_KEY }}
+      STANDBY7_SERVICE_KEY: ${{ secrets.STANDBY7_SUPABASE_SERVICE_KEY }}
+      STANDBY7_DB_URL: ${{ secrets.STANDBY7_DATABASE_URL }}
+      STANDBY8_URL: ${{ secrets.STANDBY8_SUPABASE_URL }}
+      STANDBY8_ANON_KEY: ${{ secrets.STANDBY8_SUPABASE_ANON_KEY }}
+      STANDBY8_SERVICE_KEY: ${{ secrets.STANDBY8_SUPABASE_SERVICE_KEY }}
+      STANDBY8_DB_URL: ${{ secrets.STANDBY8_DATABASE_URL }}
+      STANDBY9_URL: ${{ secrets.STANDBY9_SUPABASE_URL }}
+      STANDBY9_ANON_KEY: ${{ secrets.STANDBY9_SUPABASE_ANON_KEY }}
+      STANDBY9_SERVICE_KEY: ${{ secrets.STANDBY9_SUPABASE_SERVICE_KEY }}
+      STANDBY9_DB_URL: ${{ secrets.STANDBY9_DATABASE_URL }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+          pg_dump --version
+
+      - name: List configured targets (redacted)
+        run: node tools/sync/sync-all.mjs --list
+
+      - name: Sync primary to every configured standby and verify
+        env:
+          SYNC_ALLOW_WRITE: '1'
+        run: |
+          MODE="${{ inputs.mode || 'sync' }}"
+          AUTH_FLAG=""
+          if [ "${{ inputs.with_auth }}" != "false" ]; then AUTH_FLAG="--with-auth"; fi
+          node tools/sync/sync-all.mjs --live --mode "$MODE" $AUTH_FLAG
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### Backend mesh sync (multi-target)" >> "$GITHUB_STEP_SUMMARY"
+          echo "If this run failed, GitHub has emailed the repo owner — that email IS the alarm." >> "$GITHUB_STEP_SUMMARY"
+          echo "Do not fail over to a standby until its latest sync is green. See docs/redundancy.md." >> "$GITHUB_STEP_SUMMARY"
