@@ -299,6 +299,8 @@ export const fr = {
       installApp: 'Installer l’appli',
       installNote: 'L’installation ajoute Vendra à votre appareil comme une appli ordinaire. Une connexion Internet reste nécessaire — tout vit dans votre base de données infonuagique.',
       backupComplete: 'Sauvegarde terminée',
+      downloadBackup: 'Télécharger la sauvegarde du compte',
+      backingUp: 'Sauvegarde en cours…',
       backupCompleteBody: 'Tout votre compte Vendra a été téléchargé comme fichier de sauvegarde. Gardez-le en lieu sûr — il contient des données privées comme les NIP du personnel.',
       backupFailed: 'Sauvegarde échouée',
       backupFailedBody: 'La sauvegarde n’a pas pu être créée. Vérifiez votre connexion et réessayez.',

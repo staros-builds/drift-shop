@@ -5434,6 +5434,16 @@ export function createSupabaseBackend(config = null) {
     async openDrawer(storeId, { amountCents = 0, byName = '' } = {}) {
       if (!(await posHasV4())) throw new Error('Drawer counts need migration 004 — ask a manager to apply it.');
       const uid = requireUid();
+      // M1: Prevent concurrent open shifts — check for an existing open shift first.
+      const { data: existingOpen } = await client
+        .from('pos_drawer_shifts')
+        .select('id')
+        .eq('store_id', storeId)
+        .is('closed_at', null)
+        .limit(1);
+      if (existingOpen && existingOpen.length > 0) {
+        throw new Error('A drawer shift is already open. Close it before opening a new one.');
+      }
       const row = check(
         await client
           .from('pos_drawer_shifts')
@@ -5458,20 +5468,24 @@ export function createSupabaseBackend(config = null) {
       if (!(await posHasV4())) throw new Error('Drawer counts need migration 004 — ask a manager to apply it.');
       const uid = requireUid();
       try {
-        check(
-          await client
-            .from('pos_drawer_shifts')
-            .update({
-              closed_at: new Date().toISOString(),
-              closed_by: uid,
-              close_amount_cents: Math.max(0, Math.round(Number(amountCents) || 0)),
-              expected_cents: expectedCents == null ? null : Math.round(Number(expectedCents) || 0),
-              note: String(note ?? '').slice(0, 200) || null,
-            })
-            .eq('id', shiftId)
-            .eq('store_id', storeId),
-          'Closing drawer'
-        );
+        // M2: Guard against re-closing an already-closed shift.
+        const res = await client
+          .from('pos_drawer_shifts')
+          .update({
+            closed_at: new Date().toISOString(),
+            closed_by: uid,
+            close_amount_cents: Math.max(0, Math.round(Number(amountCents) || 0)),
+            expected_cents: expectedCents == null ? null : Math.round(Number(expectedCents) || 0),
+            note: String(note ?? '').slice(0, 200) || null,
+          })
+          .eq('id', shiftId)
+          .eq('store_id', storeId)
+          .is('closed_at', null)
+          .select('id');
+        check(res, 'Closing drawer');
+        if (!res.data || res.data.length === 0) {
+          throw new Error('This drawer shift is already closed.');
+        }
       } catch (err) {
         throw friendlyPosError(err, 'close the drawer');
       }

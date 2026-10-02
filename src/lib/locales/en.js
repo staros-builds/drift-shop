@@ -299,6 +299,8 @@ export const en = {
       installApp: 'Install app',
       installNote: 'Installing adds Vendra to your device like a regular app. It still needs an internet connection — everything lives in your cloud database.',
       backupComplete: 'Backup complete',
+      downloadBackup: 'Download account backup',
+      backingUp: 'Backing up…',
       backupCompleteBody: 'Your whole Vendra account was downloaded as a backup file. Keep it somewhere safe — it contains private data such as staff PINs.',
       backupFailed: 'Backup failed',
       backupFailedBody: 'The backup could not be created. Check your connection and try again.',

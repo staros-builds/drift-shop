@@ -1095,7 +1095,7 @@ export default function SettingsApp({ windowApi }) {
               disabled={exporting}
               className="flex items-center gap-2 rounded-os bg-accent px-4 py-2 text-sm text-accentink transition-opacity duration-160 disabled:opacity-40"
             >
-              <Download size={15} /> {exporting ? 'Backing up…' : 'Download account backup'}
+              <Download size={15} /> {exporting ? t('settings.backingUp') : t('settings.downloadBackup')}
             </button>
             <button
               onClick={() => setConfirmErase(true)}
