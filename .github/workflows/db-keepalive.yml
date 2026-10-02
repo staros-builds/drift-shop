@@ -1,0 +1,74 @@
+# Drift Shop — database keep-alive (do not let free projects sleep)
+#
+# Free Supabase projects are paused after a stretch of inactivity
+# (exact terms: docs/redundancy.md). The hourly db-sync-multi job
+# already touches the primary and every sync-ready standby, which
+# keeps those awake. This job is the quiet-period net: it pings the
+# primary and EVERY registered standby slot that has an address —
+# including slots not yet sync-ready and weeks when sync is disabled
+# (e.g. right after a failover, when the copy must not be overwritten
+# but must also not fall asleep).
+#
+# Needs only URL + ANON key per project (the same public-safe values
+# the app ships). No service keys, no database passwords, no writes.
+#
+# NO-OP GUARD: the ping step runs only when PRIMARY_SUPABASE_URL is
+# set; before that the job is green in seconds. Add each standby
+# slot's <PREFIX>_SUPABASE_URL + <PREFIX>_SUPABASE_ANON_KEY secrets
+# (prefixes from tools/sync/targets.json) and it joins the ping list
+# automatically — no workflow edit needed per slot beyond the env
+# lines below, which are pre-written for all 9 slots.
+
+name: db-keepalive
+
+on:
+  schedule:
+    # Every 3 days at 05:23 UTC — comfortably inside any free-tier
+    # inactivity window, rare enough to be noise-free.
+    - cron: '23 5 */3 * *'
+  workflow_dispatch:
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      HAS_PRIMARY: ${{ secrets.PRIMARY_SUPABASE_URL != '' }}
+      PRIMARY_URL: ${{ secrets.PRIMARY_SUPABASE_URL }}
+      PRIMARY_ANON_KEY: ${{ secrets.PRIMARY_SUPABASE_ANON_KEY }}
+      STANDBY_URL: ${{ secrets.STANDBY_SUPABASE_URL }}
+      STANDBY_ANON_KEY: ${{ secrets.STANDBY_SUPABASE_ANON_KEY }}
+      STANDBY2_URL: ${{ secrets.STANDBY2_SUPABASE_URL }}
+      STANDBY2_ANON_KEY: ${{ secrets.STANDBY2_SUPABASE_ANON_KEY }}
+      STANDBY3_URL: ${{ secrets.STANDBY3_SUPABASE_URL }}
+      STANDBY3_ANON_KEY: ${{ secrets.STANDBY3_SUPABASE_ANON_KEY }}
+      STANDBY4_URL: ${{ secrets.STANDBY4_SUPABASE_URL }}
+      STANDBY4_ANON_KEY: ${{ secrets.STANDBY4_SUPABASE_ANON_KEY }}
+      STANDBY5_URL: ${{ secrets.STANDBY5_SUPABASE_URL }}
+      STANDBY5_ANON_KEY: ${{ secrets.STANDBY5_SUPABASE_ANON_KEY }}
+      STANDBY6_URL: ${{ secrets.STANDBY6_SUPABASE_URL }}
+      STANDBY6_ANON_KEY: ${{ secrets.STANDBY6_SUPABASE_ANON_KEY }}
+      STANDBY7_URL: ${{ secrets.STANDBY7_SUPABASE_URL }}
+      STANDBY7_ANON_KEY: ${{ secrets.STANDBY7_SUPABASE_ANON_KEY }}
+      STANDBY8_URL: ${{ secrets.STANDBY8_SUPABASE_URL }}
+      STANDBY8_ANON_KEY: ${{ secrets.STANDBY8_SUPABASE_ANON_KEY }}
+      STANDBY9_URL: ${{ secrets.STANDBY9_SUPABASE_URL }}
+      STANDBY9_ANON_KEY: ${{ secrets.STANDBY9_SUPABASE_ANON_KEY }}
+    steps:
+      - name: Not configured yet — nothing to ping
+        if: env.HAS_PRIMARY != 'true'
+        run: echo "::notice::PRIMARY_SUPABASE_URL secret not set — keep-alive is a no-op until the backend secrets exist. See docs/redundancy.md."
+
+      - uses: actions/checkout@v4
+        if: env.HAS_PRIMARY == 'true'
+
+      - name: Ping primary + every configured standby slot
+        if: env.HAS_PRIMARY == 'true'
+        run: node tools/sync/keepalive.mjs
+
+      - name: Summary
+        if: always() && env.HAS_PRIMARY == 'true'
+        run: |
+          echo "### Database keep-alive" >> "$GITHUB_STEP_SUMMARY"
+          echo "A failed run means a backend did not answer — GitHub has emailed the repo owner." >> "$GITHUB_STEP_SUMMARY"
+          echo "A paused standby cannot take over; wake or re-seed it before trusting it. See docs/redundancy.md." >> "$GITHUB_STEP_SUMMARY"
