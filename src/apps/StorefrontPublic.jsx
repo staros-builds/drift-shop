@@ -457,11 +457,12 @@ export default function StorefrontPublic({ slug, configError = null, appHome = n
       await loadShop();
       if (cancelled) return;
       // Customer session: guests browse freely; ordering needs a login.
-      // One login (SSO): the shared backend.auth session is the only
-      // customer identity — no separate storefront auth store.
+      // Read directly from Supabase client storage (not backend.auth's
+      // cachedUser) to avoid owner-session races during boot.
       try {
-        const u = backend.auth.getUser()?.user || null;
-        if (!cancelled) setSession(u ? { user: u } : null);
+        const { data } = await backend.supabase.auth.getSession();
+        const su = data.session?.user || null;
+        if (!cancelled) setSession(su ? { user: { id: su.id, email: su.email } } : null);
       } catch {
         if (!cancelled) setSession(null);
       }
@@ -474,13 +475,24 @@ export default function StorefrontPublic({ slug, configError = null, appHome = n
         if (!cancelled) setOrdersReady(false);
       }
     })();
-    const unsub = backend.auth.onAuthChange((u) => {
-      setSession(u ? { user: u } : null);
-      setProfile(null);
-    });
+    // Subscribe directly to Supabase auth changes (not backend.auth's
+    // cachedUser) for the customer session.
+    let unsubAuth = null;
+    try {
+      const { data } = backend.supabase.auth.onAuthStateChange((_event, sess) => {
+        const su = sess?.user || null;
+        if (!cancelled) {
+          setSession(su ? { user: { id: su.id, email: su.email } } : null);
+          setProfile(null);
+        }
+      });
+      unsubAuth = () => data?.subscription?.unsubscribe?.();
+    } catch {
+      unsubAuth = null;
+    }
     return () => {
       cancelled = true;
-      unsub();
+      if (unsubAuth) unsubAuth();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug, configError]);
@@ -588,8 +600,13 @@ export default function StorefrontPublic({ slug, configError = null, appHome = n
     setAuthError('');
     try {
       if (authPassword.length < 6) throw new Error(oo('passwordShort'));
-      const { user } = await backend.auth.signIn({ email: authEmail, password: authPassword });
-      setSession({ user });
+      await backend.auth.signIn({ email: authEmail, password: authPassword });
+      // Read the session directly from Supabase client storage (not the
+      // cached user) to ensure we get the just-established session.
+      const { data } = await backend.supabase.auth.getSession();
+      const su = data.session?.user;
+      if (!su) throw new Error('Sign in failed: no session was established.');
+      setSession({ user: { id: su.id, email: su.email } });
       setModal(count > 0 ? 'cart' : null);
     } catch (e) {
       setAuthError(e.code === 'email-not-confirmed' ? oo('checkEmailBody', { email: authEmail }) : oo('signInFail'));
