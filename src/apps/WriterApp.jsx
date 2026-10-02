@@ -132,11 +132,39 @@ export default function WriterApp({ windowApi, path }) {
     }
   }, []);
 
+  // H3: Sanitize document HTML on load to prevent stored XSS.
+  // Strips script/style/iframe/object/embed tags, event handler attributes,
+  // and javascript: URLs. Runs in a detached DOM node, never the live editor.
+  const sanitizeHtml = (dirty) => {
+    if (!dirty || typeof dirty !== 'string') return '<p><br></p>';
+    try {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = dirty;
+      // Remove dangerous elements entirely.
+      tmp.querySelectorAll('script, style, iframe, object, embed, link, meta, base, form').forEach((el) => el.remove());
+      // Strip event handlers and javascript: URLs from all remaining elements.
+      const walker = document.createTreeWalker(tmp, NodeFilter.SHOW_ELEMENT);
+      let node;
+      while ((node = walker.nextNode())) {
+        for (const attr of Array.from(node.attributes)) {
+          const name = attr.name.toLowerCase();
+          const val = attr.value.toLowerCase().trim();
+          if (name.startsWith('on') || val.startsWith('javascript:') || val.startsWith('data:text/html')) {
+            node.removeAttribute(attr.name);
+          }
+        }
+      }
+      return tmp.innerHTML || '<p><br></p>';
+    } catch {
+      return '<p><br></p>';
+    }
+  };
+
   const loadPath = useCallback(
     async (p) => {
       try {
         const html = await readDoc(p);
-        if (editorRef.current) editorRef.current.innerHTML = html || '<p><br></p>';
+        if (editorRef.current) editorRef.current.innerHTML = sanitizeHtml(html);
         setDocPath(p);
         setTitle(stripExt(baseName(p), EXT));
         setDirty(false);

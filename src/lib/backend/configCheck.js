@@ -158,8 +158,14 @@ export function checkAnonKey(rawKey, expectedRef) {
     problems.push('access key body cannot be read — not a complete key');
     return { ok: false, problems };
   }
-  if (payload.role !== 'anon' && payload.role !== 'service_role') {
-    problems.push('access key is not a Supabase access key (no valid role inside)');
+  if (payload.role === 'service_role') {
+    problems.push(
+      'access key is the SERVICE_ROLE key — it bypasses all database security and must never be used in the app; copy the anon/public key instead',
+    );
+    return { ok: false, problems };
+  }
+  if (payload.role !== 'anon') {
+    problems.push('access key is not a Supabase anon key (no valid role inside)');
     return { ok: false, problems };
   }
   if (expectedRef && typeof payload.ref === 'string' && payload.ref !== expectedRef) {
