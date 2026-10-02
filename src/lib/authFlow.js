@@ -46,13 +46,8 @@ export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // (plain-language UI message), never a crash.
 export const OAUTH_PROVIDERS = [
   { id: 'google', labelKey: 'login.oauthGoogle' },
-  { id: 'github', labelKey: 'login.oauthGithub' },
   { id: 'facebook', labelKey: 'login.oauthFacebook' },
-  { id: 'discord', labelKey: 'login.oauthDiscord' },
   { id: 'azure', labelKey: 'login.oauthMicrosoft' },
-  { id: 'gitlab', labelKey: 'login.oauthGitlab' },
-  { id: 'spotify', labelKey: 'login.oauthSpotify' },
-  { id: 'twitch', labelKey: 'login.oauthTwitch' },
 ];
 
 /** Normalize a provider id to a supported OAuth provider, or null. */
