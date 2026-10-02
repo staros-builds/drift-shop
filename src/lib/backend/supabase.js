@@ -530,14 +530,17 @@ export function createSupabaseBackend(config = null) {
 
   // ---- VFS path helpers --------------------------------------------------------
   async function rootFolder(uid) {
+    // Use limit(1) + order instead of maybeSingle(): if duplicate roots exist
+    // (e.g. from a raced trigger), pick the oldest rather than throwing.
     const res = await client
       .from('vfs_folders')
       .select('id, name, updated_at')
       .eq('user_id', uid)
       .is('parent_id', null)
-      .maybeSingle();
+      .order('created_at', { ascending: true })
+      .limit(1);
     if (res.error) throw new Error(`Loading the VFS root failed: ${res.error.message}`);
-    if (res.data) return res.data;
+    if (res.data && res.data.length > 0) return res.data[0];
     // defensive: the handle_new_user trigger should have made this
     return check(
       await client
