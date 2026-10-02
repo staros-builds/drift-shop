@@ -574,6 +574,8 @@ export default function SettingsApp({ windowApi }) {
           <button
             type="button"
             onClick={handleCloudAutoToggle}
+            role="switch"
+            aria-checked={!!cloudAuto}
             className="mt-2 flex min-h-[44px] w-full items-center gap-3 rounded-os border border-osborder px-4 py-3 text-left transition-colors duration-160 hover:bg-surface"
           >
             <span className="flex-1">
@@ -771,6 +773,8 @@ export default function SettingsApp({ windowApi }) {
           <button
             type="button"
             onClick={toggleTouchMode}
+            role="switch"
+            aria-checked={!!touchMode}
             className="flex min-h-[44px] w-full items-center gap-3 rounded-os border border-osborder px-4 py-3 text-left transition-colors duration-160 hover:bg-surface"
           >
             <span className="flex-1">
@@ -796,6 +800,8 @@ export default function SettingsApp({ windowApi }) {
           <button
             type="button"
             onClick={flipSound}
+            role="switch"
+            aria-checked={soundOn()}
             className="flex min-h-[44px] w-full items-center gap-3 rounded-os border border-osborder px-4 py-3 text-left transition-colors duration-160 hover:bg-surface"
           >
             <span className="flex-1">
@@ -1007,6 +1013,8 @@ export default function SettingsApp({ windowApi }) {
                     onClick={() => toggleDesktopIcon(app.id)}
                     title={onDesktop ? 'Hide from desktop' : 'Show on desktop'}
                     aria-label={`${onDesktop ? 'Hide' : 'Show'} ${appTitle(app)} on desktop`}
+                    role="switch"
+                    aria-checked={!!onDesktop}
                   >
                     {pill(onDesktop, 'Desktop')}
                   </button>
@@ -1015,6 +1023,8 @@ export default function SettingsApp({ windowApi }) {
                     onClick={() => toggleStartMenu(app.id)}
                     title={inStart ? 'Hide from Start menu' : 'Show in Start menu'}
                     aria-label={`${inStart ? 'Hide' : 'Show'} ${appTitle(app)} in Start menu`}
+                    role="switch"
+                    aria-checked={!!inStart}
                   >
                     {pill(inStart, 'Start')}
                   </button>

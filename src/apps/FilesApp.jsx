@@ -401,9 +401,8 @@ function DeleteConfirmDialog({ entry, onConfirm, onClose }) {
             <button
               type="button"
               onClick={onConfirm}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') onConfirm();
-              }}
+              // NOTE: native <button> already activates on Enter/Space — do not
+              // add an onKeyDown here or Enter fires onConfirm twice.
               className="rounded-os bg-red-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-red-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               {t('files.delete')}
@@ -1048,14 +1047,22 @@ export default function FilesApp({ windowApi }) {
     });
   };
 
+  const savingRef = useRef(false);
   const handleSaveEditor = async () => {
-    if (!editor) return;
+    if (!editor || savingRef.current) return;
+    savingRef.current = true;
+    // Capture the text being saved — a second edit during the write must not
+    // silently lose data if requests finish out of order.
+    const saveText = editor.text;
+    const savePath = editor.path;
     try {
-      await fs.write(editor.path, editor.text);
-      setEditor({ ...editor, original: editor.text });
+      await fs.write(savePath, saveText);
+      setEditor((prev) => (prev && prev.path === savePath ? { ...prev, original: saveText, text: saveText } : prev));
       await refresh(cwd);
     } catch (err) {
       fail('files.errSave', err);
+    } finally {
+      savingRef.current = false;
     }
   };
 

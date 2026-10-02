@@ -5797,7 +5797,7 @@ function SettingsTabPane({ store, v4, onSave, extras }) {
         {showPresetUpdate && (
           <div className="mb-2 rounded-os border border-accent/40 bg-accent/10 p-3">
             <p className="flex items-center gap-1.5 text-sm font-semibold text-ink">
-              <TriangleAlert size={15} className="text-accent" />
+              <AlertCircle size={15} className="text-accent" />
               {t('pos.tabs2.taxPresetUpdate')}
             </p>
             <p className="mt-1 text-xs leading-relaxed text-ink">{t(outdatedPreset.noteKey)}</p>

@@ -744,11 +744,11 @@ function TicketsSection() {
 
   useEffect(() => { load(); }, [load]);
 
-  const save = useCallback(async (t, patch, label) => {
+  const save = useCallback(async (ticket, patch, label) => {
     setError('');
-    setSaving(t.id);
+    setSaving(ticket.id);
     try {
-      await backend.support.adminUpdateTicket(t.id, patch);
+      await backend.support.adminUpdateTicket(ticket.id, patch);
       const rows = await backend.support.adminListTickets();
       setTickets(Array.isArray(rows) ? rows : []);
     } catch (e) {
@@ -1498,9 +1498,11 @@ function DangerSection() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const armed = confirm === 'RESET';
+  const resetLockRef = useRef(false); // synchronous double-submit lock
 
   const doReset = async () => {
-    if (!armed || busy) return;
+    if (!armed || busy || resetLockRef.current) return;
+    resetLockRef.current = true;
     setBusy(true);
     setError('');
     try {
@@ -1545,6 +1547,7 @@ function DangerSection() {
     } catch (e) {
       setError(e?.message || t('adminUsers.factoryResetFailed'));
     } finally {
+      resetLockRef.current = false;
       setBusy(false);
     }
   };
@@ -1655,7 +1658,8 @@ function RestoreSection() {
   };
 
   const doPhase1 = async () => {
-    if (!armed || busy) return;
+    if (!armed || busy || resetLockRef.current) return;
+    resetLockRef.current = true;
     const releaseRestoreLock = acquireUpdateLock('backup-restore');
     setBusy(true);
     setError('');
@@ -1667,6 +1671,7 @@ function RestoreSection() {
       downloadBackupFile(dump, beforeName);
     } catch (bErr) {
       releaseRestoreLock();
+      resetLockRef.current = false;
       setBusy(false);
       setError(t('adminUsers.restoreSafetyFailed'));
       return;
@@ -1680,6 +1685,7 @@ function RestoreSection() {
     } catch (e) {
       clearRestorePending();
       releaseRestoreLock();
+      resetLockRef.current = false;
       setBusy(false);
       setError(t('adminUsers.restoreWipeFailed'));
       return;
@@ -1720,6 +1726,8 @@ function RestoreSection() {
       const report = await runBackupRestore(finishPicked.data, { backend });
       setFinishReport(report);
       clearRestorePending();
+      // Prevent re-running restore on the same file (duplicate rows).
+      setFinishPicked(null);
       // L7: Record in persistent history.
       try {
         recordRestoreHistory({
