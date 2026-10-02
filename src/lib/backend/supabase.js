@@ -854,6 +854,8 @@ export function createSupabaseBackend(config = null) {
     },
 
     async signOut() {
+      // DEBUG: trace the caller to find the instant-logout bug
+      console.trace('[drift] signOut called');
       const { error } = await client.auth.signOut();
       if (error) throw new Error(`Sign out failed: ${error.message}`);
       // onAuthStateChange will clear cachedUser; do it eagerly too
