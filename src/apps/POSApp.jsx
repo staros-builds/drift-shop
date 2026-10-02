@@ -3081,6 +3081,16 @@ function HistoryTab({ store, sales, memberName, onVoid, onRefund, onExchange, se
   const today = todayKey();
   const todaySales = liveSales.filter((s) => todayKey(new Date(s.createdAt)) === today);
   const refundedOf = (s) => (s.refunds || []).reduce((sum, r) => sum + (r.refundedCents || 0), 0);
+  // M6: For $0 (fully-discounted) sales, the cents-based gate hides the refund
+  // button even when items can be returned. Check refundable quantity instead.
+  const refundableQtyOf = (s) => {
+    const totalQty = (s.items || []).reduce((sum, it) => sum + (it.qty || 0), 0);
+    const refundedQty = (s.refunds || []).reduce(
+      (sum, r) => sum + (r.lines || []).reduce((lsum, l) => lsum + (l.qty || 0), 0),
+      0
+    );
+    return totalQty - refundedQty;
+  };
   const todayRefunded = todaySales.reduce((s, x) => s + refundedOf(x), 0);
   const todayNet = todaySales.reduce((s, x) => s + x.totalCents - refundedOf(x), 0);
   const allNet = liveSales.reduce((s, x) => s + x.totalCents - refundedOf(x), 0);
@@ -3147,7 +3157,8 @@ function HistoryTab({ store, sales, memberName, onVoid, onRefund, onExchange, se
         if (!it) return s;
         const remaining = it.qty - refundedQtyOf(refundFor, Number(idx));
         const q = Math.min(Number(qty) || 0, remaining);
-        return s + Math.round((netOf(it) / it.qty) * q);
+        // L2: guard against zero-qty lines (division by zero → NaN).
+        return s + Math.round((netOf(it) / Math.max(1, it.qty)) * q);
       },
       0
     );
@@ -3297,7 +3308,7 @@ function HistoryTab({ store, sales, memberName, onVoid, onRefund, onExchange, se
                         <RotateCcw size={12} /> {t('pos.ui.voidBtn')}
                       </button>
                     )}
-                    {onRefund && manager && !s.voided && refundedOf(s) < s.totalCents && (
+                    {onRefund && manager && !s.voided && (refundedOf(s) < s.totalCents || refundableQtyOf(s) > 0) && (
                       <button
                         type="button"
                         onClick={() => openRefund(s)}
