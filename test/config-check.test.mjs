@@ -69,9 +69,9 @@ check('payload without a supabase role is invalid', () => {
   assert.equal(validateBackendConfig(URL_OK, k).status, 'invalid');
 });
 
-check('service_role key shape is still well-formed', () => {
+check('service_role key is rejected (bypasses RLS)', () => {
   const k = makeKey({ ref: 'abcdefghijklmnopqrst', role: 'service_role' });
-  assert.equal(validateBackendConfig(URL_OK, k).status, 'ok');
+  assert.equal(validateBackendConfig(URL_OK, k).status, 'invalid');
 });
 
 check('key issued for a different project than the url is invalid', () => {

@@ -2855,7 +2855,7 @@ export const es = {
       },
       manual: {
         title: 'Manual de usuario',
-        keywords: '',
+        keywords: 'manual guía documentación ayuda pdf',
         articles: {
           'manual-pdf': {
             title: 'La guía de inicio (PDF)',
@@ -2873,7 +2873,7 @@ export const es = {
       },
       contact: {
         title: 'Contacto y comentarios',
-        keywords: '',
+        keywords: 'manual guía documentación ayuda pdf',
         articles: {}
       }
     },

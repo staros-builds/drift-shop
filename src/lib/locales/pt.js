@@ -2847,7 +2847,7 @@ export const pt = {
       },
       manual: {
         title: 'Manual do usuário',
-        keywords: '',
+        keywords: 'manual guia documentação ajuda pdf',
         articles: {
           'manual-pdf': {
             title: 'O guia de primeiros passos (PDF)',
@@ -2865,7 +2865,7 @@ export const pt = {
       },
       contact: {
         title: 'Contato e comentários',
-        keywords: '',
+        keywords: 'manual guia documentação ajuda pdf',
         articles: {}
       }
     },

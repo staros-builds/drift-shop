@@ -2858,7 +2858,7 @@ export const en = {
       },
       manual: {
         title: 'User manual',
-        keywords: '',
+        keywords: 'manual guide documentation help pdf',
         articles: {
           'manual-pdf': {
             title: 'The getting-started guide (PDF)',
@@ -2876,7 +2876,7 @@ export const en = {
       },
       contact: {
         title: 'Contact & feedback',
-        keywords: '',
+        keywords: 'manual guide documentation help pdf',
         articles: {}
       }
     },

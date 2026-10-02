@@ -2862,7 +2862,7 @@ export const fr = {
       },
       manual: {
         title: 'Manuel d’utilisation',
-        keywords: '',
+        keywords: 'manuel guide documentation aide pdf',
         articles: {
           'manual-pdf': {
             title: 'Le guide de démarrage (PDF)',
@@ -2880,7 +2880,7 @@ export const fr = {
       },
       contact: {
         title: 'Contact et commentaires',
-        keywords: '',
+        keywords: 'manuel guide documentation aide pdf',
         articles: {}
       }
     },
