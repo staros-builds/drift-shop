@@ -1,14 +1,79 @@
-name: db-sync (manual fallback)
-on: { workflow_dispatch: {} }
+# Drift Shop — backend mesh sync (primary -> hot standby) — MANUAL ONLY.
+#
+# SCHEDULE RETIRED at the x10 merge (docs/redundancy.md): the hourly
+# multi-target sync (.github/workflows/db-sync-multi.yml) supersedes
+# this single-target job. This workflow stays as a manual-dispatch
+# fallback so an operator can force one sync on demand; it must NOT
+# regain a schedule or the standby would get two writers.
+#
+# Copies the live Supabase database into the standby project when run,
+# verifies row counts, and FAILS LOUDLY (GitHub emails the
+# repo owner on a failed run) when the two disagree or a
+# backend cannot be reached. Full setup + failover runbook:
+# docs/backend-mesh.md.
+#
+# NO-OP GUARD: until the owner adds the STANDBY_* secrets this whole
+# job exits green in seconds and changes nothing, so it is safe to
+# merge before the standby project exists.
+
+name: db-sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'sync = data only (hourly mode) · seed = rebuild standby schema+data (first run, after migrations)'
+        type: choice
+        options: [sync, seed]
+        default: sync
+      with_auth:
+        description: 'Also copy login accounts (auth.users) so staff sign-ins survive failover'
+        type: boolean
+        default: true
+
 jobs:
-  notice:
+  sync:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     env:
+      # secrets context is only readable via env, not in `if:` directly.
       HAS_STANDBY: ${{ secrets.STANDBY_DATABASE_URL != '' }}
+      PRIMARY_URL: ${{ secrets.PRIMARY_SUPABASE_URL }}
+      PRIMARY_ANON_KEY: ${{ secrets.PRIMARY_SUPABASE_ANON_KEY }}
+      PRIMARY_SERVICE_KEY: ${{ secrets.PRIMARY_SUPABASE_SERVICE_KEY }}
+      PRIMARY_DB_URL: ${{ secrets.PRIMARY_DATABASE_URL }}
+      STANDBY_URL: ${{ secrets.STANDBY_SUPABASE_URL }}
+      STANDBY_ANON_KEY: ${{ secrets.STANDBY_SUPABASE_ANON_KEY }}
+      STANDBY_SERVICE_KEY: ${{ secrets.STANDBY_SUPABASE_SERVICE_KEY }}
+      STANDBY_DB_URL: ${{ secrets.STANDBY_DATABASE_URL }}
     steps:
-      - run: |
-          if [ "$HAS_STANDBY" != 'true' ]; then
-            echo "::notice::No STANDBY_DATABASE_URL secret — legacy manual sync is inert. The hourly db-sync-neon-aiven workflow handles Neon/Aiven."
-          else
-            echo "::notice::Standby configured — legacy path would run (kept as manual fallback)."
-          fi
+      - name: Standby not configured yet — nothing to do
+        if: env.HAS_STANDBY != 'true'
+        run: echo "::notice::STANDBY_DATABASE_URL secret not set — db-sync is a no-op until the standby project exists. See docs/backend-mesh.md."
+
+      - uses: actions/checkout@v4
+        if: env.HAS_STANDBY == 'true'
+
+      - name: Install PostgreSQL client tools
+        if: env.HAS_STANDBY == 'true'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+          pg_dump --version
+
+      - name: Sync primary to standby and verify
+        if: env.HAS_STANDBY == 'true'
+        env:
+          SYNC_ALLOW_WRITE: '1'
+        run: |
+          MODE="${{ inputs.mode || 'sync' }}"
+          AUTH_FLAG=""
+          if [ "${{ inputs.with_auth }}" != "false" ]; then AUTH_FLAG="--with-auth"; fi
+          node tools/sync/sync.mjs --live --mode "$MODE" $AUTH_FLAG
+
+      - name: Summary
+        if: always() && env.HAS_STANDBY == 'true'
+        run: |
+          echo "### Backend mesh sync" >> "$GITHUB_STEP_SUMMARY"
+          echo "If this run failed, GitHub has emailed the repo owner — that email IS the alarm." >> "$GITHUB_STEP_SUMMARY"
+          echo "Do not fail over to the standby until a sync run is green. See docs/backend-mesh.md." >> "$GITHUB_STEP_SUMMARY"
