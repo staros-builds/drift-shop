@@ -2876,7 +2876,7 @@ export const en = {
       },
       contact: {
         title: 'Contact & feedback',
-        keywords: 'manual guide documentation help pdf',
+        keywords: 'contact feedback email support help',
         articles: {}
       }
     },

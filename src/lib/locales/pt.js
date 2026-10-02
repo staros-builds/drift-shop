@@ -2865,7 +2865,7 @@ export const pt = {
       },
       contact: {
         title: 'Contato e comentários',
-        keywords: 'manual guia documentação ajuda pdf',
+        keywords: 'contato comentários email suporte ajuda',
         articles: {}
       }
     },

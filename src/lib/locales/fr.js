@@ -2880,7 +2880,7 @@ export const fr = {
       },
       contact: {
         title: 'Contact et commentaires',
-        keywords: 'manuel guide documentation aide pdf',
+        keywords: 'contact commentaires courriel soutien aide',
         articles: {}
       }
     },

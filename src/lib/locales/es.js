@@ -2873,7 +2873,7 @@ export const es = {
       },
       contact: {
         title: 'Contacto y comentarios',
-        keywords: 'manual guía documentación ayuda pdf',
+        keywords: 'contacto comentarios correo soporte ayuda',
         articles: {}
       }
     },
