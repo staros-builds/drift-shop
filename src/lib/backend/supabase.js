@@ -37,7 +37,15 @@ import { normalizeDomainInput, isValidHostname } from '../hostnameResolve.js';
 import { storageUploadXhr } from './storageXhr.js';
 
 const MAX_SPACES = 8;
-const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB inline text; larger text rides the binary path
+
+// Boot URL snapshot (taken synchronously at module load): supabase-js's
+// detectSessionInUrl clears window.location.hash asynchronously during
+// client init, which races the app's own auth-callback parser. Without this
+// snapshot, recovery-link landings (#access_token…&type=recovery) lose their
+// hash before consumeAuthCallback() reads it, and the new-password screen
+// never appears. Email links always arrive via full page load, so the boot
+// snapshot is the correct source of truth for the callback parser.
+const BOOT_HREF = typeof window !== 'undefined' ? String(window.location.href) : '';const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB inline text; larger text rides the binary path
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024; // 50 MB per binary upload — the free storage plan's per-file ceiling; fail fast with a plain message instead of a platform rejection
 const MAX_PIN_FILE_BYTES = 50 * 1024 * 1024; // 50 MB per file/image pin (Supabase Storage)
 const PIN_FILES_BUCKET = 'user-files';
@@ -1054,7 +1062,9 @@ export function createSupabaseBackend(config = null) {
     // One-time URL markers (code, authflow, error params) are stripped from
     // the address bar so a refresh never replays the landing.
     async consumeAuthCallback() {
-      const parsed = parseAuthCallbackUrl(window.location.href);
+      // Parse the boot-URL snapshot, NOT the live window.location.href:
+      // supabase-js may already have cleared the hash by the time this runs.
+      const parsed = parseAuthCallbackUrl(BOOT_HREF || (typeof window !== 'undefined' ? window.location.href : ''));
 
       const cleanUrl = () => {
         try {
