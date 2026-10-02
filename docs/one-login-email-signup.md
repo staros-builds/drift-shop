@@ -138,37 +138,67 @@ parity test fails.
 7. Factory reset on a scratch project → master reseeds, `shop_customers`
    empty, no leftover rows.
 
-## Social sign-in (added 2026-10-01, Jesse's direction)
+## Social sign-in + passwordless link (expanded 2026-10-01, Jesse's direction)
 
-Email + password stays, but the login and storefront account sheets also
-offer **Continue with Google** and **Continue with GitHub**. The app side
-is done: `signInWithOAuth({ provider, kind, slug })` starts the provider
-round trip with the same `?authflow=owner|customer[&shop=<slug>]` redirect
-as an email confirmation, so owners land on the desktop and customers land
-back on their shop; a provider that is not enabled yet surfaces the plain
-"isn't switched on yet" message instead of a raw error.
+Email + password stays, but users must also have **maximum ease and
+flexibility**: many ways in, no forced password. The login screen and the
+storefront account sheets now offer:
+
+- **Passwordless email link** — `signInWithMagicLink({ email, kind, slug })`
+  (Supabase `signInWithOtp`). The link arrives by email and signs the person
+  in; a brand-new address creates the account on first click. It routes
+  through the same `?authflow=owner|customer&shop=<slug>` callback as a
+  confirmation email, so owners land on the desktop and customers land back
+  on their shop.
+- **Eight OAuth providers** — `OAUTH_PROVIDERS` in `src/lib/authFlow.js`:
+  `google`, `github`, `facebook`, `discord`, `azure` (Microsoft), `gitlab`,
+  `spotify`, `twitch`. The UI renders exactly this list and the backend
+  rejects anything else. `signInWithOAuth({ provider, kind, slug })` starts
+  the provider round trip with the same callback markers. A provider that is
+  not enabled yet surfaces the plain "isn't switched on yet" message instead
+  of a raw error — all eight buttons render even before a provider is
+  switched on, so the layout never changes as providers come online.
+
+**Account classification (migration 080).** A fresh OAuth (or magic-link)
+profile has no signup metadata, so the trigger leaves
+`profiles.account_kind = NULL`. On the callback, the app reads the profile
+and calls the SECURITY DEFINER RPC `classify_oauth_profile(p_kind)`, which
+stamps `'owner'` or `'customer'` **only while `account_kind IS NULL`** — it
+never overwrites an existing kind (no customer→owner promotion, no
+owner→customer demotion) and rejects any other value. This is not an
+escalation: public email owner signup makes the same classification, and
+shop licensing gates still apply. The customer shop link is still stamped by
+`link_shop_customer()` on the storefront landing, exactly like email
+customers. The RPC is best-effort from the client: a failure never breaks
+sign-in.
 
 Operator steps to switch a provider ON (Supabase dashboard, per provider):
 
-1. **Google:** Google Cloud Console → create an OAuth client (Web) for the
-   project. Authorized redirect URI is the Supabase callback:
-   `https://<project-ref>.supabase.co/auth/v1/callback`. Put the client ID
-   + secret into Supabase → Authentication → Providers → Google → enable.
-2. **GitHub:** GitHub → Settings → Developer settings → OAuth Apps → New.
-   Homepage = the primary app address; Authorization callback URL = the
-   same Supabase callback above. Put the client ID + secret into Supabase →
-   Authentication → Providers → GitHub → enable.
+1. Create the OAuth app at the provider. Homepage = the primary app address;
+   the authorized redirect / callback URL is always the Supabase callback:
+   `https://<project-ref>.supabase.co/auth/v1/callback`.
+   - **Google:** Google Cloud Console → OAuth client (Web). Note: Google
+     Cloud now requires 2-Step Verification on the Google account before it
+     allows project creation.
+   - **GitHub:** GitHub → Settings → Developer settings → OAuth Apps → New.
+     Generating the client secret asks for the account password (sudo
+     confirm) — the operator's own click.
+   - **GitLab:** GitLab → Applications; scope `read_user`.
+   - **Discord:** Discord Developer Portal → OAuth2; app creation may throw
+     a human-check (hCaptcha).
+   - **Facebook:** Meta for Developers; developer registration requires
+     phone or card verification — the operator's own step.
+   - **Microsoft (Azure):** needs an Entra directory; app registration
+     outside a directory is deprecated.
+   - **Spotify / Twitch:** standard developer dashboards; each needs its own
+     account there first.
+2. Put the client ID + secret into Supabase → Authentication → Providers →
+   that provider → enable → Save. Secrets go only into Supabase — never into
+   the app, the repo, or chat.
 3. The app's own Redirect URLs allowlist (step 4 above) already covers the
    return trip — every live mirror pattern must be present or the user
    lands on an error after the provider.
-4. Test once per provider: sign up fresh, confirm you land signed-in, sign
-   out, sign back in with the same service. An OAuth-created profile has
-   `account_kind = NULL` (no signup metadata) and is treated as a legacy
-   account by the access gate; the customer shop link is stamped by the
-   storefront visit, exactly like email customers.
-
-Apple/Microsoft/Facebook are intentionally not wired: Apple needs a paid
-developer account, and the others add app-review/tenant setup that breaks
-the $0 rule. The provider list lives in one place
-(`OAUTH_PROVIDERS` in `src/lib/authFlow.js`) so adding one later is a
-list entry plus its dashboard switch.
+4. Test once per provider: sign up fresh, confirm you land signed-in with
+   the right `account_kind`, sign out, sign back in with the same service.
+   Clean up the test user and profile row afterward so production stays
+   tidy.
