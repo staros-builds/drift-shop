@@ -4190,6 +4190,24 @@ export function createSupabaseBackend(config = null) {
 
     async adjustStock(storeId, productId, delta) {
       if (!(await posHasV4())) throw new Error('Inventory needs migration 004 — ask a manager to apply it.');
+      const deltaInt = Math.round(Number(delta) || 0);
+      // M9: Use atomic RPC when available (migration 084), falling back to
+      // the legacy read-modify-write for older servers.
+      try {
+        const { data, error } = await client.rpc('pos_adjust_stock_atomic', {
+          p_product_id: productId,
+          p_store_id: storeId,
+          p_delta: deltaInt,
+        });
+        if (!error && data) {
+          const row = check(
+            await client.from('pos_products').select('*').eq('id', productId).single(),
+            'Reading stock'
+          );
+          return row;
+        }
+      } catch {}
+      // Legacy fallback: racy read-modify-write (pre-084 server).
       const prod = check(
         await client
           .from('pos_products')
@@ -4202,7 +4220,7 @@ export function createSupabaseBackend(config = null) {
       const row = check(
         await client
           .from('pos_products')
-          .update({ stock: Math.max(0, Number(prod.stock) + Math.round(Number(delta) || 0)) })
+          .update({ stock: Math.max(0, Number(prod.stock) + deltaInt) })
           .eq('id', productId)
           .select('*')
           .single(),
@@ -4234,6 +4252,16 @@ export function createSupabaseBackend(config = null) {
       }
       // Legacy path (pre-024 server): claim-then-restock.
       const uid = requireUid();
+      // M5: Legacy path must also refuse to void sales with refunds.
+      const { data: saleCheck } = await client
+        .from('pos_sales')
+        .select('id, refunds')
+        .eq('id', id)
+        .eq('store_id', storeId)
+        .single();
+      if (saleCheck?.refunds && Array.isArray(saleCheck.refunds) && saleCheck.refunds.length > 0) {
+        throw new Error('This sale has refunds and can’t be voided — the refund is the permanent record.');
+      }
       const v4 = await posHasV4();
       const patch = { voided: true, voided_at: new Date().toISOString(), voided_by: uid };
       if (v4 && String(reason ?? '').trim()) patch.void_reason = String(reason).trim().slice(0, 200);
