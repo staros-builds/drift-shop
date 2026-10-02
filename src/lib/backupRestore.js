@@ -190,3 +190,31 @@ export function clearRestorePending() {
     /* non-fatal */
   }
 }
+
+// L7: Persistent restore history — records each completed restore with
+// timestamp and filename, so there's an audit trail.
+const RESTORE_HISTORY_KEY = 'drift:restore-history';
+export function getRestoreHistory() {
+  try {
+    const raw = localStorage.getItem(RESTORE_HISTORY_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+export function recordRestoreHistory({ filename, tableCount }) {
+  try {
+    const history = getRestoreHistory();
+    history.unshift({
+      at: new Date().toISOString(),
+      filename: String(filename || '').slice(0, 200),
+      tableCount: Number(tableCount) || 0,
+    });
+    // Keep last 20 entries.
+    localStorage.setItem(RESTORE_HISTORY_KEY, JSON.stringify(history.slice(0, 20)));
+  } catch {
+    /* non-fatal */
+  }
+}

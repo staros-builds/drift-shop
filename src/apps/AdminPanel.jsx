@@ -12,7 +12,7 @@ import { exportAccountBackup, downloadBackupFile } from '../lib/accountBackup.js
 import { snapshotBeforeDestructive } from '../lib/autoBackup.js';
 import { useAuth } from '../os/AuthContext.jsx';
 import { useSettings } from '../os/SettingsContext.jsx';
-import { validateBackup, getRestorePending, setRestorePending, clearRestorePending } from '../lib/backupRestore.js';
+import { validateBackup, getRestorePending, setRestorePending, clearRestorePending, getRestoreHistory, recordRestoreHistory } from '../lib/backupRestore.js';
 import { runBackupRestore } from '../lib/restoreImport.js';
 import { acquireUpdateLock } from '../lib/updateGuard.js';
 import { BUSINESS_PRESET_IDS, BUSINESS_PRESETS, isBusinessPreset, presetSettingsPatch } from '../lib/businessPresets.js';
@@ -1720,6 +1720,13 @@ function RestoreSection() {
       const report = await runBackupRestore(finishPicked.data, { backend });
       setFinishReport(report);
       clearRestorePending();
+      // L7: Record in persistent history.
+      try {
+        recordRestoreHistory({
+          filename: finishPicked.name,
+          tableCount: report?.restoredTables?.length || 0,
+        });
+      } catch {}
     } catch (err) {
       setFinishError(err?.message || String(err));
     } finally {
@@ -3181,15 +3188,16 @@ export default function AdminPanel() {
 
   return (
     <div className="flex h-full flex-col bg-surface text-ink">
-      <div className="flex items-center gap-2 border-b border-osborder px-4 pt-3">
-        <span className="text-accent"><ShieldCheck size={20} /></span>
-        <h2 className="mr-2 text-sm font-semibold">{t('adminAccounts.admin')}</h2>
+      {/* L9: horizontal scroll on narrow windows so tabs don't clip */}
+      <div className="flex items-center gap-2 overflow-x-auto border-b border-osborder px-4 pt-3">
+        <span className="shrink-0 text-accent"><ShieldCheck size={20} /></span>
+        <h2 className="mr-2 shrink-0 text-sm font-semibold">{t('adminAccounts.admin')}</h2>
         {tabs.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => setSection(t.id)}
-            className={`flex items-center gap-1.5 border-b-2 px-3 py-2 text-xs font-medium duration-160 ${
+            className={`flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2 text-xs font-medium duration-160 ${
               cur === t.id
                 ? 'border-accent text-ink'
                 : 'border-transparent text-muted hover:text-ink'
