@@ -1,0 +1,30 @@
+{
+  "dependencies": {
+    "@supabase/supabase-js": "^2.47.0",
+    "lucide-react": "^0.454.0",
+    "qrcode-generator": "^2.0.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "description": "Drift \u2014 a calm, paper-and-ink personal cloud desktop. Shared frontend for StarOS builds 3 (Supabase) and 4 (Replit).",
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.16",
+    "vite": "^6.0.3"
+  },
+  "name": "drift",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/write-build-json.mjs && vite build && node scripts/build-landing.mjs",
+    "dev": "vite",
+    "preview": "vite preview",
+    "test": "node test/access-policy.test.mjs && node test/config-check.test.mjs && node test/i18n-parity.test.mjs && node test/login-id.test.mjs && node test/password-policy.test.mjs && node test/tax-math.test.mjs",
+    "build:landing": "node scripts/build-landing.mjs",
+    "verify:bundle": "node scripts/verify-bundle.mjs dist",
+    "release": "npm test && npm run build && npm run verify:bundle"
+  },
+  "type": "module",
+  "version": "0.1.0"
+}

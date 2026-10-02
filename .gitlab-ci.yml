@@ -1,0 +1,40 @@
+# Drift Shop — GitLab Pages mirror build (DROPPED / conditional only).
+#
+# GitLab Pages is NOT one of the ten selected doors in
+# deploy/mirrors.json: GitLab CI requires identity verification
+# (risk-scored — possibly phone or a card hold for new accounts),
+# which breaks the project's no-card-anywhere rule. The full survey
+# lives in docs/redundancy.md. This file is kept ONLY for the case
+# where an already-verified GitLab account exists; it does nothing
+# on GitHub. If the repo is mirrored to such a GitLab account,
+# GitLab CI builds the same app and publishes it as a GitLab Pages
+# site.
+#
+# One-time setup on the GitLab side: Settings -> CI/CD -> Variables:
+#   VITE_SUPABASE_URL       (the shop backend address — public-safe)
+#   VITE_SUPABASE_ANON_KEY  (the public anon key — RLS guards data)
+# Neither is a real secret; they ship inside the built page anyway.
+# Without them the build still succeeds but the app boots to its
+# honest "backend is not configured" screen, exactly as designed.
+#
+# The build uses Vite's relative base ('./'), so the identical dist
+# works under GitLab Pages' /<project>/ path with no changes.
+
+image: node:20
+
+stages:
+  - build
+
+pages:
+  stage: build
+  script:
+    - npm ci
+    - npm run build
+    # GitLab Pages serves the folder named "public".
+    - rm -rf public
+    - cp -r dist public
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

@@ -1,0 +1,1 @@
+{"hosting":{"headers":[{"headers":[{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"strict-origin-when-cross-origin"}],"source":"**"}],"ignore":["firebase.json","**/.*","**/node_modules/**"],"public":"dist"}}

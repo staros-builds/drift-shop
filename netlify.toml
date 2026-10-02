@@ -1,0 +1,34 @@
+# Drift Shop — Netlify mirror (multi-host redundancy, see docs/redundancy.md).
+#
+# Serves the SAME dist/ folder GitHub Pages and Cloudflare Pages serve.
+# No per-host code: the build uses a relative asset base ('./'), so this
+# file is the only Netlify-specific piece.
+#
+# Connect: Netlify → Add new site → Import an existing project →
+# staros-builds/drift-shop. Build settings below are read automatically.
+# Required environment variables (Site configuration → Environment
+# variables): VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY — same values
+# as every other host.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# SPA fallback: any non-file path serves index.html so path-based deep
+# links boot the app instead of a 404. Hash links (#/store/<slug>) are
+# the app's real routes — the server never sees the # part, so they work
+# with or without this rule; this only covers stray path-based URLs.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Security headers the GitHub Pages meta-CSP cannot express. The CSP
+# itself stays in index.html (meta) so every host sends the same policy.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
