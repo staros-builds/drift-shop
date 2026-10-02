@@ -373,7 +373,7 @@ export const en = {
     slides: 'Slides',
     store: 'App Store',
     pos: 'Point of Sale',
-    punch: 'Certificates',
+    punch: 'Time Clock',
     inventory: 'Inventory',
     bouquinerie: 'Catalogue',
     appointments: 'Appointments',

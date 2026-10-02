@@ -373,7 +373,7 @@ export const fr = {
     slides: 'Présentations',
     store: "Magasin d'applis",
     pos: 'Point de vente',
-    punch: 'Attestations',
+    punch: 'Pointeuse',
     inventory: 'Inventaire',
     bouquinerie: 'Catalogue',
     appointments: 'Rendez-vous',

@@ -34,7 +34,7 @@ export const APPS = [
   { id: 'slides', title: 'Présentations', titleEn: 'Slides',   icon: Presentation, component: SlidesApp, defaultSize: { w: 940, h: 620 },  category: 'Office', multiWindow: true },
   { id: 'store', title: "Magasin d'applis", titleEn: 'App Store', icon: Store,    component: StoreApp,    defaultSize: { w: 900, h: 620 },  category: 'Discover' },
   { id: 'pos', title: 'Point de vente', titleEn: 'Point of Sale', icon: ShoppingCart, component: POSApp, defaultSize: { w: 1020, h: 640 }, category: 'Business' },
-  { id: 'punch', title: 'Attestations', titleEn: 'Certificates', icon: Timer, component: PunchApp, defaultSize: { w: 900, h: 620 }, category: 'Business' },
+  { id: 'punch', title: 'Pointeuse', titleEn: 'Time Clock', icon: Timer, component: PunchApp, defaultSize: { w: 900, h: 620 }, category: 'Business' },
   { id: 'bouquinerie', title: 'Catalogue', titleEn: 'Catalogue', icon: LibraryBig, component: BouquinerieApp, defaultSize: { w: 1020, h: 640 }, category: 'Business' },
   { id: 'appointments', title: 'Rendez-vous', titleEn: 'Appointments', icon: CalendarDays, component: AppointmentsApp, defaultSize: { w: 1020, h: 640 }, category: 'Business' },
   { id: 'settings', title: 'Réglages', titleEn: 'Settings', icon: Settings,    component: SettingsApp, defaultSize: { w: 640, h: 520 }, category: 'System' },
