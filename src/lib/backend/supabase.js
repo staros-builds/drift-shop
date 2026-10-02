@@ -1600,7 +1600,7 @@ export function createSupabaseBackend(config = null) {
         throw new Error(`Uploading file failed: ${err?.message || 'upload failed.'}`);
       }
       const existing = await findFile(uid, parent.id, name);
-      if (existing?.storage_path) await removePinFileQuietly(existing.storage_path);
+      const oldStoragePath = existing?.storage_path || null;
       const payload = {
         user_id: uid,
         folder_id: parent.id,
@@ -1612,17 +1612,25 @@ export function createSupabaseBackend(config = null) {
         storage_path: storagePath,
       };
       let row;
-      if (existing) {
-        row = check(
-          await client.from('vfs_files').update(payload).eq('id', existing.id).select().single(),
-          'Saving file'
-        );
-      } else {
-        row = check(
-          await client.from('vfs_files').insert(payload).select().single(),
-          'Uploading file'
-        );
+      try {
+        if (existing) {
+          row = check(
+            await client.from('vfs_files').update(payload).eq('id', existing.id).select().single(),
+            'Saving file'
+          );
+        } else {
+          row = check(
+            await client.from('vfs_files').insert(payload).select().single(),
+            'Uploading file'
+          );
+        }
+      } catch (dbErr) {
+        // M11: DB failed after storage upload — delete the orphaned object.
+        await removePinFileQuietly(storagePath);
+        throw dbErr;
       }
+      // Delete the old storage object ONLY after the DB write succeeded.
+      if (oldStoragePath) await removePinFileQuietly(oldStoragePath);
       return toEntry(row, 'file', path);
     },
 
@@ -1665,8 +1673,40 @@ export function createSupabaseBackend(config = null) {
       }
       const folder = await resolveFolder(uid, segs, false);
       if (!folder) throw new Error(`Nothing found at ${path}.`);
+      // M12: Collect descendant files' storage paths BEFORE the cascade
+      // delete, so their bytes don't orphan in the bucket.
+      const storagePaths = [];
+      try {
+        const folderIds = [folder.id];
+        const queue = [folder.id];
+        while (queue.length > 0) {
+          const fid = queue.shift();
+          const { data: children } = await client
+            .from('vfs_folders')
+            .select('id')
+            .eq('user_id', uid)
+            .eq('parent_id', fid);
+          for (const c of (children || [])) {
+            folderIds.push(c.id);
+            queue.push(c.id);
+          }
+        }
+        const { data: files } = await client
+          .from('vfs_files')
+          .select('storage_path')
+          .eq('user_id', uid)
+          .in('folder_id', folderIds)
+          .not('storage_path', 'is', null);
+        for (const f of (files || [])) {
+          if (f.storage_path) storagePaths.push(f.storage_path);
+        }
+      } catch {}
       // cascade deletes children server-side
       check(await client.from('vfs_folders').delete().eq('id', folder.id), 'Deleting folder');
+      // Clean up orphaned storage objects.
+      for (const sp of storagePaths) {
+        await removePinFileQuietly(sp);
+      }
     },
 
     async rename(oldPath, newPath) {
@@ -5464,6 +5504,9 @@ export function createSupabaseBackend(config = null) {
         // Customer online orders (migration 071): without these, a restored
         // shop loses its entire online order history.
         'online_orders',
+        // M14: Shop memberships and license state — without these, restored
+        // shops lose team members and re-lock (trial/paid state gone).
+        'pos_store_members', 'shop_licenses',
       ];
       for (const t of tables) {
         try {
