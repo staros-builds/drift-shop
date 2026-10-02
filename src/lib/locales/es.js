@@ -322,7 +322,7 @@ export const es = {
       restoreLoading: 'Buscando en Google Drive…',
       restorePick: 'Toca una copia para traerla de vuelta. La más reciente está arriba.',
       restoreReadyTitle: 'Copia guardada en este dispositivo',
-      restoreReadyBody: '«{name}» está en tus descargas. Restaurar una copia es tarea solo del dueño: abre Admin → Usuarios → Restaurar una copia y elige ese archivo. Te pedirá que escribas RESTORE, guardará primero una copia de seguridad, y después restaurará todo.',
+      restoreReadyBody: '«{name}» está en tus descargas. Restaurar una copia es tarea solo del dueño: abre Admin → Zona peligrosa → Restaurar una copia y elige ese archivo. Te pedirá que escribas RESTORE, guardará primero una copia de seguridad, y después restaurará todo.',
       restoreNone: 'Aún no se encontraron copias de Drift Shop en este Google Drive. Usa primero «Hacer copia ahora».',
       newest: 'Más reciente',
       auto: 'Hacer la copia sola una vez por semana',

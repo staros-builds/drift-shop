@@ -4726,7 +4726,9 @@ function ReportsTab({ store, sales, memberName, extras }) {
       const k = s.method || 'cash';
       const e = m[k] || { count: 0, total: 0 };
       e.count += 1;
-      e.total += s.totalCents;
+      // M7: subtract refunds so per-method totals match net headlines.
+      const refunded = (s.refunds || []).reduce((a, r) => a + (r.refundedCents || 0), 0);
+      e.total += s.totalCents - refunded;
       m[k] = e;
     });
     return m;
@@ -4738,7 +4740,9 @@ function ReportsTab({ store, sales, memberName, extras }) {
       const k = s.cashierName || (s.createdBy ? memberName(s.createdBy) : null) || '—';
       const e = m[k] || { count: 0, total: 0 };
       e.count += 1;
-      e.total += s.totalCents;
+      // M7: subtract refunds so per-staff totals match net headlines.
+      const refunded = (s.refunds || []).reduce((a, r) => a + (r.refundedCents || 0), 0);
+      e.total += s.totalCents - refunded;
       m[k] = e;
     });
     return Object.entries(m).sort(([, a], [, b]) => b.total - a.total);
@@ -6856,6 +6860,18 @@ export default function POSApp({
     // surface restock warnings; throws on failure (already voided, not a
     // manager) so the dialog can show the error instead of closing.
     const res = await backend.pos.voidSale(store.id, id, reason);
+    // L1: Log voids in the money audit ledger.
+    const voidedSale = sales.find((s) => s.id === id);
+    if (voidedSale) {
+      logMoneyMovement('void', {
+        amountCents: voidedSale.totalCents || 0,
+        saleId: id,
+        saleNumber: voidedSale.number,
+        method: voidedSale.method,
+        userId: selfId,
+        note: reason || `Void sale #${voidedSale.number}`,
+      });
+    }
     setSales((s) =>
       s.map((x) =>
         x.id === id

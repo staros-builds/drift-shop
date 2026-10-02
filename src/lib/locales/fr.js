@@ -322,7 +322,7 @@ export const fr = {
       restoreLoading: 'Recherche dans Google Drive…',
       restorePick: 'Touchez une sauvegarde pour la ramener. La plus récente est en haut.',
       restoreReadyTitle: 'Sauvegarde enregistrée sur cet appareil',
-      restoreReadyBody: '« {name} » est dans vos téléchargements. Ramener une sauvegarde est réservé au propriétaire : ouvrez Admin → Utilisateurs → Restaurer une sauvegarde et choisissez ce fichier. On vous demandera de taper RESTORE, une sauvegarde de sécurité sera faite d’abord, puis tout sera remis en place.',
+      restoreReadyBody: '« {name} » est dans vos téléchargements. Ramener une sauvegarde est réservé au propriétaire : ouvrez Admin → Zone dangereuse → Restaurer une sauvegarde et choisissez ce fichier. On vous demandera de taper RESTORE, une sauvegarde de sécurité sera faite d’abord, puis tout sera remis en place.',
       restoreNone: 'Aucune sauvegarde Drift Shop trouvée dans ce Google Drive. Utilisez d’abord « Sauvegarder maintenant ».',
       newest: 'La plus récente',
       auto: 'Sauvegarder tout seul, une fois par semaine',

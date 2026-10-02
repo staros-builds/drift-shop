@@ -322,7 +322,7 @@ export const en = {
       restoreLoading: 'Looking in Google Drive…',
       restorePick: 'Tap a backup to bring it back. The newest one is at the top.',
       restoreReadyTitle: 'Backup saved to this device',
-      restoreReadyBody: '“{name}” is in your downloads. Putting a backup back is an owner-only job: open Admin → Users → Restore a backup and choose that file. It will ask you to type RESTORE, save a safety backup first, then put everything back.',
+      restoreReadyBody: '“{name}” is in your downloads. Putting a backup back is an owner-only job: open Admin → Danger zone → Restore a backup and choose that file. It will ask you to type RESTORE, save a safety backup first, then put everything back.',
       restoreNone: 'No Drift Shop backups found in this Google Drive yet. Use “Back up now” first.',
       newest: 'Newest',
       auto: 'Back up by itself once a week',

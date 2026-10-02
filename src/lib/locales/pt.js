@@ -321,7 +321,7 @@ export const pt = {
       restoreLoading: 'Procurando no Google Drive…',
       restorePick: 'Toque num backup para trazê-lo de volta. O mais novo está em cima.',
       restoreReadyTitle: 'Backup salvo neste aparelho',
-      restoreReadyBody: '“{name}” está nos seus downloads. Recuperar um backup é tarefa só do dono: abra Admin → Usuários → Restaurar um backup e escolha esse arquivo. Ele pedirá para digitar RESTORE, salvará um backup de segurança primeiro, e depois recuperará tudo.',
+      restoreReadyBody: '“{name}” está nos seus downloads. Recuperar um backup é tarefa só do dono: abra Admin → Zona de perigo → Restaurar um backup e escolha esse arquivo. Ele pedirá para digitar RESTORE, salvará um backup de segurança primeiro, e depois recuperará tudo.',
       restoreNone: 'Nenhum backup do Drift Shop encontrado neste Google Drive ainda. Use “Fazer backup agora” primeiro.',
       newest: 'Mais novo',
       auto: 'Fazer backup sozinho uma vez por semana',
