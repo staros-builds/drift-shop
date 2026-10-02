@@ -33,6 +33,7 @@ export const en = {
     edit: 'Edit',
     add: 'Add',
     close: 'Close',
+    ok: 'OK',
     confirmDelete: 'Delete this? This cannot be undone.',
     search: 'Search',
     refresh: 'Refresh',
@@ -1948,6 +1949,7 @@ export const en = {
   },
   files: {
     home: 'Home',
+    listFail: 'Could not list files.',
     scopeLabel: 'Choose whose files to look at',
     scopePersonal: 'My files',
     scopePersonalTitle: 'Show only your own private files',

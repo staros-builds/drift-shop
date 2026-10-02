@@ -4735,9 +4735,9 @@ function ReportsTab({ store, sales, memberName, extras }) {
     <div className="h-full overflow-y-auto pr-1">
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {[
-          { id: 'today', label: t('pos.period.today') },
-          { id: '7', label: t('pos.period.last7') },
-          { id: '30', label: t('pos.period.last30') },
+          { id: 'today', label: t('pos.reports.period.today') },
+          { id: '7', label: t('pos.reports.period.last7') },
+          { id: '30', label: t('pos.reports.period.last30') },
         ].map((r) => (
           <button
             key={r.id}
@@ -6359,8 +6359,8 @@ function ClockTab({ store }) {
             <h3 className="text-sm font-semibold text-ink">{t('pos.tabs2.hours')}</h3>
             <div className="flex gap-1 rounded-os bg-surface p-0.5">
               {[
-                { id: 'today', label: t('pos.period.today') },
-                { id: 'week', label: t('pos.period.last7') },
+                { id: 'today', label: t('pos.reports.period.today') },
+                { id: 'week', label: t('pos.reports.period.last7') },
               ].map((r) => (
                 <button
                   key={r.id}

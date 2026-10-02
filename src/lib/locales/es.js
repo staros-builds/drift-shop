@@ -33,6 +33,7 @@ export const es = {
     edit: 'Editar',
     add: 'Añadir',
     close: 'Cerrar',
+    ok: 'OK',
     confirmDelete: '¿Eliminar esto? No se puede deshacer.',
     search: 'Buscar',
     refresh: 'Actualizar',
@@ -1947,6 +1948,7 @@ export const es = {
   },
   files: {
     home: 'Inicio',
+    listFail: 'No se pudieron listar los archivos.',
     scopeLabel: 'Elige de quién ver los archivos',
     scopePersonal: 'Mis archivos',
     scopePersonalTitle: 'Mostrar solo tus archivos privados',

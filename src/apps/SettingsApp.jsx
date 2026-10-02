@@ -388,9 +388,9 @@ export default function SettingsApp({ windowApi }) {
     try {
       const dump = await exportAccountBackup();
       downloadBackupFile(dump, `vendra-backup-${new Date().toISOString().slice(0, 10)}.json`);
-      push(t('settings.data.backupComplete'), t('settings.data.backupCompleteBody'));
+      push(t('settings.sections.backupComplete'), t('settings.sections.backupCompleteBody'));
     } catch (err) {
-      push(t('settings.data.backupFailed'), err?.message || t('settings.data.backupFailedBody'));
+      push(t('settings.sections.backupFailed'), err?.message || t('settings.sections.backupFailedBody'));
     } finally {
       setExporting(false);
     }

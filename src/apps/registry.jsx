@@ -28,7 +28,7 @@ export const APPS = [
   { id: 'files', title: 'Fichiers', titleEn: 'Files',    icon: Folder,     component: FilesApp,    defaultSize: { w: 720, h: 480 },  category: 'Organize', multiWindow: true },
   { id: 'pinboard', title: 'Pense-bête', titleEn: 'Pinboard', icon: Pin,         component: PinboardApp, defaultSize: { w: 760, h: 520 },  category: 'Organize' },
   { id: 'spaces', title: 'Espaces', titleEn: 'Spaces',   icon: LayoutGrid,  component: SpacesApp,   defaultSize: { w: 640, h: 440 },  category: 'Organize' },
-  { id: 'helm', title: 'Barre', titleEn: 'Helm',     icon: Compass,     component: HelmApp,     defaultSize: { w: 720, h: 520 },  category: 'Discover' },
+  { id: 'helm', title: 'Helm', titleEn: 'Helm',     icon: Compass,     component: HelmApp,     defaultSize: { w: 720, h: 520 },  category: 'Discover' },
   { id: 'writer', title: 'Rédaction', titleEn: 'Writer',   icon: PenLine,    component: WriterApp,   defaultSize: { w: 880, h: 620 },  category: 'Office', multiWindow: true },
   { id: 'sheets', title: 'Tableaux', titleEn: 'Sheets',   icon: Table,      component: SheetsApp,   defaultSize: { w: 940, h: 620 },  category: 'Office', multiWindow: true },
   { id: 'slides', title: 'Présentations', titleEn: 'Slides',   icon: Presentation, component: SlidesApp, defaultSize: { w: 940, h: 620 },  category: 'Office', multiWindow: true },

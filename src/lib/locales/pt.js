@@ -33,6 +33,7 @@ export const pt = {
     edit: 'Editar',
     add: 'Adicionar',
     close: 'Fechar',
+    ok: 'OK',
     confirmDelete: 'Excluir isto? Não dá para desfazer.',
     search: 'Buscar',
     refresh: 'Atualizar',
@@ -1946,6 +1947,7 @@ export const pt = {
   },
   files: {
     home: 'Início',
+    listFail: 'Não foi possível listar os arquivos.',
     scopeLabel: 'Escolha de quem ver os arquivos',
     scopePersonal: 'Meus arquivos',
     scopePersonalTitle: 'Mostrar só seus arquivos privados',
