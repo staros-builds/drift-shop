@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-"""Generate public/manual/drift-shop-manual.pdf — a beginner-proof,
-hand-holding guide for the Drift Shop build (EN + FR).
+"""Generate public/manual/vendra-manual.pdf — a beginner-proof,
+hand-holding guide for the Vendra build (EN + FR today; ES + PT-BR are
+scaffolded with TODO placeholders at the end of this file and are filled in
+by hand at the final pass — never machine-translate them).
 
 Written for a reader who has never used a system like this: every term is
 defined the first time it appears, every task is tiny numbered steps with
@@ -63,6 +65,23 @@ def SEE(text):
 def FR_SEE(text):
     return Paragraph(f'Vous devriez maintenant voir : {text}', seestyle)
 
+# ES / PT-BR chrome for the scaffold sections at the end of this file.
+# These four fixed labels ('Paso', 'Passo', 'Ahora debería ver:', 'Agora
+# você deve ver:') are the ONLY non-placeholder ES/PT words in the manual;
+# every content string in the scaffold stays a TODO placeholder until the
+# human translation pass.
+def ES_STEP(n, text):
+    return Paragraph(f'<b>Paso {n}.</b> {text}', stepstyle)
+
+def PT_STEP(n, text):
+    return Paragraph(f'<b>Passo {n}.</b> {text}', stepstyle)
+
+def ES_SEE(text):
+    return Paragraph(f'Ahora debería ver: {text}', seestyle)
+
+def PT_SEE(text):
+    return Paragraph(f'Agora você deve ver: {text}', seestyle)
+
 def TERM(en_word, en_def, fr_word, fr_def):
     return Paragraph(f'<b>{en_word}</b> \u2014 {en_def} <b>{fr_word}</b> \u2014 {fr_def}', termstyle)
 
@@ -124,8 +143,8 @@ story += [Spacer(1, 2.2 * inch), P(PRODUCT, title),
           P('Guide \u2014 October 2026', foot),
           PageBreak()]
 
-def section(en_title, fr_title, blocks):
-    story.append(P(f'{en_title} / {fr_title}', h1))
+def _emit(blocks):
+    """Render one section's blocks; EN/FR/ES/PT tag sets share this loop."""
     for b in blocks:
         if isinstance(b, list) and b and str(b[0]).startswith('shot:'):
             story.extend(SHOT(str(b[0])[5:], b[1], b[2]))
@@ -139,14 +158,34 @@ def section(en_title, fr_title, blocks):
             story.append(STEP(b[1], b[2]))
         elif b[0] == 'frstep':
             story.append(FR_STEP(b[1], b[2]))
+        elif b[0] == 'esstep':
+            story.append(ES_STEP(b[1], b[2]))
+        elif b[0] == 'ptstep':
+            story.append(PT_STEP(b[1], b[2]))
         elif b[0] == 'see':
             story.append(SEE(b[1]))
         elif b[0] == 'frsee':
             story.append(FR_SEE(b[1]))
+        elif b[0] == 'essee':
+            story.append(ES_SEE(b[1]))
+        elif b[0] == 'ptsee':
+            story.append(PT_SEE(b[1]))
         elif b[0] == 'term':
             story.append(TERM(b[1], b[2], b[3], b[4]))
         else:
             story.append(P(b[1]))
+
+def section(en_title, fr_title, blocks):
+    story.append(P(f'{en_title} / {fr_title}', h1))
+    _emit(blocks)
+
+def section_es(en_title, blocks):
+    story.append(P(f'TODO[ES] {en_title}', h1))
+    _emit(blocks)
+
+def section_pt(en_title, blocks):
+    story.append(P(f'TODO[PT] {en_title}', h1))
+    _emit(blocks)
 
 # ------------------------------------------------- chapter 1: start here
 section('Start here \u2014 read this first', 'Commencez ici \u2014 lisez ceci d\u2019abord', [
@@ -643,6 +682,570 @@ section('Appendix \u2014 Installing on your own backend (technical)', 'Annexe \u
     ('frstep', 5, 'Ouvrez la boutique et faites la t\u00e2che 1 imm\u00e9diatement \u2014 changez le mot de passe ma\u00eetre avant tout le reste.'),
     ('b', 'Rebranding note: the master account\u2019s email must match BRAND.accountsDomain in src/lib/brand.js. If you change the domain, update the email in migration 056 before running it (plain usernames are turned into <font face="Courier">&lt;username&gt;@&lt;domain&gt;</font> at sign-in).'),
     ('b', 'Note de personnalisation : le courriel du compte ma\u00eetre doit correspondre \u00e0 BRAND.accountsDomain dans src/lib/brand.js. Si vous changez de domaine, mettez \u00e0 jour le courriel dans la migration 056 avant de l\u2019ex\u00e9cuter (les noms d\u2019utilisateur simples sont transform\u00e9s en <font face="Courier">&lt;nom&gt;@&lt;domaine&gt;</font> \u00e0 la connexion).'),
+])
+
+# ============================================================ ES scaffold
+# TODO(translation): ES + PT-BR scaffold sections. Every content string is
+# 'TODO[ES] ' / 'TODO[PT] ' followed by the English source string. The final
+# pass replaces the EN text after the marker with the human translation,
+# keeping the structure (numbered steps, checkpoints, trouble lines, shot
+# placeholders) identical to EN/FR. Do NOT machine-translate these.
+section_es('Spanish version — translation draft (fill in)', [
+    ('p', 'TODO[ES] This part of the guide is a scaffold for the Spanish translation. Every line below starts with TODO[ES] followed by the English source text. A human translator replaces each TODO[ES] line with the final Spanish text, keeping the same order, the same numbered steps, the same "You should now see" checkpoints and the same trouble lines. Do not delete lines and do not merge steps.'),
+    ('p', 'TODO[ES] The screenshots are added when the final app is ready, from the final shipped screens, in Spanish.'),
+])
+section_es('Cover — Getting started', [
+    ('p', 'TODO[ES] Vendra'),
+    ('p', 'TODO[ES] Getting started'),
+    ('p', 'TODO[ES] Point of sale, catalogue, team and files — in one calm app.'),
+    ('p', 'TODO[ES] A step-by-step guide for complete beginners. No experience needed.'),
+    ('p', 'TODO[ES] Guide — October 2026'),
+])
+section_es('Start here — read this first', [
+    ('p', 'TODO[ES] Welcome! This guide shows you how to use <b>Vendra</b>, one small step at a time. '
+          'You do not need to know anything about computers. Just follow the steps in order, '
+          'and look at the pictures.'),
+    ('h2', 'TODO[ES] What you need'),
+    ('b', 'TODO[ES] A phone, a tablet, or a computer. Any of them works.'),
+    ('b', 'TODO[ES] An internet connection. The shop lives on the internet, so your device must be connected.'),
+    ('b', 'TODO[ES] The shop’s web address (the link you were given when the shop was set up). '
+          'Keep it somewhere safe — you will type it or tap it every time you open the shop.'),
+    ('h2', 'TODO[ES] Words we use in this guide'),
+    ('p', 'TODO[ES] Every new word is explained here, in plain language. If a word further down is new to you, come back to this list.'),
+    ('p', 'TODO[ES] <b>Internet</b> — the worldwide network that connects devices; it is how your shop talks to its saved information.'),
+    ('p', 'TODO[ES] <b>Wi-Fi</b> — the wireless way your device connects to the internet at home or at work — it is the signal with the fan-shaped icon.'),
+    ('p', 'TODO[ES] <b>Browser</b> — the app you use to visit pages on the internet (it is called Chrome, Safari, Edge or Firefox on most devices).'),
+    ('p', 'TODO[ES] <b>Web address (a “link”)</b> — the shop’s address on the internet, like an address for a house. Typing it or tapping it takes you to the shop.'),
+    ('p', 'TODO[ES] <b>Tap / click</b> — “tap” means touch once with a finger on a screen; “click” means press once with a mouse. They do the same thing.'),
+    ('p', 'TODO[ES] <b>Sign in</b> — telling the shop who you are, so it shows your shop and keeps other people out.'),
+    ('p', 'TODO[ES] <b>Password</b> — a secret word only you know. You type it when you sign in, like a key for a lock.'),
+    ('p', 'TODO[ES] <b>Settings</b> — the place where you change how the shop behaves — like the dials on a machine.'),
+    ('p', 'TODO[ES] <b>Download</b> — saving a copy of a file from the internet onto your device, so you keep it.'),
+    ('p', 'TODO[ES] <b>Backup</b> — a safety copy of everything in your shop. If something goes wrong, the backup can put it back.'),
+    ('p', 'TODO[ES] <b>The cloud</b> — a short way of saying “saved safely on the internet” instead of only on your device.'),
+    ('h2', 'TODO[ES] Opening your shop for the first time'),
+    ('esstep', 1, 'TODO[ES] Find the browser icon on your device and tap it. (Look for Chrome, Safari, Edge or Firefox.)'),
+    ('esstep', 2, 'TODO[ES] Tap the address bar — the long box at the top of the browser where addresses go.'),
+    ['shot:task-start-address.png', 'TODO[ES] The address bar at the top of the browser', 'TODO[ES] The address bar at the top of the browser'],
+    ('esstep', 3, 'TODO[ES] Type the shop’s web address exactly as it was given to you, then press Enter (or tap Go).'),
+    ('essee', 'TODO[ES] a page that says it is checking the connection, then the sign-in screen.'),
+    ('p', 'TODO[ES] [If something goes wrong] If the page says it cannot reach the shop: check that Wi-Fi is on (look for the fan-shaped icon), then tap Retry. If it still fails, wait a minute and try again — the internet itself may be down.'),
+    ('h2', 'TODO[ES] Keeping the shop one tap away'),
+    ('p', 'TODO[ES] So you do not have to type the address every time, save it once:'),
+    ('esstep', 1, 'TODO[ES] Open the shop in your browser (see above).'),
+    ('esstep', 2, 'TODO[ES] On a computer: press Ctrl+D (Windows) or Cmd+D (Mac) to bookmark it. On a phone or tablet: open the browser menu (three dots or a share icon) and tap “Add to Home screen” (or “Add bookmark”).'),
+    ('esstep', 3, 'TODO[ES] From now on, tap that bookmark or the new home-screen icon to open the shop.'),
+    ['shot:task-start-bookmark.png', 'TODO[ES] The browser menu with “Add to Home screen”', 'TODO[ES] The browser menu with “Add to Home screen”'],
+])
+section_es('Your first day, step by step', [
+    ('p', 'TODO[ES] Do these tasks in order the first time. Later, jump straight to the one you need.'),
+])
+section_es('Task 1 — Sign in for the first time', [
+    ('p', 'TODO[ES] When the shop is new, it has one built-in account: the master account. '
+          'Its username is <b>admin</b> and its first password is <b>admin123</b>. '
+          'You will only use that password once — the shop makes you choose your own right away.'),
+    ('esstep', 1, 'TODO[ES] Open the shop (see “Start here”).'),
+    ('esstep', 2, 'TODO[ES] In the username box, type <b>admin</b>.'),
+    ('esstep', 3, 'TODO[ES] In the password box, type <b>admin123</b>.'),
+    ('esstep', 4, 'TODO[ES] Tap <b>Sign in</b>.'),
+    ['shot:task1-signin.png', 'TODO[ES] The sign-in screen with admin typed in', 'TODO[ES] The sign-in screen with admin typed in'],
+    ('essee', 'TODO[ES] a box asking you to choose a new password. The shop will not open until you do — this is on purpose, so nobody can keep using the first password.'),
+    ('esstep', 5, 'TODO[ES] Type a new password of your own. Make it at least 8 characters, and not something easy to guess (not your name, not 123456).'),
+    ('esstep', 6, 'TODO[ES] Type the same new password again in the second box.'),
+    ('esstep', 7, 'TODO[ES] Tap the confirm button.'),
+    ['shot:task1-newpassword.png', 'TODO[ES] The “choose a new password” box', 'TODO[ES] The “choose a new password” box'],
+    ('essee', 'TODO[ES] the shop’s main screen (the desktop), with icons for the different parts of the shop.'),
+    ('p', 'TODO[ES] [If something goes wrong] <b>“This is a problem with how the system was set up — not your password.”</b> Your password was never even checked. The shop’s own connection settings are wrong. Retyping your password will not help — tell the person who installed the shop.'),
+    ('p', 'TODO[ES] [If something goes wrong] If your new password is refused: make it longer, and avoid common or repeating words.'),
+])
+section_es('Task 2 — Tell the shop what kind of business you run', [
+    ('p', 'TODO[ES] Every shop is a little different. A restaurant needs tables and tips; a repair shop needs appointments. '
+          'Instead of changing screens one by one, you pick one <b>business type</b> and the shop sets itself up for you. '
+          'You can change it later — nothing is lost.'),
+    ('esstep', 1, 'TODO[ES] Sign in with the master account (the one from Task 1 — username <b>admin</b>, with the password you chose in Task 1).'),
+    ('esstep', 2, 'TODO[ES] Open <b>Settings</b>.'),
+    ('esstep', 3, 'TODO[ES] Find <b>Business type</b> and tap it.'),
+    ['shot:task2-businesstype.png', 'TODO[ES] Settings with “Business type”', 'TODO[ES] Settings with “Business type”'],
+    ('essee', 'TODO[ES] a short list of business types: General, Retail, Restaurant / Food, Services / Appointments, Convenience / Fuel.'),
+    ('esstep', 4, 'TODO[ES] Tap the one that matches your shop. Not sure? Pick <b>General</b> — you can change it later.'),
+    ('esstep', 5, 'TODO[ES] If the shop asks “Apply?”, tap <b>Apply</b>.'),
+    ['shot:task2-presetlist.png', 'TODO[ES] The business type list', 'TODO[ES] The business type list'],
+    ('essee', 'TODO[ES] the shop set up for your kind of business (for example, a restaurant sees tables; a repair shop sees appointments up front).'),
+    ('p', 'TODO[ES] [If something goes wrong] If you do not see “Business type”: you may not be signed in with the master account. Sign out, then sign in as <b>admin</b> with the password you chose in Task 1.'),
+    ('p', 'TODO[ES] [If something goes wrong] Picked the wrong type? Do Task 2 again and pick another. Products, sales and customers are never deleted by changing types.'),
+])
+section_es('Task 3 — Add a product you sell', [
+    ('p', 'TODO[ES] The shop can only sell what it knows. Add each product once; after that, selling it takes two taps.'),
+    ('esstep', 1, 'TODO[ES] From the main screen, open <b>Point of Sale</b>.'),
+    ('esstep', 2, 'TODO[ES] Tap <b>Add product</b>.'),
+    ['shot:task3-addproduct.png', 'TODO[ES] The “Add product” button in Point of Sale', 'TODO[ES] The “Add product” button in Point of Sale'],
+    ('essee', 'TODO[ES] a form with empty boxes for the product’s name and price.'),
+    ('esstep', 3, 'TODO[ES] Type the product’s name (for example: Coffee).'),
+    ('esstep', 4, 'TODO[ES] Type its price (for example: 2.50). Use a dot, not a comma, for cents.'),
+    ('esstep', 5, 'TODO[ES] If you keep stock (how many you have), type the number you have now. If not, leave it empty.'),
+    ('esstep', 6, 'TODO[ES] Tap <b>Save</b>.'),
+    ['shot:task3-productform.png', 'TODO[ES] The product form, filled in', 'TODO[ES] The product form, filled in'],
+    ('essee', 'TODO[ES] your product, with its price, in the grid of products.'),
+    ('p', 'TODO[ES] [If something goes wrong] If the product does not appear: check that you tapped Save, and that you are looking at the Point of Sale (not the Catalogue — they are two different lists).'),
+    ('p', 'TODO[ES] [If something goes wrong] Price looks wrong (250 instead of 2.50)? You typed the price in cents. Edit the product and type 2.50.'),
+])
+section_es('Task 4 — Make a cash sale', [
+    ('p', 'TODO[ES] “Cash sale” means the customer pays you with money (not a card). The shop records the sale either way.'),
+    ('esstep', 1, 'TODO[ES] Open <b>Point of Sale</b>.'),
+    ('esstep', 2, 'TODO[ES] Tap the product the customer is buying (for example: Coffee).'),
+    ('essee', 'TODO[ES] the product appears in the list on the side (the “cart” — what the customer is buying), and the total goes up.'),
+    ('esstep', 3, 'TODO[ES] Buying more than one? Tap the product again, or tap the + next to it in the cart.'),
+    ('esstep', 4, 'TODO[ES] When everything is in the cart, tap the big <b>Pay / Charge</b> button.'),
+    ['shot:task4-posgrid.png', 'TODO[ES] Point of Sale with one product in the cart', 'TODO[ES] Point of Sale with one product in the cart'],
+    ('essee', 'TODO[ES] the payment screen, asking how the customer pays.'),
+    ('esstep', 5, 'TODO[ES] Tap <b>Cash</b>.'),
+    ('esstep', 6, 'TODO[ES] Type how much money the customer hands you (or tap the exact amount).'),
+    ('esstep', 7, 'TODO[ES] Tap <b>Complete sale</b>.'),
+    ['shot:task4-pay.png', 'TODO[ES] The payment screen with Cash chosen', 'TODO[ES] The payment screen with Cash chosen'],
+    ('essee', 'TODO[ES] a receipt, and the change to give back (if any). The sale is saved right away.'),
+    ('esstep', 8, 'TODO[ES] Hand the customer their change, and the receipt if they want it. Done!'),
+    ('p', 'TODO[ES] [If something goes wrong] Tapped the wrong product? In the cart, tap the − (minus) to remove one, or the trash icon to remove it completely, before you pay.'),
+    ('p', 'TODO[ES] [If something goes wrong] If the sale stops with a “could not reach the shop” message: the internet dropped. Your cart is still there — see Task 10. No money was taken.'),
+])
+section_es('Task 5 — Give a refund', [
+    ('p', 'TODO[ES] A refund gives the customer their money back for something they bought. You find the sale first, then refund it.'),
+    ('esstep', 1, 'TODO[ES] Open <b>Point of Sale</b>.'),
+    ('esstep', 2, 'TODO[ES] Tap <b>History</b>.'),
+    ['shot:task5-history.png', 'TODO[ES] The History list of past sales', 'TODO[ES] The History list of past sales'],
+    ('essee', 'TODO[ES] the list of past sales, newest first.'),
+    ('esstep', 3, 'TODO[ES] Tap the sale you want to refund.'),
+    ('essee', 'TODO[ES] the details of that sale.'),
+    ('esstep', 4, 'TODO[ES] Tap <b>Refund</b>.'),
+    ('esstep', 5, 'TODO[ES] Check the amount. If only part is being returned, change the quantity to what came back.'),
+    ('esstep', 6, 'TODO[ES] You may type a reason (why it came back). You can also leave it empty.'),
+    ('esstep', 7, 'TODO[ES] Tap <b>Confirm refund</b>.'),
+    ['shot:task5-refund.png', 'TODO[ES] The refund box for a sale', 'TODO[ES] The refund box for a sale'],
+    ('essee', 'TODO[ES] the sale in History now shows it was refunded. Refunded sales cannot be voided (deleted) afterwards — this is on purpose, so the record stays honest.'),
+    ('p', 'TODO[ES] [If something goes wrong] Can’t find the sale? Check you are signed in to the right shop, and scroll — History is newest first.'),
+    ('p', 'TODO[ES] [If something goes wrong] Refund button missing? Only owners and managers can refund. Ask the person with the master account.'),
+])
+section_es('Task 6 — Put your shop on the web (the public page)', [
+    ('p', 'TODO[ES] Your shop can have a simple page on the web that anyone can look at: your shop name, what you sell, '
+          'your hours and how to reach you. Products you add in the Point of Sale appear on the page by themselves — '
+          'you do not type them twice. This page is a shop window, not a full website: visitors cannot buy online there.'),
+    ('esstep', 1, 'TODO[ES] Sign in with the master account, or as the shop’s owner/manager.'),
+    ('esstep', 2, 'TODO[ES] Open the <b>Admin</b> panel.'),
+    ('esstep', 3, 'TODO[ES] Tap the <b>Storefront</b> tab.'),
+    ['shot:task6-storefronttab.png', 'TODO[ES] The Admin panel, Storefront tab', 'TODO[ES] The Admin panel, Storefront tab'],
+    ('essee', 'TODO[ES] boxes for your public shop name, a short line about your shop (“About”), opening hours, email, phone, and a colour.'),
+    ('esstep', 4, 'TODO[ES] Fill in the boxes. Write them for strangers: what you sell, where you are, when you are open.'),
+    ('esstep', 5, 'TODO[ES] In the web address box, choose your shop’s address: small letters, numbers and dashes only (for example <font face="Courier">my-shop</font>). Your full public link ends with <font face="Courier">#/store/my-shop</font>.'),
+    ('esstep', 6, 'TODO[ES] Turn on <b>Page is published</b>.'),
+    ('esstep', 7, 'TODO[ES] Tap <b>Save</b>.'),
+    ['shot:task6-publish.png', 'TODO[ES] “Page is published” turned on, with the Save button', 'TODO[ES] “Page is published” turned on, with the Save button'],
+    ('essee', 'TODO[ES] your public link, ready to copy.'),
+    ('esstep', 8, 'TODO[ES] Tap the link (or copy it) to look at your page the way customers see it.'),
+    ['shot:task6-publicpage.png', 'TODO[ES] The public page customers see', 'TODO[ES] The public page customers see'],
+    ('essee', 'TODO[ES] your shop page, with your products. (To keep one product off the page: in its product settings, set it to Hidden. To hide all prices: turn off “Show prices” in the Storefront tab.)'),
+    ('p', 'TODO[ES] [If something goes wrong] The link says “not available yet”: “Page is published” is off, or you did not tap Save after turning it on. Go back to the Storefront tab and check both.'),
+    ('p', 'TODO[ES] [If something goes wrong] A product is missing from the page: it is set to Hidden in its product settings, or it is only in the Catalogue (the public page shows Point of Sale products).'),
+])
+section_es('Task 7 — Make the till easy to touch (tablets and phones)', [
+    ('p', 'TODO[ES] If your till is a tablet or a phone, small buttons are hard to tap. This setting makes buttons bigger '
+          'and the home screen simpler, like a phone’s. Turn it on for each device that needs it — it only changes that device.'),
+    ('esstep', 1, 'TODO[ES] Open <b>Settings</b>.'),
+    ('esstep', 2, 'TODO[ES] Tap <b>Appearance</b>.'),
+    ('esstep', 3, 'TODO[ES] Turn on <b>Touch screen optimization</b>.'),
+    ['shot:task7-touchtoggle.png', 'TODO[ES] “Touch screen optimization” in Settings · Appearance', 'TODO[ES] “Touch screen optimization” in Settings · Appearance'],
+    ('essee', 'TODO[ES] the home screen changes: big icons, apps open full-screen, and buttons everywhere are bigger.'),
+    ('esstep', 4, 'TODO[ES] Try it: open the Point of Sale and tap a product. Buttons should be easy to hit with a finger.'),
+    ('esstep', 5, 'TODO[ES] Want it back the old way? Repeat steps 1–3 and turn it off.'),
+    ['shot:task7-touchhome.png', 'TODO[ES] The touch home screen, with big icons', 'TODO[ES] The touch home screen, with big icons'],
+    ('p', 'TODO[ES] [If something goes wrong] Nothing changed? The setting applies to this device only, and the home screen changes first. If the till still shows the desktop-style home screen, close and reopen the shop (see “Start here”).'),
+])
+section_es('Task 8 — Save a backup (do this regularly)', [
+    ('p', 'TODO[ES] A backup is one file that holds everything in your account: products, sales, customers, settings. '
+          'Save one regularly — for example every Friday — and keep the file somewhere safe, like a USB key or your email. '
+          'If anything ever goes badly wrong, this file is how you get your shop back.'),
+    ('esstep', 1, 'TODO[ES] Open <b>Settings</b>.'),
+    ('esstep', 2, 'TODO[ES] Tap <b>Data</b>.'),
+    ('esstep', 3, 'TODO[ES] Tap <b>Download backup</b> (account backup).'),
+    ['shot:task8-backup.png', 'TODO[ES] The backup button in Settings · Data', 'TODO[ES] The backup button in Settings · Data'],
+    ('essee', 'TODO[ES] a file named like <font face="Courier">drift-backup-2026-10-01.json</font> downloading to your device.'),
+    ('esstep', 4, 'TODO[ES] Find the downloaded file (usually in your Downloads folder) and copy it somewhere safe. That is it — done.'),
+    ('p', 'TODO[ES] [If something goes wrong] No file appeared? Some browsers block downloads. Look for a small blocked-download icon near the address bar, allow the download, and try again.'),
+    ('p', 'TODO[ES] [If something goes wrong] The backup file contains private things (like staff PIN numbers). Keep it like you would keep keys: do not share it publicly.'),
+])
+section_es('Task 9 — Start completely over (factory reset)', [
+    ('p', 'TODO[ES] <b>Warning first.</b> A factory reset <b>deletes everything and everyone</b>: all accounts, products, sales, '
+          'customers, appointments, files — gone, as if the shop was brand new. <b>There is no undo.</b> '
+          'Only do this if you truly want to start over, or hand the shop to someone else completely empty. '
+          'Only the master account (username <b>admin</b>, with the password you chose in Task 1) can do it.'),
+    ('esstep', 1, 'TODO[ES] First, do Task 8 (download a backup) and keep the file safe. After a reset, that file is the only way back.'),
+    ('esstep', 2, 'TODO[ES] Sign in as <b>admin</b> (master account).'),
+    ('esstep', 3, 'TODO[ES] Open the <b>Admin</b> panel.'),
+    ('esstep', 4, 'TODO[ES] Scroll to the <b>Danger zone</b> at the bottom.'),
+    ('esstep', 5, 'TODO[ES] Tap <b>Factory reset</b>.'),
+    ['shot:task9-dangerzone.png', 'TODO[ES] The Danger zone with the Factory reset button', 'TODO[ES] The Danger zone with the Factory reset button'],
+    ('essee', 'TODO[ES] a warning box. Before anything is deleted, the shop saves one last backup by itself and downloads it. If that backup fails, the reset stops and nothing is deleted.'),
+    ('esstep', 6, 'TODO[ES] Read the warning. Then type the word <b>RESET</b> (in capital letters) in the box.'),
+    ('essee', 'TODO[ES] the reset button lights up. It stays off until the word is typed exactly right — this is on purpose, so nobody can tap it by accident.'),
+    ('esstep', 7, 'TODO[ES] Tap the reset button, and confirm.'),
+    ['shot:task9-typereset.png', 'TODO[ES] Typing RESET to arm the reset button', 'TODO[ES] Typing RESET to arm the reset button'],
+    ('essee', 'TODO[ES] you are signed out. The shop is empty and new. Sign in again with <b>admin</b> / <b>admin123</b> and pick a new password (same as Task 1).'),
+    ('p', 'TODO[ES] [If something goes wrong] The reset button stays off: the word must be exactly RESET, all capitals, no spaces. Check Caps Lock.'),
+    ('p', 'TODO[ES] [If something goes wrong] “PRE-RESET BACKUP FAILED”: the safety backup could not be saved, so the reset did not happen and nothing was deleted. Do Task 8 by hand, then try again.'),
+])
+section_es('Task 10 — When a sale fails because the internet dropped', [
+    ('p', 'TODO[ES] Your shop lives on the internet. Every sale is recorded on the internet the moment it happens. '
+          'If the internet drops in the middle of a sale, the sale cannot finish. Here is exactly what happens, and what to do. '
+          'Good news first: <b>nobody is charged</b>, and <b>your cart (what the customer is buying) stays on the screen</b>. Nothing is lost.'),
+    ('esstep', 1, 'TODO[ES] Read the message on the screen. It will say the shop could not be reached, and the sale did not go through.'),
+    ['shot:task10-saleerror.png', 'TODO[ES] The “could not reach the shop” message at checkout', 'TODO[ES] The “could not reach the shop” message at checkout'],
+    ('essee', 'TODO[ES] your cart is still there, with every item, exactly as it was.'),
+    ('esstep', 2, 'TODO[ES] Check the Wi-Fi: look for the fan-shaped icon on the device. If it is missing or has an “!”, the device lost the internet.'),
+    ('esstep', 3, 'TODO[ES] Wait for the internet to come back (the icon returns). This can take a minute after an outage.'),
+    ('esstep', 4, 'TODO[ES] Tap <b>Retry</b> (or complete the sale again, the same way as Task 4).'),
+    ('essee', 'TODO[ES] the receipt, like a normal sale. The sale is recorded once — retrying does not charge twice.'),
+    ('p', 'TODO[ES] [If something goes wrong] If the customer cannot wait: there is no “offline” selling — a sale that never reached the internet simply never happened. Write down what they bought on paper if you like, and ring it in when the internet returns.'),
+    ('p', 'TODO[ES] [If something goes wrong] If sales keep failing for a long time, the problem is the internet connection or the shop’s server — not the till. Tell the person who installed the shop.'),
+])
+section_es('More parts of the shop (in plain words)', [
+    ('h2', 'TODO[ES] The Catalogue'),
+    ('p', 'TODO[ES] The <b>Catalogue</b> is your stock list: what you have, how many, and where it sits on the shelf. '
+          'It is a different list from the Point of Sale products (Task 3). Something in the Catalogue marked “in store” '
+          'can be scanned straight into a sale. You can also add many items at once from a spreadsheet file (this is called a CSV file), '
+          'and look items up by their barcode/ISBN number. Donations, fair days and special orders (a customer asking you to order something in) '
+          'each have their own simple flow.'),
+    ('h2', 'TODO[ES] Appointments'),
+    ('p', 'TODO[ES] <b>Appointments</b> is a booking book: customers book a time, and two bookings cannot take the same time by accident.'),
+    ('h2', 'TODO[ES] Files'),
+    ('p', 'TODO[ES] <b>Files</b> keeps your documents and pictures in the shop, and you can search the words inside them.'),
+    ('h2', 'TODO[ES] Certificates — the staff time clock'),
+    ('p', 'TODO[ES] Staff clock in and out with their own secret number (a PIN — a short number, like a bank card’s). '
+          'Managers can fix a punch, make the schedule (two shifts for the same person cannot overlap), and print attestations — '
+          'signed papers that prove someone’s hours. Volunteer/community hours are kept separate from paid hours. '
+          'Team members are invited with a code and have a role: Owner (can do everything), Manager (almost everything), Cashier (sells).'),
+    ('h2', 'TODO[ES] Taxes — read this before your first real sale'),
+    ('p', 'TODO[ES] <b>A new shop charges no tax at all</b> until you set it up. That is on purpose, so nobody is charged the wrong tax. '
+          'Before selling for real, ask your accountant (the person who does your taxes) two things: what tax percentages apply where you are, '
+          'and whether each tax is calculated on the price alone, or on price-plus-the-other-tax. Then, in the Point of Sale settings, type those numbers in, '
+          'and press <b>Save</b>. The shop never changes tax numbers by itself. Some organizations pay no tax: they can be marked tax-exempt so their receipts show no tax.'),
+    ('h2', 'TODO[ES] Other settings'),
+    ('b', 'TODO[ES] Colours and light/dark: Settings · Appearance.'),
+    ('b', 'TODO[ES] If someone else changes a setting on another till, your screen picks it up within about a minute. If you are in the middle of typing in a form, your typing is never erased by that.'),
+    ('b', 'TODO[ES] When a newer version of the shop is ready, a small message invites you to refresh the page. Nothing is forced on you mid-sale.'),
+])
+section_es('When something goes wrong', [
+    ('p', 'TODO[ES] This shop is built to fail politely: it explains, it never shows a blank page, and it never silently loses a sale. '
+          'Here are the bad moments we know about, in plain words.'),
+    ('h2', 'TODO[ES] The shop cannot be reached at opening'),
+    ('b', 'TODO[ES] Before opening, the shop checks itself. If its own connection settings look wrong (for example a cut-off key), the screen says the setup looks wrong and that no password will work until whoever installed the shop fixes it. If the settings are fine but the server does not answer, the screen says that instead. Either way there is a <b>Retry</b> button — tap it once the internet is back.'),
+    ('h2', 'TODO[ES] One part of the shop stops working'),
+    ('b', 'TODO[ES] Each part of the shop is walled off from the others. If one part breaks, only that part shows a message, with a <b>Retry</b> button and a short code (like <font face="Courier">RS-9K2Q1-4F2A</font>). Write the code down and tell whoever looks after the shop — it points straight at the problem. The rest of the shop keeps working. If the shop breaks three times in a row while opening, it starts in a safe mode with repair options instead of breaking again and again.'),
+    ('h2', 'TODO[ES] Dangerous buttons protect you'),
+    ('b', 'TODO[ES] Before anything destructive (deleting, voiding a gift card, removing a time punch), the shop quietly saves a small safety copy on the device — the last 3 are kept. That is a safety net, not a backup: still do Task 8 regularly.'),
+    ('h2', 'TODO[ES] Getting help'),
+    ('b', 'TODO[ES] Open <b>Help &amp; Guide</b> from the Start menu (the Start menu is the main menu button of the shop) — this guide lives there too. From the sign-in screen, you can also send a support message.'),
+])
+section_es('Honest limits — what this shop cannot do', [
+    ('p', 'TODO[ES] We would rather tell you the limits than let you discover them. Here they are, plainly.'),
+    ('b', 'TODO[ES] <b>No internet, no selling.</b> There is no offline mode on purpose: a sale is only real once it is recorded on the internet. (Task 10 shows what happens.)'),
+    ('b', 'TODO[ES] <b>The public page is a shop window, not a website.</b> Its look is fixed, and customers cannot buy or pay on it. For a full custom website, you need a website tool as well.'),
+    ('b', 'TODO[ES] <b>Loyalty points are “best effort”.</b> If the power or internet dies at the exact split second between recording a sale and adding points, the sale is safe but the points might not be added.'),
+    ('b', 'TODO[ES] <b>Brand-new gift card glitch (rare).</b> If a gift card is sold and the internet drops at that exact moment, the recorded sale can end up pointing at a card that was cancelled during cleanup. If a customer says a brand-new card does not work, look in History first — a manager can void that sale.'),
+    ('b', 'TODO[ES] <b>Your sign-in lives in the browser.</b> Whoever can open your unlocked browser on your device is, in practice, signed in as you. Sign out on shared devices. There is no list of “which devices are signed in”: signing out works on that device, and if the master account resets your password, you are signed out everywhere at once.'),
+    ('b', 'TODO[ES] <b>Safety copies live on the same device.</b> If the device is lost or wiped, they are gone. Your downloaded backup file (Task 8) is the copy that lives elsewhere — keep it.'),
+    ('b', 'TODO[ES] <b>Taxes start at zero.</b> Until you set them (see “Taxes” above), no tax is charged at all. Ask your accountant before real selling.'),
+])
+section_es('Appendix — Installing on your own backend (technical)', [
+    ('p', 'TODO[ES] This appendix is for the person installing the shop the very first time. It is the only technical part of this guide. '
+          'If someone installed the shop for you, you can skip it.'),
+    ('esstep', 1, 'TODO[ES] Create a free project at supabase.com (Dashboard — New project). This is the shop’s “cloud”: where everything is saved.'),
+    ('esstep', 2, 'TODO[ES] Open the SQL editor and run every file in supabase/migrations/ in order, from 001 to the latest. One of them (056) creates the built-in master account (admin / admin123, see Task 1); another (057) adds the factory reset; 063 adds the public storefront page tables.'),
+    ('esstep', 3, 'TODO[ES] Copy the project URL and the anon key (Project Settings — API) into a .env file as VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY (see .env.example).'),
+    ('esstep', 4, 'TODO[ES] Run: npm install, then npm run build. Put the dist/ folder on any static host.'),
+    ('esstep', 5, 'TODO[ES] Open the shop and do Task 1 immediately — change the master password before anything else.'),
+    ('b', 'TODO[ES] Rebranding note: the master account’s email must match BRAND.accountsDomain in src/lib/brand.js. If you change the domain, update the email in migration 056 before running it (plain usernames are turned into <font face="Courier">&lt;username&gt;@&lt;domain&gt;</font> at sign-in).'),
+])
+section_es('Closing line', [
+    ('p', 'TODO[ES] Vendra — step-by-step guide. The words on the screen always win over this guide.'),
+])
+
+# ============================================================ PT-BR scaffold
+# TODO(translation): same convention as the ES scaffold above — every
+# content string is 'TODO[PT] ' + the English source text, filled in by hand
+# at the final pass. Do NOT machine-translate these.
+section_pt('Brazilian Portuguese version — translation draft (fill in)', [
+    ('p', 'TODO[PT] This part of the guide is a scaffold for the Brazilian Portuguese translation. Every line below starts with TODO[PT] followed by the English source text. A human translator replaces each TODO[PT] line with the final Brazilian Portuguese text, keeping the same order, the same numbered steps, the same "You should now see" checkpoints and the same trouble lines. Do not delete lines and do not merge steps.'),
+    ('p', 'TODO[PT] The screenshots are added when the final app is ready, from the final shipped screens, in Brazilian Portuguese.'),
+])
+section_pt('Cover — Getting started', [
+    ('p', 'TODO[PT] Vendra'),
+    ('p', 'TODO[PT] Getting started'),
+    ('p', 'TODO[PT] Point of sale, catalogue, team and files — in one calm app.'),
+    ('p', 'TODO[PT] A step-by-step guide for complete beginners. No experience needed.'),
+    ('p', 'TODO[PT] Guide — October 2026'),
+])
+section_pt('Start here — read this first', [
+    ('p', 'TODO[PT] Welcome! This guide shows you how to use <b>Vendra</b>, one small step at a time. '
+          'You do not need to know anything about computers. Just follow the steps in order, '
+          'and look at the pictures.'),
+    ('h2', 'TODO[PT] What you need'),
+    ('b', 'TODO[PT] A phone, a tablet, or a computer. Any of them works.'),
+    ('b', 'TODO[PT] An internet connection. The shop lives on the internet, so your device must be connected.'),
+    ('b', 'TODO[PT] The shop’s web address (the link you were given when the shop was set up). '
+          'Keep it somewhere safe — you will type it or tap it every time you open the shop.'),
+    ('h2', 'TODO[PT] Words we use in this guide'),
+    ('p', 'TODO[PT] Every new word is explained here, in plain language. If a word further down is new to you, come back to this list.'),
+    ('p', 'TODO[PT] <b>Internet</b> — the worldwide network that connects devices; it is how your shop talks to its saved information.'),
+    ('p', 'TODO[PT] <b>Wi-Fi</b> — the wireless way your device connects to the internet at home or at work — it is the signal with the fan-shaped icon.'),
+    ('p', 'TODO[PT] <b>Browser</b> — the app you use to visit pages on the internet (it is called Chrome, Safari, Edge or Firefox on most devices).'),
+    ('p', 'TODO[PT] <b>Web address (a “link”)</b> — the shop’s address on the internet, like an address for a house. Typing it or tapping it takes you to the shop.'),
+    ('p', 'TODO[PT] <b>Tap / click</b> — “tap” means touch once with a finger on a screen; “click” means press once with a mouse. They do the same thing.'),
+    ('p', 'TODO[PT] <b>Sign in</b> — telling the shop who you are, so it shows your shop and keeps other people out.'),
+    ('p', 'TODO[PT] <b>Password</b> — a secret word only you know. You type it when you sign in, like a key for a lock.'),
+    ('p', 'TODO[PT] <b>Settings</b> — the place where you change how the shop behaves — like the dials on a machine.'),
+    ('p', 'TODO[PT] <b>Download</b> — saving a copy of a file from the internet onto your device, so you keep it.'),
+    ('p', 'TODO[PT] <b>Backup</b> — a safety copy of everything in your shop. If something goes wrong, the backup can put it back.'),
+    ('p', 'TODO[PT] <b>The cloud</b> — a short way of saying “saved safely on the internet” instead of only on your device.'),
+    ('h2', 'TODO[PT] Opening your shop for the first time'),
+    ('ptstep', 1, 'TODO[PT] Find the browser icon on your device and tap it. (Look for Chrome, Safari, Edge or Firefox.)'),
+    ('ptstep', 2, 'TODO[PT] Tap the address bar — the long box at the top of the browser where addresses go.'),
+    ['shot:task-start-address.png', 'TODO[PT] The address bar at the top of the browser', 'TODO[PT] The address bar at the top of the browser'],
+    ('ptstep', 3, 'TODO[PT] Type the shop’s web address exactly as it was given to you, then press Enter (or tap Go).'),
+    ('ptsee', 'TODO[PT] a page that says it is checking the connection, then the sign-in screen.'),
+    ('p', 'TODO[PT] [If something goes wrong] If the page says it cannot reach the shop: check that Wi-Fi is on (look for the fan-shaped icon), then tap Retry. If it still fails, wait a minute and try again — the internet itself may be down.'),
+    ('h2', 'TODO[PT] Keeping the shop one tap away'),
+    ('p', 'TODO[PT] So you do not have to type the address every time, save it once:'),
+    ('ptstep', 1, 'TODO[PT] Open the shop in your browser (see above).'),
+    ('ptstep', 2, 'TODO[PT] On a computer: press Ctrl+D (Windows) or Cmd+D (Mac) to bookmark it. On a phone or tablet: open the browser menu (three dots or a share icon) and tap “Add to Home screen” (or “Add bookmark”).'),
+    ('ptstep', 3, 'TODO[PT] From now on, tap that bookmark or the new home-screen icon to open the shop.'),
+    ['shot:task-start-bookmark.png', 'TODO[PT] The browser menu with “Add to Home screen”', 'TODO[PT] The browser menu with “Add to Home screen”'],
+])
+section_pt('Your first day, step by step', [
+    ('p', 'TODO[PT] Do these tasks in order the first time. Later, jump straight to the one you need.'),
+])
+section_pt('Task 1 — Sign in for the first time', [
+    ('p', 'TODO[PT] When the shop is new, it has one built-in account: the master account. '
+          'Its username is <b>admin</b> and its first password is <b>admin123</b>. '
+          'You will only use that password once — the shop makes you choose your own right away.'),
+    ('ptstep', 1, 'TODO[PT] Open the shop (see “Start here”).'),
+    ('ptstep', 2, 'TODO[PT] In the username box, type <b>admin</b>.'),
+    ('ptstep', 3, 'TODO[PT] In the password box, type <b>admin123</b>.'),
+    ('ptstep', 4, 'TODO[PT] Tap <b>Sign in</b>.'),
+    ['shot:task1-signin.png', 'TODO[PT] The sign-in screen with admin typed in', 'TODO[PT] The sign-in screen with admin typed in'],
+    ('ptsee', 'TODO[PT] a box asking you to choose a new password. The shop will not open until you do — this is on purpose, so nobody can keep using the first password.'),
+    ('ptstep', 5, 'TODO[PT] Type a new password of your own. Make it at least 8 characters, and not something easy to guess (not your name, not 123456).'),
+    ('ptstep', 6, 'TODO[PT] Type the same new password again in the second box.'),
+    ('ptstep', 7, 'TODO[PT] Tap the confirm button.'),
+    ['shot:task1-newpassword.png', 'TODO[PT] The “choose a new password” box', 'TODO[PT] The “choose a new password” box'],
+    ('ptsee', 'TODO[PT] the shop’s main screen (the desktop), with icons for the different parts of the shop.'),
+    ('p', 'TODO[PT] [If something goes wrong] <b>“This is a problem with how the system was set up — not your password.”</b> Your password was never even checked. The shop’s own connection settings are wrong. Retyping your password will not help — tell the person who installed the shop.'),
+    ('p', 'TODO[PT] [If something goes wrong] If your new password is refused: make it longer, and avoid common or repeating words.'),
+])
+section_pt('Task 2 — Tell the shop what kind of business you run', [
+    ('p', 'TODO[PT] Every shop is a little different. A restaurant needs tables and tips; a repair shop needs appointments. '
+          'Instead of changing screens one by one, you pick one <b>business type</b> and the shop sets itself up for you. '
+          'You can change it later — nothing is lost.'),
+    ('ptstep', 1, 'TODO[PT] Sign in with the master account (the one from Task 1 — username <b>admin</b>, with the password you chose in Task 1).'),
+    ('ptstep', 2, 'TODO[PT] Open <b>Settings</b>.'),
+    ('ptstep', 3, 'TODO[PT] Find <b>Business type</b> and tap it.'),
+    ['shot:task2-businesstype.png', 'TODO[PT] Settings with “Business type”', 'TODO[PT] Settings with “Business type”'],
+    ('ptsee', 'TODO[PT] a short list of business types: General, Retail, Restaurant / Food, Services / Appointments, Convenience / Fuel.'),
+    ('ptstep', 4, 'TODO[PT] Tap the one that matches your shop. Not sure? Pick <b>General</b> — you can change it later.'),
+    ('ptstep', 5, 'TODO[PT] If the shop asks “Apply?”, tap <b>Apply</b>.'),
+    ['shot:task2-presetlist.png', 'TODO[PT] The business type list', 'TODO[PT] The business type list'],
+    ('ptsee', 'TODO[PT] the shop set up for your kind of business (for example, a restaurant sees tables; a repair shop sees appointments up front).'),
+    ('p', 'TODO[PT] [If something goes wrong] If you do not see “Business type”: you may not be signed in with the master account. Sign out, then sign in as <b>admin</b> with the password you chose in Task 1.'),
+    ('p', 'TODO[PT] [If something goes wrong] Picked the wrong type? Do Task 2 again and pick another. Products, sales and customers are never deleted by changing types.'),
+])
+section_pt('Task 3 — Add a product you sell', [
+    ('p', 'TODO[PT] The shop can only sell what it knows. Add each product once; after that, selling it takes two taps.'),
+    ('ptstep', 1, 'TODO[PT] From the main screen, open <b>Point of Sale</b>.'),
+    ('ptstep', 2, 'TODO[PT] Tap <b>Add product</b>.'),
+    ['shot:task3-addproduct.png', 'TODO[PT] The “Add product” button in Point of Sale', 'TODO[PT] The “Add product” button in Point of Sale'],
+    ('ptsee', 'TODO[PT] a form with empty boxes for the product’s name and price.'),
+    ('ptstep', 3, 'TODO[PT] Type the product’s name (for example: Coffee).'),
+    ('ptstep', 4, 'TODO[PT] Type its price (for example: 2.50). Use a dot, not a comma, for cents.'),
+    ('ptstep', 5, 'TODO[PT] If you keep stock (how many you have), type the number you have now. If not, leave it empty.'),
+    ('ptstep', 6, 'TODO[PT] Tap <b>Save</b>.'),
+    ['shot:task3-productform.png', 'TODO[PT] The product form, filled in', 'TODO[PT] The product form, filled in'],
+    ('ptsee', 'TODO[PT] your product, with its price, in the grid of products.'),
+    ('p', 'TODO[PT] [If something goes wrong] If the product does not appear: check that you tapped Save, and that you are looking at the Point of Sale (not the Catalogue — they are two different lists).'),
+    ('p', 'TODO[PT] [If something goes wrong] Price looks wrong (250 instead of 2.50)? You typed the price in cents. Edit the product and type 2.50.'),
+])
+section_pt('Task 4 — Make a cash sale', [
+    ('p', 'TODO[PT] “Cash sale” means the customer pays you with money (not a card). The shop records the sale either way.'),
+    ('ptstep', 1, 'TODO[PT] Open <b>Point of Sale</b>.'),
+    ('ptstep', 2, 'TODO[PT] Tap the product the customer is buying (for example: Coffee).'),
+    ('ptsee', 'TODO[PT] the product appears in the list on the side (the “cart” — what the customer is buying), and the total goes up.'),
+    ('ptstep', 3, 'TODO[PT] Buying more than one? Tap the product again, or tap the + next to it in the cart.'),
+    ('ptstep', 4, 'TODO[PT] When everything is in the cart, tap the big <b>Pay / Charge</b> button.'),
+    ['shot:task4-posgrid.png', 'TODO[PT] Point of Sale with one product in the cart', 'TODO[PT] Point of Sale with one product in the cart'],
+    ('ptsee', 'TODO[PT] the payment screen, asking how the customer pays.'),
+    ('ptstep', 5, 'TODO[PT] Tap <b>Cash</b>.'),
+    ('ptstep', 6, 'TODO[PT] Type how much money the customer hands you (or tap the exact amount).'),
+    ('ptstep', 7, 'TODO[PT] Tap <b>Complete sale</b>.'),
+    ['shot:task4-pay.png', 'TODO[PT] The payment screen with Cash chosen', 'TODO[PT] The payment screen with Cash chosen'],
+    ('ptsee', 'TODO[PT] a receipt, and the change to give back (if any). The sale is saved right away.'),
+    ('ptstep', 8, 'TODO[PT] Hand the customer their change, and the receipt if they want it. Done!'),
+    ('p', 'TODO[PT] [If something goes wrong] Tapped the wrong product? In the cart, tap the − (minus) to remove one, or the trash icon to remove it completely, before you pay.'),
+    ('p', 'TODO[PT] [If something goes wrong] If the sale stops with a “could not reach the shop” message: the internet dropped. Your cart is still there — see Task 10. No money was taken.'),
+])
+section_pt('Task 5 — Give a refund', [
+    ('p', 'TODO[PT] A refund gives the customer their money back for something they bought. You find the sale first, then refund it.'),
+    ('ptstep', 1, 'TODO[PT] Open <b>Point of Sale</b>.'),
+    ('ptstep', 2, 'TODO[PT] Tap <b>History</b>.'),
+    ['shot:task5-history.png', 'TODO[PT] The History list of past sales', 'TODO[PT] The History list of past sales'],
+    ('ptsee', 'TODO[PT] the list of past sales, newest first.'),
+    ('ptstep', 3, 'TODO[PT] Tap the sale you want to refund.'),
+    ('ptsee', 'TODO[PT] the details of that sale.'),
+    ('ptstep', 4, 'TODO[PT] Tap <b>Refund</b>.'),
+    ('ptstep', 5, 'TODO[PT] Check the amount. If only part is being returned, change the quantity to what came back.'),
+    ('ptstep', 6, 'TODO[PT] You may type a reason (why it came back). You can also leave it empty.'),
+    ('ptstep', 7, 'TODO[PT] Tap <b>Confirm refund</b>.'),
+    ['shot:task5-refund.png', 'TODO[PT] The refund box for a sale', 'TODO[PT] The refund box for a sale'],
+    ('ptsee', 'TODO[PT] the sale in History now shows it was refunded. Refunded sales cannot be voided (deleted) afterwards — this is on purpose, so the record stays honest.'),
+    ('p', 'TODO[PT] [If something goes wrong] Can’t find the sale? Check you are signed in to the right shop, and scroll — History is newest first.'),
+    ('p', 'TODO[PT] [If something goes wrong] Refund button missing? Only owners and managers can refund. Ask the person with the master account.'),
+])
+section_pt('Task 6 — Put your shop on the web (the public page)', [
+    ('p', 'TODO[PT] Your shop can have a simple page on the web that anyone can look at: your shop name, what you sell, '
+          'your hours and how to reach you. Products you add in the Point of Sale appear on the page by themselves — '
+          'you do not type them twice. This page is a shop window, not a full website: visitors cannot buy online there.'),
+    ('ptstep', 1, 'TODO[PT] Sign in with the master account, or as the shop’s owner/manager.'),
+    ('ptstep', 2, 'TODO[PT] Open the <b>Admin</b> panel.'),
+    ('ptstep', 3, 'TODO[PT] Tap the <b>Storefront</b> tab.'),
+    ['shot:task6-storefronttab.png', 'TODO[PT] The Admin panel, Storefront tab', 'TODO[PT] The Admin panel, Storefront tab'],
+    ('ptsee', 'TODO[PT] boxes for your public shop name, a short line about your shop (“About”), opening hours, email, phone, and a colour.'),
+    ('ptstep', 4, 'TODO[PT] Fill in the boxes. Write them for strangers: what you sell, where you are, when you are open.'),
+    ('ptstep', 5, 'TODO[PT] In the web address box, choose your shop’s address: small letters, numbers and dashes only (for example <font face="Courier">my-shop</font>). Your full public link ends with <font face="Courier">#/store/my-shop</font>.'),
+    ('ptstep', 6, 'TODO[PT] Turn on <b>Page is published</b>.'),
+    ('ptstep', 7, 'TODO[PT] Tap <b>Save</b>.'),
+    ['shot:task6-publish.png', 'TODO[PT] “Page is published” turned on, with the Save button', 'TODO[PT] “Page is published” turned on, with the Save button'],
+    ('ptsee', 'TODO[PT] your public link, ready to copy.'),
+    ('ptstep', 8, 'TODO[PT] Tap the link (or copy it) to look at your page the way customers see it.'),
+    ['shot:task6-publicpage.png', 'TODO[PT] The public page customers see', 'TODO[PT] The public page customers see'],
+    ('ptsee', 'TODO[PT] your shop page, with your products. (To keep one product off the page: in its product settings, set it to Hidden. To hide all prices: turn off “Show prices” in the Storefront tab.)'),
+    ('p', 'TODO[PT] [If something goes wrong] The link says “not available yet”: “Page is published” is off, or you did not tap Save after turning it on. Go back to the Storefront tab and check both.'),
+    ('p', 'TODO[PT] [If something goes wrong] A product is missing from the page: it is set to Hidden in its product settings, or it is only in the Catalogue (the public page shows Point of Sale products).'),
+])
+section_pt('Task 7 — Make the till easy to touch (tablets and phones)', [
+    ('p', 'TODO[PT] If your till is a tablet or a phone, small buttons are hard to tap. This setting makes buttons bigger '
+          'and the home screen simpler, like a phone’s. Turn it on for each device that needs it — it only changes that device.'),
+    ('ptstep', 1, 'TODO[PT] Open <b>Settings</b>.'),
+    ('ptstep', 2, 'TODO[PT] Tap <b>Appearance</b>.'),
+    ('ptstep', 3, 'TODO[PT] Turn on <b>Touch screen optimization</b>.'),
+    ['shot:task7-touchtoggle.png', 'TODO[PT] “Touch screen optimization” in Settings · Appearance', 'TODO[PT] “Touch screen optimization” in Settings · Appearance'],
+    ('ptsee', 'TODO[PT] the home screen changes: big icons, apps open full-screen, and buttons everywhere are bigger.'),
+    ('ptstep', 4, 'TODO[PT] Try it: open the Point of Sale and tap a product. Buttons should be easy to hit with a finger.'),
+    ('ptstep', 5, 'TODO[PT] Want it back the old way? Repeat steps 1–3 and turn it off.'),
+    ['shot:task7-touchhome.png', 'TODO[PT] The touch home screen, with big icons', 'TODO[PT] The touch home screen, with big icons'],
+    ('p', 'TODO[PT] [If something goes wrong] Nothing changed? The setting applies to this device only, and the home screen changes first. If the till still shows the desktop-style home screen, close and reopen the shop (see “Start here”).'),
+])
+section_pt('Task 8 — Save a backup (do this regularly)', [
+    ('p', 'TODO[PT] A backup is one file that holds everything in your account: products, sales, customers, settings. '
+          'Save one regularly — for example every Friday — and keep the file somewhere safe, like a USB key or your email. '
+          'If anything ever goes badly wrong, this file is how you get your shop back.'),
+    ('ptstep', 1, 'TODO[PT] Open <b>Settings</b>.'),
+    ('ptstep', 2, 'TODO[PT] Tap <b>Data</b>.'),
+    ('ptstep', 3, 'TODO[PT] Tap <b>Download backup</b> (account backup).'),
+    ['shot:task8-backup.png', 'TODO[PT] The backup button in Settings · Data', 'TODO[PT] The backup button in Settings · Data'],
+    ('ptsee', 'TODO[PT] a file named like <font face="Courier">drift-backup-2026-10-01.json</font> downloading to your device.'),
+    ('ptstep', 4, 'TODO[PT] Find the downloaded file (usually in your Downloads folder) and copy it somewhere safe. That is it — done.'),
+    ('p', 'TODO[PT] [If something goes wrong] No file appeared? Some browsers block downloads. Look for a small blocked-download icon near the address bar, allow the download, and try again.'),
+    ('p', 'TODO[PT] [If something goes wrong] The backup file contains private things (like staff PIN numbers). Keep it like you would keep keys: do not share it publicly.'),
+])
+section_pt('Task 9 — Start completely over (factory reset)', [
+    ('p', 'TODO[PT] <b>Warning first.</b> A factory reset <b>deletes everything and everyone</b>: all accounts, products, sales, '
+          'customers, appointments, files — gone, as if the shop was brand new. <b>There is no undo.</b> '
+          'Only do this if you truly want to start over, or hand the shop to someone else completely empty. '
+          'Only the master account (username <b>admin</b>, with the password you chose in Task 1) can do it.'),
+    ('ptstep', 1, 'TODO[PT] First, do Task 8 (download a backup) and keep the file safe. After a reset, that file is the only way back.'),
+    ('ptstep', 2, 'TODO[PT] Sign in as <b>admin</b> (master account).'),
+    ('ptstep', 3, 'TODO[PT] Open the <b>Admin</b> panel.'),
+    ('ptstep', 4, 'TODO[PT] Scroll to the <b>Danger zone</b> at the bottom.'),
+    ('ptstep', 5, 'TODO[PT] Tap <b>Factory reset</b>.'),
+    ['shot:task9-dangerzone.png', 'TODO[PT] The Danger zone with the Factory reset button', 'TODO[PT] The Danger zone with the Factory reset button'],
+    ('ptsee', 'TODO[PT] a warning box. Before anything is deleted, the shop saves one last backup by itself and downloads it. If that backup fails, the reset stops and nothing is deleted.'),
+    ('ptstep', 6, 'TODO[PT] Read the warning. Then type the word <b>RESET</b> (in capital letters) in the box.'),
+    ('ptsee', 'TODO[PT] the reset button lights up. It stays off until the word is typed exactly right — this is on purpose, so nobody can tap it by accident.'),
+    ('ptstep', 7, 'TODO[PT] Tap the reset button, and confirm.'),
+    ['shot:task9-typereset.png', 'TODO[PT] Typing RESET to arm the reset button', 'TODO[PT] Typing RESET to arm the reset button'],
+    ('ptsee', 'TODO[PT] you are signed out. The shop is empty and new. Sign in again with <b>admin</b> / <b>admin123</b> and pick a new password (same as Task 1).'),
+    ('p', 'TODO[PT] [If something goes wrong] The reset button stays off: the word must be exactly RESET, all capitals, no spaces. Check Caps Lock.'),
+    ('p', 'TODO[PT] [If something goes wrong] “PRE-RESET BACKUP FAILED”: the safety backup could not be saved, so the reset did not happen and nothing was deleted. Do Task 8 by hand, then try again.'),
+])
+section_pt('Task 10 — When a sale fails because the internet dropped', [
+    ('p', 'TODO[PT] Your shop lives on the internet. Every sale is recorded on the internet the moment it happens. '
+          'If the internet drops in the middle of a sale, the sale cannot finish. Here is exactly what happens, and what to do. '
+          'Good news first: <b>nobody is charged</b>, and <b>your cart (what the customer is buying) stays on the screen</b>. Nothing is lost.'),
+    ('ptstep', 1, 'TODO[PT] Read the message on the screen. It will say the shop could not be reached, and the sale did not go through.'),
+    ['shot:task10-saleerror.png', 'TODO[PT] The “could not reach the shop” message at checkout', 'TODO[PT] The “could not reach the shop” message at checkout'],
+    ('ptsee', 'TODO[PT] your cart is still there, with every item, exactly as it was.'),
+    ('ptstep', 2, 'TODO[PT] Check the Wi-Fi: look for the fan-shaped icon on the device. If it is missing or has an “!”, the device lost the internet.'),
+    ('ptstep', 3, 'TODO[PT] Wait for the internet to come back (the icon returns). This can take a minute after an outage.'),
+    ('ptstep', 4, 'TODO[PT] Tap <b>Retry</b> (or complete the sale again, the same way as Task 4).'),
+    ('ptsee', 'TODO[PT] the receipt, like a normal sale. The sale is recorded once — retrying does not charge twice.'),
+    ('p', 'TODO[PT] [If something goes wrong] If the customer cannot wait: there is no “offline” selling — a sale that never reached the internet simply never happened. Write down what they bought on paper if you like, and ring it in when the internet returns.'),
+    ('p', 'TODO[PT] [If something goes wrong] If sales keep failing for a long time, the problem is the internet connection or the shop’s server — not the till. Tell the person who installed the shop.'),
+])
+section_pt('More parts of the shop (in plain words)', [
+    ('h2', 'TODO[PT] The Catalogue'),
+    ('p', 'TODO[PT] The <b>Catalogue</b> is your stock list: what you have, how many, and where it sits on the shelf. '
+          'It is a different list from the Point of Sale products (Task 3). Something in the Catalogue marked “in store” '
+          'can be scanned straight into a sale. You can also add many items at once from a spreadsheet file (this is called a CSV file), '
+          'and look items up by their barcode/ISBN number. Donations, fair days and special orders (a customer asking you to order something in) '
+          'each have their own simple flow.'),
+    ('h2', 'TODO[PT] Appointments'),
+    ('p', 'TODO[PT] <b>Appointments</b> is a booking book: customers book a time, and two bookings cannot take the same time by accident.'),
+    ('h2', 'TODO[PT] Files'),
+    ('p', 'TODO[PT] <b>Files</b> keeps your documents and pictures in the shop, and you can search the words inside them.'),
+    ('h2', 'TODO[PT] Certificates — the staff time clock'),
+    ('p', 'TODO[PT] Staff clock in and out with their own secret number (a PIN — a short number, like a bank card’s). '
+          'Managers can fix a punch, make the schedule (two shifts for the same person cannot overlap), and print attestations — '
+          'signed papers that prove someone’s hours. Volunteer/community hours are kept separate from paid hours. '
+          'Team members are invited with a code and have a role: Owner (can do everything), Manager (almost everything), Cashier (sells).'),
+    ('h2', 'TODO[PT] Taxes — read this before your first real sale'),
+    ('p', 'TODO[PT] <b>A new shop charges no tax at all</b> until you set it up. That is on purpose, so nobody is charged the wrong tax. '
+          'Before selling for real, ask your accountant (the person who does your taxes) two things: what tax percentages apply where you are, '
+          'and whether each tax is calculated on the price alone, or on price-plus-the-other-tax. Then, in the Point of Sale settings, type those numbers in, '
+          'and press <b>Save</b>. The shop never changes tax numbers by itself. Some organizations pay no tax: they can be marked tax-exempt so their receipts show no tax.'),
+    ('h2', 'TODO[PT] Other settings'),
+    ('b', 'TODO[PT] Colours and light/dark: Settings · Appearance.'),
+    ('b', 'TODO[PT] If someone else changes a setting on another till, your screen picks it up within about a minute. If you are in the middle of typing in a form, your typing is never erased by that.'),
+    ('b', 'TODO[PT] When a newer version of the shop is ready, a small message invites you to refresh the page. Nothing is forced on you mid-sale.'),
+])
+section_pt('When something goes wrong', [
+    ('p', 'TODO[PT] This shop is built to fail politely: it explains, it never shows a blank page, and it never silently loses a sale. '
+          'Here are the bad moments we know about, in plain words.'),
+    ('h2', 'TODO[PT] The shop cannot be reached at opening'),
+    ('b', 'TODO[PT] Before opening, the shop checks itself. If its own connection settings look wrong (for example a cut-off key), the screen says the setup looks wrong and that no password will work until whoever installed the shop fixes it. If the settings are fine but the server does not answer, the screen says that instead. Either way there is a <b>Retry</b> button — tap it once the internet is back.'),
+    ('h2', 'TODO[PT] One part of the shop stops working'),
+    ('b', 'TODO[PT] Each part of the shop is walled off from the others. If one part breaks, only that part shows a message, with a <b>Retry</b> button and a short code (like <font face="Courier">RS-9K2Q1-4F2A</font>). Write the code down and tell whoever looks after the shop — it points straight at the problem. The rest of the shop keeps working. If the shop breaks three times in a row while opening, it starts in a safe mode with repair options instead of breaking again and again.'),
+    ('h2', 'TODO[PT] Dangerous buttons protect you'),
+    ('b', 'TODO[PT] Before anything destructive (deleting, voiding a gift card, removing a time punch), the shop quietly saves a small safety copy on the device — the last 3 are kept. That is a safety net, not a backup: still do Task 8 regularly.'),
+    ('h2', 'TODO[PT] Getting help'),
+    ('b', 'TODO[PT] Open <b>Help &amp; Guide</b> from the Start menu (the Start menu is the main menu button of the shop) — this guide lives there too. From the sign-in screen, you can also send a support message.'),
+])
+section_pt('Honest limits — what this shop cannot do', [
+    ('p', 'TODO[PT] We would rather tell you the limits than let you discover them. Here they are, plainly.'),
+    ('b', 'TODO[PT] <b>No internet, no selling.</b> There is no offline mode on purpose: a sale is only real once it is recorded on the internet. (Task 10 shows what happens.)'),
+    ('b', 'TODO[PT] <b>The public page is a shop window, not a website.</b> Its look is fixed, and customers cannot buy or pay on it. For a full custom website, you need a website tool as well.'),
+    ('b', 'TODO[PT] <b>Loyalty points are “best effort”.</b> If the power or internet dies at the exact split second between recording a sale and adding points, the sale is safe but the points might not be added.'),
+    ('b', 'TODO[PT] <b>Brand-new gift card glitch (rare).</b> If a gift card is sold and the internet drops at that exact moment, the recorded sale can end up pointing at a card that was cancelled during cleanup. If a customer says a brand-new card does not work, look in History first — a manager can void that sale.'),
+    ('b', 'TODO[PT] <b>Your sign-in lives in the browser.</b> Whoever can open your unlocked browser on your device is, in practice, signed in as you. Sign out on shared devices. There is no list of “which devices are signed in”: signing out works on that device, and if the master account resets your password, you are signed out everywhere at once.'),
+    ('b', 'TODO[PT] <b>Safety copies live on the same device.</b> If the device is lost or wiped, they are gone. Your downloaded backup file (Task 8) is the copy that lives elsewhere — keep it.'),
+    ('b', 'TODO[PT] <b>Taxes start at zero.</b> Until you set them (see “Taxes” above), no tax is charged at all. Ask your accountant before real selling.'),
+])
+section_pt('Appendix — Installing on your own backend (technical)', [
+    ('p', 'TODO[PT] This appendix is for the person installing the shop the very first time. It is the only technical part of this guide. '
+          'If someone installed the shop for you, you can skip it.'),
+    ('ptstep', 1, 'TODO[PT] Create a free project at supabase.com (Dashboard — New project). This is the shop’s “cloud”: where everything is saved.'),
+    ('ptstep', 2, 'TODO[PT] Open the SQL editor and run every file in supabase/migrations/ in order, from 001 to the latest. One of them (056) creates the built-in master account (admin / admin123, see Task 1); another (057) adds the factory reset; 063 adds the public storefront page tables.'),
+    ('ptstep', 3, 'TODO[PT] Copy the project URL and the anon key (Project Settings — API) into a .env file as VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY (see .env.example).'),
+    ('ptstep', 4, 'TODO[PT] Run: npm install, then npm run build. Put the dist/ folder on any static host.'),
+    ('ptstep', 5, 'TODO[PT] Open the shop and do Task 1 immediately — change the master password before anything else.'),
+    ('b', 'TODO[PT] Rebranding note: the master account’s email must match BRAND.accountsDomain in src/lib/brand.js. If you change the domain, update the email in migration 056 before running it (plain usernames are turned into <font face="Courier">&lt;username&gt;@&lt;domain&gt;</font> at sign-in).'),
+])
+section_pt('Closing line', [
+    ('p', 'TODO[PT] Vendra — step-by-step guide. The words on the screen always win over this guide.'),
 ])
 
 story.append(Spacer(1, 0.4 * inch))

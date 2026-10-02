@@ -12,6 +12,9 @@
  *   - NO host may require code changes: every entry must attest
  *     "codeChanges": "none" (same dist everywhere, relative base);
  *   - secrets/vars are NAMES only — values never live in the file.
+ * The committed registry lists SELECTED doors only (3 live + 7
+ * pending-account); dropped hosts are not registry entries — their
+ * rejection reasons live in docs/redundancy.md's host survey.
  */
 import { readFileSync } from 'node:fs';
 
@@ -24,7 +27,10 @@ export const DEPLOY_TYPES = [
   'firebase', // firebase deploy --only hosting
   'deno-deployctl', // deployctl deploy
   'render-hook', // curl a deploy-hook URL (host builds from git itself)
-  'gitlab-ci', // built by .gitlab-ci.yml on GitLab; listed for completeness
+  'bitbucket-git', // git push of dist to <workspace>.bitbucket.io repo
+  'github-root-git', // git push of dist to <account>.github.io repo (account root site)
+  'neocities-api', // file-by-file upload via the Neocities API
+  'gitlab-ci', // built by .gitlab-ci.yml on GitLab; NOT a selected registry door (dropped — see docs/redundancy.md), kept so an already-verified account's inert config still validates if ever listed
   'external', // any other dashboard-wired host (documented per host)
 ];
 

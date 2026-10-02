@@ -105,25 +105,43 @@ registry; `test/mirrors-registry.test.mjs` enforces the rules (≤ 10
 hosts, unique ids, `codeChanges: "none"` for every host, secrets as
 names only, dropped hosts must say why).
 
-### Host survey (verified against vendor docs, 2026-10-01)
+### Host survey (verified against vendor docs, 2026-10-01; additions 2026-10-02)
 
-Of ten surveyed hosts, **five** can carry the commercial app at $0
-with no card. The other five are dropped *with the reasons written
-in the registry* — the slots stay documented so the survey never has
-to be repeated blind.
+**Selected doors — the registry's ten.** `deploy/mirrors.json` holds
+exactly these ten and nothing else: 3 live, 7 pending-account. Every
+door serves the identical dist, talks to the one production backend,
+and gets its origin added to the Supabase Auth redirect allowlist
+before it is announced.
 
-| Host | Verdict | Binding constraint (verified) |
-|------|---------|-------------------------------|
-| Cloudflare Pages | ✅ **Primary commercial door** | 500 builds/mo; static requests + bandwidth **unlimited**; 20k files/site; 25 MiB max file |
-| Firebase Hosting (Spark) | ✅ Mirror | 10 GB storage, **10 GB/mo transfer** — then disabled till next month. Never upgrade to Blaze (card). `login:ci` tokens deprecated → service-account auth |
-| Surge | ✅ Mirror | **No published quota** — unquantified fair-use risk, not a hard number. Custom domains + certs free (0.40 notes) |
-| Netlify | ⚠️ Backup door | New accounts: **300 credits/mo** ≈ ~20 deploys *or* ~15 GB bandwidth, then the project pauses till next cycle |
-| Render (static) | ⚠️ Backup door | **5 GB/mo** outbound (cut from 100 GB in Apr 2026), 500 build min/mo; no card = suspension, not billing |
-| GitHub Pages | 📄 Docs/manual mirror + legacy app door | **ToS bars commercial SaaS/e-commerce hosting** (see note) |
-| GitLab Pages | ❌ Dropped | CI requires identity verification — risk-scored, possibly phone/card for new accounts |
-| Vercel (Hobby) | ❌ Dropped | Hobby = non-commercial personal use only (fair-use guidelines, Sep 2026) |
-| Azure Static Web Apps | ❌ Dropped | Account creation requires a credit/debit card + forced pay-as-you-go within 30 days |
-| Deno Deploy | ❌ Dropped | Full free limits gated behind card verification since Sep 2025; no-card tier unpublished |
+| # | Host | Status | Binding constraint (verified) |
+|---|------|--------|-------------------------------|
+| 1 | GitHub Pages (project site) | ✅ Live — docs/manual mirror + legacy app door | **ToS bars commercial SaaS/e-commerce hosting** (see note) |
+| 2 | Cloudflare Pages | ✅ Live — primary commercial door | 500 builds/mo; static requests + bandwidth **unlimited**; 20k files/site; 25 MiB max file |
+| 3 | Netlify | ✅ Live — backup door | New accounts: **300 credits/mo** ≈ ~20 deploys *or* ~15 GB bandwidth, then the project pauses till next cycle |
+| 4 | Firebase Hosting (Spark) | ⏳ Pending account | 10 GB storage, **10 GB/mo transfer** — then disabled till next month. Never upgrade to Blaze (card) |
+| 5 | Surge | ⏳ Pending account | **No published quota** — unquantified fair-use risk, not a hard number. Custom domains + certs free (0.40 notes) |
+| 6 | Render (static) | ⏳ Pending account | **5 GB/mo** outbound (cut from 100 GB in Apr 2026), 500 build min/mo; no card = suspension, not billing. Server-side rebuild — `/build.json` hash check gates announcement |
+| 7 | Bitbucket Cloud | ⏳ Pending account | One site per workspace at `<workspace>.bitbucket.io`; no published bandwidth quota (fair-use). Site is public even from a private repo — fine, data sits behind Supabase RLS |
+| 8 | GitHub account root site (`staros-builds.github.io`) | ⏳ Pending account | Same GitHub infrastructure as door 1 — an extra address, **not** provider diversity. Front-door duty (landing/manual), same ToS note |
+| 9 | Neocities | ⏳ Pending account, **conditional** | Free: 1 GB storage, 200 GB/mo bandwidth, no ads ever. Host-set CSP on free sites must be checked on deploy day — if it blocks the Supabase origin, this door is demoted to landing/manual duty |
+| 10 | Sevalla (ex-Kinsta static) | ⏳ Pending account | 100 sites, 600 build min/mo, **100 GB/mo** bandwidth per account. Server-side rebuild (hash-check gated); brand migration is recent — re-verify the free tier at setup; stop if a card is requested |
+
+**Dropped — surveyed and rejected, reasons preserved here (not in
+the registry).** Do not revisit without new facts.
+
+| Host | Why dropped |
+|------|-------------|
+| GitLab Pages | CI requires identity verification — risk-scored, possibly phone/card ($1 hold) for new accounts; a fresh mirror account cannot be guaranteed card-free. Conditional only: usable with an already-verified account (`.gitlab-ci.yml` stays in the repo, inert on GitHub, for exactly that case). |
+| Vercel (Hobby) | Hobby = non-commercial personal use only (fair-use guidelines, Sep 2026); commercial use needs Pro ($20/mo) — breaks the $0 rule. |
+| Azure Static Web Apps | Account creation requires phone + credit/debit card for identity verification, and forced pay-as-you-go within 30 days. The free tier itself is fine; the door is closed at signup. |
+| Deno Deploy | Full free limits gated behind credit-card org verification since Sep 2025; the no-card "restricted" tier is unpublished and unquantified. |
+| Codeberg Pages | Donation-funded FOSS forge: public repos must carry a free/open-source licence, proprietary/commercial projects unsupported, mirrors of repos hosted elsewhere blocked. A commercial product's build invites removal. |
+| AWS Amplify / DigitalOcean App Platform | Credit card required to start (Amplify's free tier is also a 12-month new-account offer, not a standing free tier). Never evaluated further. |
+
+**Backup addresses if a selected door fails at setup** (addresses,
+not new infrastructure): Firebase's built-in second hostname
+(`<project>.firebaseapp.com`, counted inside door 4), a second
+Cloudflare Pages project, a second Netlify site.
 
 **GitHub Pages ToS note — read this before relying on the live door.**
 GitHub's own Pages limits page states Pages *"is not intended for or
@@ -346,8 +364,9 @@ PRIMARY (Jesse, Canada Central — the ONE writer)
 
 ## The doors, wired (files)
 
-- `deploy/mirrors.json` — the registry (5 verified doors, GitHub
-  Pages repositioned, 4 dropped with reasons).
+- `deploy/mirrors.json` — the registry (10 selected doors: 3 live +
+  7 pending-account; dropped hosts documented in the survey above,
+  never as registry entries).
 - `deploy/emit-matrix.mjs` — validation + matrix emission.
 - `.github/workflows/deploy-mirrors.yml` — the one release action:
   build once → fingerprint → fan out to all validated doors
@@ -396,10 +415,14 @@ himself pretty good at those). Applied here:
 **Needs nothing new:**
 
 - **GitHub (live door + all the automation):** the `staros-builds` account
-  already exists. No signup step remains.
+  already exists. No signup step remains. The account root site
+  (`staros-builds.github.io`) rides the same account — no signup either.
 - **Surge (mirror):** email + password from the command line. Historically
   one of the lowest-friction signups anywhere — no phone, no card, no
   challenge gauntlet.
+- **Sevalla (mirror, server-side rebuild):** email or GitHub SSO, no
+  card for static sites. If the flow ever asks for a card, stop — that
+  contradicts its own $0 product page and demotes the host.
 
 **One confirmation click, possibly one human check:**
 
@@ -412,6 +435,13 @@ himself pretty good at those). Applied here:
   click, no new password) or email + confirmation link. No phone, no card.
 - **Render (backup door):** same shape — existing GitHub account or email.
   No card on the free tier.
+- **Bitbucket (mirror):** Atlassian email + password with a CAPTCHA and
+  an email confirmation — no phone, no card. If the bot checks escalate,
+  the owner passes the CAPTCHA once.
+- **Neocities (mirror, conditional):** email + password + a simple
+  CAPTCHA + confirmation link — no phone, no card. Its app-door status
+  stays conditional until the free tier's host CSP is checked against
+  the Supabase origin on deploy day.
 - **Supabase copies 2, 3 and 4 (warm standbys):** new accounts under the
   owner's and Cooper's emails. Sign in with the existing GitHub account
   where available; otherwise email + confirmation link. No phone, no
@@ -441,8 +471,13 @@ App doors (all owner email, no card): Cloudflare
 `NETLIFY_SITE_ID`) · Surge (`SURGE_LOGIN`, `SURGE_TOKEN`;
 `SURGE_DOMAIN`) · Render (`RENDER_DEPLOY_HOOK_URL`) · Firebase
 Spark (`FIREBASE_SERVICE_ACCOUNT` = service-account JSON;
-`FIREBASE_PROJECT_ID`). Apex later: Cloudflare DNS zone + the
-Worker (same account as the Pages door).
+`FIREBASE_PROJECT_ID`) · Bitbucket (`BITBUCKET_ACCESS_TOKEN`;
+`BITBUCKET_WORKSPACE`) · GitHub account root site
+(`ROOT_SITE_DEPLOY_KEY` = write deploy key on
+`staros-builds/staros-builds.github.io`) · Neocities
+(`NEOCITIES_API_KEY`) · Sevalla (no repo secret — dashboard-wired;
+stop if signup ever asks for a card). Apex later: Cloudflare DNS
+zone + the Worker (same account as the Pages door).
 
 Database copies: `PRIMARY_*` (4 secrets) once, then per slot
 `<PREFIX>_SUPABASE_URL`, `<PREFIX>_SUPABASE_ANON_KEY`,
