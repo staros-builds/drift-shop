@@ -753,6 +753,24 @@ export function createSupabaseBackend(config = null) {
         throw authFailure('Sign in failed', error);
       }
       await applySession(data.session);
+      // If applySession was discarded by a concurrent boot() restore with a
+      // stale null session (sequence token), force-set from the fresh session
+      // data — the sign-in just succeeded, so the session is valid.
+      if (!cachedUser && data.session?.user) {
+        const su = data.session.user;
+        cachedUser = {
+          id: su.id,
+          email: su.email ?? null,
+          username: su.user_metadata?.username ?? (su.email ? su.email.split('@')[0] : 'user'),
+          role: 'standard',
+          isGuest: !!su.user_metadata?.is_guest,
+        };
+        // Bump the sequence so the stale boot restore can't overwrite us.
+        sessionSeq++;
+        for (const cb of authListeners) {
+          try { cb(cachedUser); } catch (err) { console.error('auth listener failed:', err); }
+        }
+      }
       if (!cachedUser) throw new Error('Sign in failed: no session was established.');
       return { user: { ...cachedUser } };
     },
@@ -854,8 +872,6 @@ export function createSupabaseBackend(config = null) {
     },
 
     async signOut() {
-      // DEBUG: trace the caller to find the instant-logout bug
-      console.trace('[drift] signOut called');
       const { error } = await client.auth.signOut();
       if (error) throw new Error(`Sign out failed: ${error.message}`);
       // onAuthStateChange will clear cachedUser; do it eagerly too
