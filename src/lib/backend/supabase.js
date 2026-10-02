@@ -872,6 +872,15 @@ export function createSupabaseBackend(config = null) {
     },
 
     async signOut() {
+      // DEBUG: record the stack in localStorage so the browser can read it
+      // from the DOM (no DevTools access in test env).
+      try {
+        const stack = new Error().stack || 'no-stack';
+        localStorage.setItem('drift:signout-trace', JSON.stringify({
+          at: new Date().toISOString(),
+          stack: stack.split('\n').slice(0, 15),
+        }));
+      } catch {}
       const { error } = await client.auth.signOut();
       if (error) throw new Error(`Sign out failed: ${error.message}`);
       // onAuthStateChange will clear cachedUser; do it eagerly too
