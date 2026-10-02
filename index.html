@@ -5,32 +5,49 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" content="#5e2b97" />
+    <!--
+      Content-Security-Policy (delivered via meta because GitHub Pages
+      cannot set response headers). Everything the built app loads is
+      same-origin; the only network calls are to the shop's Supabase
+      project (REST/auth/Realtime) and user content the operator chose
+      (product photos, web-app embeds). Images and frames are the two
+      deliberately broad allowances: product images are pasted as
+      arbitrary https URLs and the Web App viewer embeds user-saved
+      sites — neither can execute script, and `script-src 'self'`
+      (no 'unsafe-inline') is what keeps a stored XSS in those surfaces
+      from running code. Inline scripts are banned, so the 404.html
+      deep-link restore lives at the top of src/main.jsx instead.
+      `object-src 'none'` blocks plugin embeds; base-uri/form-action
+      pin navigation hijack vectors to this origin.
+      Google sign-in (accounts.google.com) and the Google Drive API
+      (www.googleapis.com / oauth2.googleapis.com) are allowed on top of
+      that, but only for the OPTIONAL cloud backup in Settings: sign-in
+      opens Google's own page, and Drive receives backup files with a
+      token that can only touch files Drift Shop itself creates.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' https://accounts.google.com; style-src 'self'; img-src 'self' data: blob: https:; media-src 'self' blob: https:; font-src 'self'; connect-src 'self' %SUPABASE_ORIGIN% %SUPABASE_ORIGIN_WS% https://accounts.google.com https://www.googleapis.com https://oauth2.googleapis.com; worker-src 'self'; frame-src https: http: blob:; object-src 'none'; base-uri 'self'; form-action 'self'"
+    />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
     <meta
       name="description"
-      content="Drift Shop — point of sale, catalogue, team and files in one calm app. Installable, works offline."
+      content="Vendra — point of sale, catalogue, team and files in one calm app. Installable; runs entirely on your shop's online account."
     />
-    <link rel="manifest" href="/drift-shop/manifest.webmanifest" />
-    <link rel="icon" type="image/png" href="/drift-shop/icons/apple-touch-icon.png" />
-    <link rel="apple-touch-icon" href="/drift-shop/icons/apple-touch-icon.png" />
-    <title>Drift Shop</title>
-    <script type="module" crossorigin src="/drift-shop/assets/index-CUE-H4IB.js"></script>
-    <link rel="stylesheet" crossorigin href="/drift-shop/assets/index-DpF4K52X.css">
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" type="image/png" href="./icons/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+    <title>Vendra</title>
   </head>
   <body>
     <div id="root"></div>
-    <script>
-      // Restore deep links bounced through 404.html (GitHub Pages SPA
-      // fallback): 404.html stashes the requested URL in sessionStorage and
-      // redirects here; put it back in the address bar before boot.
-      (function () {
-        try {
-          var r = sessionStorage.getItem('driftshop_spa_redirect');
-          if (r) {
-            sessionStorage.removeItem('driftshop_spa_redirect');
-            history.replaceState(null, '', r);
-          }
-        } catch (e) { /* ignore */ }
-      })();
-    </script>
+    <noscript>
+      <div style="font-family:system-ui,sans-serif;text-align:center;padding:3rem 1.5rem;color:#333">
+        <h1>Vendra needs JavaScript</h1>
+        <p>Vendra is a web app and needs JavaScript turned on to open. Please enable JavaScript in your browser settings, then reload this page.</p>
+        <p>Vendra a besoin de JavaScript pour s'ouvrir. Veuillez l'activer dans les réglages de votre navigateur, puis rechargez cette page.</p>
+      </div>
+    </noscript>
+    <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

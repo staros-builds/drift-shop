@@ -1,0 +1,35 @@
+# Drift Shop — GitLab Pages mirror build.
+#
+# This file does nothing on GitHub. If the repo is mirrored to
+# GitLab (gitlab.com), GitLab CI builds the same app and publishes
+# it as a GitLab Pages site — one more independent door to the same
+# shop (see deploy/mirrors.json and docs/redundancy.md).
+#
+# One-time setup on the GitLab side: Settings -> CI/CD -> Variables:
+#   VITE_SUPABASE_URL       (the shop backend address — public-safe)
+#   VITE_SUPABASE_ANON_KEY  (the public anon key — RLS guards data)
+# Neither is a real secret; they ship inside the built page anyway.
+# Without them the build still succeeds but the app boots to its
+# honest "backend is not configured" screen, exactly as designed.
+#
+# The build uses Vite's relative base ('./'), so the identical dist
+# works under GitLab Pages' /<project>/ path with no changes.
+
+image: node:20
+
+stages:
+  - build
+
+pages:
+  stage: build
+  script:
+    - npm ci
+    - npm run build
+    # GitLab Pages serves the folder named "public".
+    - rm -rf public
+    - cp -r dist public
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
