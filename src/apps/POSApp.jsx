@@ -4679,7 +4679,12 @@ function ReportsTab({ store, sales, memberName, extras }) {
       if (s.taxCents > 0) rows.push([date, '2100 - TPS/TVQ à payer / Sales tax payable', '0.00', money(s.taxCents), label]);
       (s.refunds || []).forEach((r) => {
         const rlabel = `${t('pos.refund.title', { n: s.number })} — ${r.reason || ''}`.trim();
-        rows.push([dt(r.createdAt), '4000 - Ventes (retours) / Sales returns', money(r.refundedCents), '0.00', rlabel]);
+        // M8: Refunds of gift-card/deposit (liability) sales reduce the
+        // liability account, not sales returns.
+        const refundAcct = isLiabilitySale
+          ? '2110 - Cartes-cadeaux et acomptes / Gift cards & deposits'
+          : '4000 - Ventes (retours) / Sales returns';
+        rows.push([dt(r.createdAt), refundAcct, money(r.refundedCents), '0.00', rlabel]);
         rows.push([dt(r.createdAt), payAccount(s), '0.00', money(r.refundedCents), rlabel]);
       });
     });
