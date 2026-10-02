@@ -828,18 +828,6 @@ export default function StorefrontPublic({ slug, configError = null, appHome = n
               style={styles.field}
             />
             {authError ? <div style={styles.errBox}>{authError}</div> : null}
-            {/* DEBUG: show recent auth API calls */}
-            {(() => {
-              try {
-                const calls = JSON.parse(localStorage.getItem('drift:auth-calls') || '[]');
-                if (calls.length > 0) {
-                  return <div style={{...styles.errBox, whiteSpace: 'pre-wrap', fontSize: '10px'}}>
-                    AUTH CALLS: {calls.map(c => `${c.t.split('T')[1].split('.')[0]} ${c.method} ${c.path}`).join('\n')}
-                  </div>;
-                }
-              } catch {}
-              return null;
-            })()}
             <button
               type="button"
               disabled={authBusy || !authEmail.includes('@') || !authPassword}
