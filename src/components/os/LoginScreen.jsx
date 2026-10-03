@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { LogIn, UserPlus, AlertCircle, Timer, X, Languages, KeyRound, Mail, MailQuestion, CheckCircle2, Store, ShoppingBag } from 'lucide-react';
+import { LogIn, UserPlus, AlertCircle, Timer, X, Languages, KeyRound, Mail, MailQuestion, CheckCircle2, Store, ShoppingBag, ArrowRight } from 'lucide-react';
 import { useAuth, TRIAL_USED_KEY } from '../../os/AuthContext.jsx';
 import { useLang } from '../../lib/i18n.jsx';
 import { backend } from '../../lib/backend/current.js';
@@ -70,17 +70,32 @@ function LangToggle() {
  * "Visiting a shop?" — the customer-facing door: type a shop's public web
  * address to jump to its storefront (#/store/<slug>). Shared by the Shop
  * login view (compact, at the bottom) and the Customer view (prominent,
- * front and center).
+ * front and center). Designed as a welcoming doorway: medallion icon,
+ * clear value props, pill input + arrow button, and a tap-to-try example.
  */
 function VisitShopPanel({ t, shopSlug, setShopSlug, visitShop, prominent }) {
+  const tryExample = () => setShopSlug(t('login.visitShopExampleSlug'));
   return (
-    <div className={prominent ? 'rounded-os border border-osborder bg-paper p-4' : 'mt-4 rounded-os bg-paper p-3'}>
-      <p className={`flex items-center gap-1.5 font-semibold text-ink ${prominent ? 'text-sm' : 'text-xs'}`}>
-        <Store size={prominent ? 16 : 14} className="text-accent" />
+    <div className={prominent
+      ? 'rounded-os border border-osborder bg-paper p-5 text-center'
+      : 'mt-4 rounded-os border border-osborder bg-paper p-4 text-center'}>
+      <span
+        aria-hidden="true"
+        className="inline-flex rounded-full p-2.5 text-accent"
+        style={{ background: 'color-mix(in srgb, var(--os-accent) 12%, transparent)' }}
+      >
+        <Store size={prominent ? 22 : 18} />
+      </span>
+      <p className={`mt-2 font-semibold text-ink ${prominent ? 'text-base' : 'text-sm'}`}>
         {t('login.visitShopTitle')}
       </p>
-      <p className="mt-1 text-xs leading-relaxed text-muted">{t('login.visitShopBody')}</p>
-      <form onSubmit={visitShop} className="mt-2 flex gap-2">
+      <p className="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-muted">
+        {t('login.visitShopBody')}
+      </p>
+      <p className="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-muted">
+        {t('login.visitShopPerks')}
+      </p>
+      <form onSubmit={visitShop} className="mx-auto mt-3 flex max-w-xs items-center gap-2">
         <input
           type="text"
           value={shopSlug}
@@ -89,16 +104,29 @@ function VisitShopPanel({ t, shopSlug, setShopSlug, visitShop, prominent }) {
           autoCapitalize="off"
           autoCorrect="off"
           spellCheck={false}
+          enterKeyHint="go"
           aria-label={t('login.visitShopTitle')}
-          className="min-w-0 flex-1 rounded-os border border-osborder bg-surface px-3 py-2 text-sm text-ink outline-none duration-160 focus:border-accent"
+          className="min-w-0 flex-1 rounded-full border border-osborder bg-surface px-4 py-2.5 text-sm text-ink outline-none duration-160 focus:border-accent"
         />
         <button
           type="submit"
-          className="shrink-0 rounded-os bg-accent px-3 py-2 text-sm font-semibold text-accentink duration-160 hover:opacity-90"
+          aria-label={t('login.visitShopBtn')}
+          className="flex shrink-0 items-center gap-1.5 rounded-full bg-accent px-4 py-2.5 text-sm font-semibold text-accentink duration-160 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
         >
           {t('login.visitShopBtn')}
+          <ArrowRight size={15} />
         </button>
       </form>
+      <p className="mt-2.5 text-xs text-muted">
+        {t('login.visitShopTryLabel')}{' '}
+        <button
+          type="button"
+          onClick={tryExample}
+          className="rounded-full border border-osborder bg-surface px-2.5 py-0.5 font-mono text-xs text-accent duration-160 hover:border-accent"
+        >
+          {t('login.visitShopExampleSlug')}
+        </button>
+      </p>
     </div>
   );
 }
