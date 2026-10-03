@@ -32,6 +32,8 @@ export const DEPLOY_TYPES = [
   'neocities-api', // file-by-file upload via the Neocities API
   'gitlab-ci', // built by .gitlab-ci.yml on GitLab; NOT a selected registry door (dropped — see docs/redundancy.md), kept so an already-verified account's inert config still validates if ever listed
   'external', // any other dashboard-wired host (documented per host)
+  'pages-direct-upload', // Cloudflare Pages dashboard Direct Upload of the release zip
+  'netlify-drop', // Netlify manual zip deploy in the site Deploys section
 ];
 
 export function loadRegistry(file) {

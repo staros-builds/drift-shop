@@ -37,14 +37,14 @@ const host = (over = {}) => ({
 const SELECTED_DOORS = [
   'github-pages',
   'cloudflare-pages',
-  'firebase-hosting',
-  'surge',
   'netlify',
   'render',
   'bitbucket',
   'github-root-site',
   'neocities',
   'sevalla',
+  'cloudflare-pages-2',
+  'netlify-2',
 ];
 
 check('the committed registry validates and holds exactly the ten selected doors', () => {
@@ -55,16 +55,22 @@ check('the committed registry validates and holds exactly the ten selected doors
   assert.equal(hosts[0].status, 'live');
 });
 
-check('exactly three doors are live and the other seven are pending-account', () => {
+check('exactly eight doors are live and two are dropped with documented reasons', () => {
   const hosts = loadRegistry(new URL('../deploy/mirrors.json', import.meta.url).pathname);
   const live = hosts.filter((h) => h.status === 'live').map((h) => h.id);
-  assert.deepEqual(live.sort(), ['cloudflare-pages', 'github-pages', 'netlify']);
-  assert.equal(hosts.filter((h) => h.status === 'pending-account').length, 7);
+  assert.deepEqual(live.sort(), ['cloudflare-pages', 'cloudflare-pages-2', 'github-pages', 'github-root-site', 'neocities', 'netlify', 'netlify-2', 'render']);
+  const dropped = hosts.filter((h) => h.status === 'dropped');
+  assert.equal(dropped.length, 2);
+  for (const h of dropped) {
+    const reason = h.dropReason || h.reason || '';
+    assert.ok(reason.length > 20, `${h.id} dropped without a documented reason`);
+  }
 });
 
-check('the committed registry contains zero dropped entries (dropped hosts live in docs/redundancy.md)', () => {
+check('the committed registry holds no unexpected dropped entries (dropped hosts live here with reasons, older ones in docs/redundancy.md)', () => {
   const hosts = loadRegistry(new URL('../deploy/mirrors.json', import.meta.url).pathname);
-  assert.equal(hosts.filter((h) => h.status === 'dropped').length, 0);
+  const droppedIds = hosts.filter((h) => h.status === 'dropped').map((h) => h.id).sort();
+  assert.deepEqual(droppedIds, ['bitbucket', 'sevalla']);
   for (const droppedId of ['gitlab-pages', 'vercel', 'azure-static-web-apps', 'deno-deploy']) {
     assert.ok(!hosts.some((h) => h.id === droppedId), `${droppedId} must not be a registry entry`);
   }

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLang } from '../../lib/i18n.jsx';
-import { DriftMark } from './BootScreen.jsx';
+import { VendraMark } from './BootScreen.jsx';
 import { resetCrashCount, getCrashCount } from './RootErrorBoundary.jsx';
 
 /**
@@ -81,7 +81,7 @@ export default function SafeModeScreen() {
         <div className="w-full max-w-md rounded-os border-2 border-amber-500 bg-surface p-5 shadow-os sm:p-8">
           <div className="flex flex-col items-center text-center">
             <span className="text-amber-600">
-              <DriftMark size={36} />
+              <VendraMark size={36} />
             </span>
             <h1 className="mt-2 text-xl font-light tracking-tight text-ink">
               {t('crash.safeTitle')}

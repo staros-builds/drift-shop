@@ -41,12 +41,12 @@ for (const lang of ['en', 'fr', 'es', 'pt']) {
 const sitemap = await readFile(path.join(out, 'sitemap.xml'), 'utf8');
 const robots = await readFile(path.join(out, 'robots.txt'), 'utf8');
 
-await check('generator writes 4 pages + sitemap + robots, nothing else', () => {
-  assert.equal(written.length, 6);
+await check('generator writes 4 pages + sitemap + robots + about, nothing else', () => {
+  assert.equal(written.length, 7);
   for (const f of written) {
     const rel = path.relative(out, f);
     assert.ok(
-      rel.startsWith('landing/') || rel === 'sitemap.xml' || rel === 'robots.txt',
+      rel.startsWith('landing/') || rel === 'sitemap.xml' || rel === 'robots.txt' || rel.startsWith('about/'),
       `unexpected write: ${rel}`,
     );
   }
@@ -84,7 +84,15 @@ await check('JSON-LD blocks parse and carry both schema types', () => {
     const types = blocks.map((b) => JSON.parse(b[1])['@type']);
     assert.deepEqual(types.sort(), ['FAQPage', 'SoftwareApplication']);
     const app = blocks.map((b) => JSON.parse(b[1])).find((d) => d['@type'] === 'SoftwareApplication');
-    assert.ok(!('offers' in app), 'no offers node until the owner sets a real price');
+    // The owner-approved price is $350/year billed annually — the offers
+    // node must carry exactly that, never a placeholder or invented figure.
+    assert.ok(app.offers, 'offers node present with the owner-approved price');
+    assert.equal(app.offers['@type'], 'Offer');
+    assert.equal(String(app.offers.price), '350');
+    assert.ok(
+      /350/.test(app.offers.description || ''),
+      'offers description mentions the $350 price',
+    );
   }
 });
 

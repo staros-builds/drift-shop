@@ -107,14 +107,15 @@ check('signup redirect URL normalizes the base path', () => {
   );
 });
 
-check('OAuth providers: full free set, normalized', () => {
-  assert.deepEqual(OAUTH_PROVIDERS.map((p) => p.id), [
-    'google', 'github', 'facebook', 'discord', 'azure', 'gitlab', 'spotify', 'twitch',
-  ]);
-  assert.equal(normalizeOAuthProvider('Google'), 'google');
-  assert.equal(normalizeOAuthProvider(' github '), 'github');
-  assert.equal(normalizeOAuthProvider('Azure'), 'azure');
-  assert.equal(normalizeOAuthProvider('DISCORD'), 'discord');
+check('OAuth providers: disabled until configured, normalized', () => {
+  // OAuth providers are currently disabled — none are configured in Supabase
+  // Auth. The list stays empty per the "no switch on later" rule: a
+  // built-but-disabled provider button doesn't count as a feature.
+  assert.deepEqual(OAUTH_PROVIDERS.map((p) => p.id), []);
+  assert.equal(normalizeOAuthProvider('Google'), null);
+  assert.equal(normalizeOAuthProvider(' github '), null);
+  assert.equal(normalizeOAuthProvider('Azure'), null);
+  assert.equal(normalizeOAuthProvider('DISCORD'), null);
   assert.equal(normalizeOAuthProvider('twitter'), null);
   assert.equal(normalizeOAuthProvider(''), null);
   assert.equal(normalizeOAuthProvider(null), null);

@@ -9,7 +9,7 @@ import HealthPanel from './HealthPanel.jsx';
 import { useSettings } from '../../os/SettingsContext.jsx';
 import StartMenu from './StartMenu.jsx';
 import NotificationsPanel from './NotificationsPanel.jsx';
-import { DriftMark } from './BootScreen.jsx';
+import { VendraMark } from './BootScreen.jsx';
 import { winTitle } from '../../lib/appTitle.js';
 import { localeTag } from '../../lib/i18n.jsx';
 
@@ -231,7 +231,7 @@ export default function Taskbar({ forcePosition, centered }) {
         menuOpen ? 'bg-accent text-accentink' : 'text-accent hover:bg-paper'
       }`}
     >
-      <DriftMark size={24} />
+      <VendraMark size={24} />
     </button>
   );
 

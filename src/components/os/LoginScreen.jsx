@@ -11,7 +11,7 @@ import {
   readAndClearAuthNotice,
   OAUTH_PROVIDERS,
 } from '../../lib/authFlow.js';
-import { DriftMark } from './BootScreen.jsx';
+import { VendraMark } from './BootScreen.jsx';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -172,7 +172,7 @@ export function SetNewPasswordScreen({ onDone }) {
       <div className="flex min-h-full items-center justify-center p-4">
         <div className="w-full max-w-sm rounded-os border border-osborder bg-surface p-5 shadow-os sm:p-8">
           <div className="flex flex-col items-center">
-            <span className="text-accent"><DriftMark size={36} /></span>
+            <span className="text-accent"><VendraMark size={36} /></span>
             <h1 className="mt-2 text-xl font-light tracking-tight text-ink">{t('login.newPasswordTitle')}</h1>
           </div>
           <form onSubmit={submit} className="mt-4 space-y-2">
@@ -277,7 +277,7 @@ export function ForcePasswordChangeModal({ onDone }) {
       <div className="flex min-h-full items-center justify-center p-4">
         <div className="w-full max-w-sm rounded-os border border-osborder bg-surface p-5 shadow-os sm:p-8">
           <div className="flex flex-col items-center">
-            <span className="text-accent"><DriftMark size={36} /></span>
+            <span className="text-accent"><VendraMark size={36} /></span>
             <h1 className="mt-2 text-xl font-light tracking-tight text-ink">{t('login.forceChangeTitle')}</h1>
             <p className="mt-2 text-center text-sm text-muted">{t('login.forceChangeBody')}</p>
           </div>
@@ -1089,7 +1089,7 @@ export default function LoginScreen() {
               className="rounded-full p-3 text-accent"
               style={{ background: 'color-mix(in srgb, var(--os-accent) 12%, transparent)' }}
             >
-              <DriftMark size={36} />
+              <VendraMark size={36} />
             </span>
             <h1 className="mt-2 text-2xl font-light tracking-tight text-ink">{t('brand.name')}</h1>
             <p className="mt-1 text-center text-sm text-muted">{t('brand.tagline')}</p>

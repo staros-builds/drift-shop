@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { X, Keyboard } from 'lucide-react';
 import { APPS } from '../../apps/registry.jsx';
-import { DriftMark } from './BootScreen.jsx';
+import { VendraMark } from './BootScreen.jsx';
 import { appTitle } from '../../lib/appTitle.js';
 import { useLang } from '../../lib/i18n.jsx';
 
@@ -37,7 +37,7 @@ export default function WelcomeDialog({ onDone }) {
         <div className="flex items-start justify-between p-6 pb-0">
           <div className="flex items-center gap-3">
             <span className="text-accent">
-              <DriftMark size={40} />
+              <VendraMark size={40} />
             </span>
             <div>
               <h2 id="welcome-title" className="text-2xl font-light tracking-tight text-ink">{t('welcome.title')}</h2>

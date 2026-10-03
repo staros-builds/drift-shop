@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLang } from '../../lib/i18n.jsx';
-import { DriftMark } from './BootScreen.jsx';
+import { VendraMark } from './BootScreen.jsx';
 
 /**
  * Crash-loop SCRAM (nuclear failsafe).
@@ -126,7 +126,7 @@ function CrashScreen({ onReload, onReset, onSafeMode, showSafeMode, crashCount }
         <div className="w-full max-w-sm rounded-os border border-osborder bg-surface p-5 shadow-os sm:p-8">
           <div className="flex flex-col items-center text-center">
             <span className="text-accent">
-              <DriftMark size={36} />
+              <VendraMark size={36} />
             </span>
             <h1 className="mt-2 text-xl font-light tracking-tight text-ink">
               {t('crash.title')}

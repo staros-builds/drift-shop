@@ -4,7 +4,7 @@ import { getApp } from '../../../apps/registry.jsx';
 import { useWindows } from '../../../os/WindowsContext.jsx';
 import { useAuth } from '../../../os/AuthContext.jsx';
 import { useNotifications } from '../../../os/NotificationsContext.jsx';
-import { DriftMark } from '../BootScreen.jsx';
+import { VendraMark } from '../BootScreen.jsx';
 import { localeTag } from '../../../lib/i18n.jsx';
 
 function useClock() {
@@ -82,7 +82,7 @@ export default function MacMenuBar({ onSpotlight }) {
     return [
       {
         id: 'drift',
-        label: <DriftMark size={15} />,
+        label: <VendraMark size={15} />,
         aria: 'Vendra menu',
         items: [
           { label: 'About This Vendra', fn: () => openApp('settings') },

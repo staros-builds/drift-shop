@@ -4,7 +4,7 @@ import { backend } from '../../lib/backend/current.js';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** Paper-plane mark, inline SVG. */
-export function DriftMark({ size = 44, className = '' }) {
+export function VendraMark({ size = 44, className = '' }) {
   return (
     <svg
       width={size}
@@ -60,7 +60,7 @@ export default function BootScreen({ onDone }) {
   return (
     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-paper text-ink">
       <div className="text-accent">
-        <DriftMark size={56} />
+        <VendraMark size={56} />
       </div>
       <h1 className="mt-4 text-4xl font-light tracking-tight">vendra</h1>
       <div className="mt-8 h-20 w-72 text-center" role="status" aria-live="polite">

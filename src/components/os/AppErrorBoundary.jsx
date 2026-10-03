@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLang } from '../../lib/i18n.jsx';
-import { DriftMark } from './BootScreen.jsx';
+import { VendraMark } from './BootScreen.jsx';
 
 /**
  * Reusable per-region error boundary ("bulkhead").
@@ -65,7 +65,7 @@ class AppErrorBoundaryInner extends React.Component {
     return (
       <div className="flex h-full min-h-[240px] flex-col items-center justify-center gap-2 overflow-y-auto bg-surface p-6 text-center">
         <span className="text-accent">
-          <DriftMark size={30} />
+          <VendraMark size={30} />
         </span>
         <p className="text-sm font-semibold text-ink">{strings.title}</p>
         <p className="max-w-md text-xs leading-relaxed text-muted">

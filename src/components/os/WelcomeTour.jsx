@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { LayoutGrid, Palette, Cloud, Check, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useSettings } from '../../os/SettingsContext.jsx';
-import { DriftMark } from './BootScreen.jsx';
+import { VendraMark } from './BootScreen.jsx';
 import { useLang } from '../../lib/i18n.jsx';
 
 const LS_KEY = 'drift:welcome_tour_seen';
@@ -127,7 +127,7 @@ export default function WelcomeTour() {
       >
         <div className="flex items-start justify-between p-6 pb-0">
           <div className="flex h-12 w-12 items-center justify-center rounded-os bg-accent/15 text-accent">
-            {Icon ? <Icon size={24} strokeWidth={1.75} /> : <DriftMark size={28} />}
+            {Icon ? <Icon size={24} strokeWidth={1.75} /> : <VendraMark size={28} />}
           </div>
           <button
             type="button" aria-label={t('tour.skipTour')} onClick={skip}
