@@ -46,7 +46,7 @@ export function alternatesBlock(config) {
   return lines.join('\n');
 }
 
-export function renderSitemap(config, lastmod) {
+export function renderSitemap(config, lastmod, blogSlugs = []) {
   const urls = LANGS.map((lang) => {
     const loc = absUrl(config, config.pages[lang]);
     const alternates = [
@@ -64,10 +64,25 @@ export function renderSitemap(config, lastmod) {
       '  </url>',
     ].join('\n');
   }).join('\n');
+  // Blog URLs (no hreflang alternates — English only for now)
+  const origin = String(config.siteOrigin || '').replace(/\/+$/, '');
+  const blogUrls = blogSlugs.map((slug) => [
+    '  <url>',
+    `    <loc>${origin}/blog/${slug}/</loc>`,
+    `    <lastmod>${lastmod}</lastmod>`,
+    '  </url>',
+  ].join('\n')).join('\n');
+  const blogIndex = blogSlugs.length ? [
+    '  <url>',
+    `    <loc>${origin}/blog/</loc>`,
+    `    <lastmod>${lastmod}</lastmod>`,
+    '  </url>',
+  ].join('\n') : '';
+  const allUrls = [urls, blogUrls, blogIndex].filter(Boolean).join('\n');
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">',
-    urls,
+    allUrls,
     '</urlset>',
     '',
   ].join('\n');
@@ -114,6 +129,15 @@ export async function buildLanding({ root, out }) {
   const lastmod = new Date().toISOString().slice(0, 10);
   const written = [];
 
+  // Collect blog slugs for sitemap
+  let blogSlugs = [];
+  try {
+    const { readdir } = await import('node:fs/promises');
+    blogSlugs = (await readdir(path.join(root, 'landing', 'blog-src')))
+      .filter(f => f.endsWith('.md'))
+      .map(f => f.replace(/\.md$/, ''));
+  } catch { /* no blog source */ }
+
   for (const lang of LANGS) {
     const src = await readFile(path.join(root, `landing/src/${lang}.html`), 'utf8');
     const pageUrl = absUrl(config, config.pages[lang]);
@@ -140,7 +164,7 @@ export async function buildLanding({ root, out }) {
   }
 
   const sitemap = path.join(out, 'sitemap.xml');
-  await writeFile(sitemap, renderSitemap(config, lastmod));
+  await writeFile(sitemap, renderSitemap(config, lastmod, blogSlugs));
   written.push(sitemap);
   const robots = path.join(out, 'robots.txt');
   await writeFile(robots, renderRobots(config));
