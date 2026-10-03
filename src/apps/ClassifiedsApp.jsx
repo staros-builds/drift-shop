@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Newspaper, Plus, Pencil, Trash2, Search, X, Image as ImageIcon,
   Eye, EyeOff, Tag, Phone, Mail, User, AlertCircle, Store as StoreIcon,
+  Bookmark,
 } from 'lucide-react';
 import { backend } from '../lib/backend/current.js';
 import { useLang, localeTag } from '../lib/i18n.jsx';
@@ -35,6 +36,55 @@ function fmtDate(iso) {
     return '—';
   }
 }
+
+/** Exact posted date+time for the detail view (trust metadata). */
+function fmtDateTime(iso) {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleString(localeTag(), {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  } catch {
+    return '—';
+  }
+}
+
+/** Craigslist-style relative timestamp ("2 hours ago"). */
+function fmtRelative(iso) {
+  if (!iso) return '—';
+  try {
+    const then = new Date(iso).getTime();
+    if (!Number.isFinite(then)) return '—';
+    const diffSec = Math.round((then - Date.now()) / 1000);
+    const rtf = new Intl.RelativeTimeFormat(localeTag(), { numeric: 'auto' });
+    const abs = Math.abs(diffSec);
+    if (abs < 60) return rtf.format(diffSec, 'second');
+    const mins = Math.round(diffSec / 60);
+    if (Math.abs(mins) < 60) return rtf.format(mins, 'minute');
+    const hours = Math.round(mins / 60);
+    if (Math.abs(hours) < 24) return rtf.format(hours, 'hour');
+    const days = Math.round(hours / 24);
+    if (Math.abs(days) < 30) return rtf.format(days, 'day');
+    const months = Math.round(days / 30);
+    if (Math.abs(months) < 12) return rtf.format(months, 'month');
+    return rtf.format(Math.round(months / 12), 'year');
+  } catch {
+    return fmtDate(iso);
+  }
+}
+
+/** Short display ID for trust metadata (first 8 chars of the UUID). */
+function shortId(id) {
+  const s = String(id || '');
+  return s.length > 8 ? s.slice(0, 8) : s || '—';
+}
+
+/** Craigslist green for prices. */
+const PRICE_GREEN = 'text-green-700 dark:text-green-400';
 
 function fmtPrice(priceCents, t) {
   if (priceCents === null || priceCents === undefined) return t('classifieds.priceContact');
@@ -166,6 +216,53 @@ function AdForm({ initial, onSave, onClose, saving }) {
   return (
     <div className="space-y-4">
       <ErrorNote message={formError} />
+      {/* photo first (Craigslist/FB pattern): the first photo is the ad's face */}
+      <div>
+        <span className={labelCls}>{t('classifieds.photoLabel')}</span>
+        <div className="flex items-center gap-3">
+          {photoData ? (
+            <img
+              src={photoData}
+              alt=""
+              className="h-20 w-20 rounded-os border border-osborder object-cover"
+            />
+          ) : (
+            <div className="flex h-20 w-20 items-center justify-center rounded-os border border-dashed border-osborder text-muted">
+              <ImageIcon size={24} />
+            </div>
+          )}
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className="rounded-os border border-osborder px-3 py-1.5 text-sm hover:bg-surface"
+            >
+              {photoData ? t('classifieds.photoChange') : t('classifieds.photoLabel')}
+            </button>
+            {photoData && (
+              <button
+                type="button"
+                onClick={() => setPhotoData(null)}
+                className="rounded-os px-3 py-1.5 text-sm text-red-600 hover:bg-red-500/10"
+              >
+                {t('classifieds.photoRemove')}
+              </button>
+            )}
+          </div>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            aria-label={t('classifieds.photoLabel')}
+            onChange={(e) => {
+              const files = Array.from(e.target.files || []);
+              e.target.value = '';
+              if (files[0]) pickPhoto(files[0]);
+            }}
+          />
+        </div>
+      </div>
       <div>
         <label className={labelCls} htmlFor="cl-title">{t('classifieds.titleLabel')}</label>
         <input
@@ -213,52 +310,6 @@ function AdForm({ initial, onSave, onClose, saving }) {
               </option>
             ))}
           </select>
-        </div>
-      </div>
-      <div>
-        <span className={labelCls}>{t('classifieds.photoLabel')}</span>
-        <div className="flex items-center gap-3">
-          {photoData ? (
-            <img
-              src={photoData}
-              alt=""
-              className="h-20 w-20 rounded-os border border-osborder object-cover"
-            />
-          ) : (
-            <div className="flex h-20 w-20 items-center justify-center rounded-os border border-dashed border-osborder text-muted">
-              <ImageIcon size={24} />
-            </div>
-          )}
-          <div className="flex flex-col gap-2">
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              className="rounded-os border border-osborder px-3 py-1.5 text-sm hover:bg-surface"
-            >
-              {photoData ? t('classifieds.photoChange') : t('classifieds.photoLabel')}
-            </button>
-            {photoData && (
-              <button
-                type="button"
-                onClick={() => setPhotoData(null)}
-                className="rounded-os px-3 py-1.5 text-sm text-red-600 hover:bg-red-500/10"
-              >
-                {t('classifieds.photoRemove')}
-              </button>
-            )}
-          </div>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            aria-label={t('classifieds.photoLabel')}
-            onChange={(e) => {
-              const files = Array.from(e.target.files || []);
-              e.target.value = '';
-              if (files[0]) pickPhoto(files[0]);
-            }}
-          />
         </div>
       </div>
       <fieldset>
@@ -328,18 +379,51 @@ function AdForm({ initial, onSave, onClose, saving }) {
   );
 }
 
-function AdCard({ ad, onEdit, onDelete, onToggleStatus }) {
+function photoCountLabel(count, t) {
+  const n = Number(count) || 0;
+  if (n <= 1) return t('classifieds.photoCountOne');
+  return t('classifieds.photoCountOther', { count: n });
+}
+
+function AdCard({ ad, onView, onEdit, onDelete, onToggleStatus }) {
   const { t } = useLang();
   const published = ad.status === 'published';
+  const photoCount = ad.photoData ? 1 : 0;
+  const open = () => onView(ad);
+  const onKey = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      open();
+    }
+  };
+  const stop = (e) => e.stopPropagation();
   return (
-    <article className="flex flex-col overflow-hidden rounded-os border border-osborder bg-surface">
-      {ad.photoData ? (
-        <img src={ad.photoData} alt="" className="h-40 w-full object-cover" loading="lazy" />
-      ) : (
-        <div className="flex h-40 w-full items-center justify-center bg-paper text-muted">
-          <Newspaper size={32} strokeWidth={1.5} />
-        </div>
-      )}
+    <article
+      className="flex cursor-pointer flex-col overflow-hidden rounded-os border border-osborder bg-surface transition-shadow hover:shadow-oswin"
+      onClick={open}
+      onKeyDown={onKey}
+      tabIndex={0}
+      role="button"
+      aria-label={`${t('classifieds.viewDetails')}: ${ad.title}`}
+    >
+      {/* photo-first: large photo with price overlaid + photo count */}
+      <div className="relative">
+        {ad.photoData ? (
+          <img src={ad.photoData} alt="" className="h-48 w-full object-cover" loading="lazy" />
+        ) : (
+          <div className="flex h-48 w-full items-center justify-center bg-paper text-muted">
+            <Newspaper size={36} strokeWidth={1.5} />
+          </div>
+        )}
+        <span className="absolute bottom-2 left-2 rounded-full bg-green-700 px-2.5 py-1 text-sm font-bold text-white shadow">
+          {fmtPrice(ad.priceCents, t)}
+        </span>
+        {photoCount > 0 && (
+          <span className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-medium text-white">
+            <ImageIcon size={11} /> {photoCountLabel(photoCount, t)}
+          </span>
+        )}
+      </div>
       <div className="flex flex-1 flex-col gap-2 p-3">
         <div className="flex items-start justify-between gap-2">
           <h4 className="text-sm font-semibold text-ink">{ad.title}</h4>
@@ -355,13 +439,13 @@ function AdCard({ ad, onEdit, onDelete, onToggleStatus }) {
           <Tag size={12} />
           <span>{t(`classifieds.${catKey(ad.category)}`)}</span>
           <span aria-hidden="true">·</span>
-          <span>{t('classifieds.postedOn', { date: fmtDate(ad.createdAt) })}</span>
+          <span>{fmtRelative(ad.createdAt)}</span>
         </div>
-        <p className="text-base font-bold text-accent">{fmtPrice(ad.priceCents, t)}</p>
+        <p className={`text-base font-bold ${PRICE_GREEN}`}>{fmtPrice(ad.priceCents, t)}</p>
         {ad.description && (
           <p className="line-clamp-3 whitespace-pre-line text-xs text-muted">{ad.description}</p>
         )}
-        <div className="mt-auto flex flex-wrap gap-1 pt-2">
+        <div className="mt-auto flex flex-wrap gap-1 pt-2" onClick={stop} onKeyDown={stop}>
           <button
             type="button"
             onClick={() => onToggleStatus(ad)}
@@ -394,6 +478,99 @@ function AdCard({ ad, onEdit, onDelete, onToggleStatus }) {
   );
 }
 
+/** Detail view: trust metadata (post ID + exact time) + safety tip. */
+function AdDetail({ ad, onClose, onEdit, onToggleStatus }) {
+  const { t } = useLang();
+  const published = ad.status === 'published';
+  const contact = [ad.contactName, ad.contactPhone, ad.contactEmail].filter(Boolean);
+  return (
+    <Modal title={ad.title} onClose={onClose}>
+      <div className="space-y-4">
+        {ad.photoData && (
+          <div className="relative">
+            <img src={ad.photoData} alt="" className="max-h-72 w-full rounded-os object-cover" />
+            <span className="absolute bottom-2 left-2 rounded-full bg-green-700 px-2.5 py-1 text-sm font-bold text-white shadow">
+              {fmtPrice(ad.priceCents, t)}
+            </span>
+          </div>
+        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full bg-surface px-2.5 py-1 text-xs font-medium text-muted">
+            {t(`classifieds.${catKey(ad.category)}`)}
+          </span>
+          <span
+            className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+              published ? 'bg-green-600/15 text-green-700' : 'bg-amber-500/15 text-amber-700'
+            }`}
+          >
+            {published ? t('classifieds.statusPublished') : t('classifieds.statusDraft')}
+          </span>
+        </div>
+        <p className={`text-xl font-bold ${PRICE_GREEN}`}>{fmtPrice(ad.priceCents, t)}</p>
+        {ad.description && (
+          <p className="whitespace-pre-line text-sm text-ink">{ad.description}</p>
+        )}
+        {contact.length > 0 && (
+          <div className="rounded-os border border-osborder bg-surface p-3 text-sm">
+            <p className="mb-1 text-xs font-medium text-muted">{t('classifieds.contactNameLabel')}</p>
+            {contact.map((c) => (
+              <p key={c} className="text-ink">{c}</p>
+            ))}
+          </div>
+        )}
+        {/* trust metadata */}
+        <dl className="grid grid-cols-2 gap-2 text-xs text-muted">
+          <div>
+            <dt className="font-medium">{t('classifieds.postIdLabel')}</dt>
+            <dd className="font-mono text-ink">{shortId(ad.id)}</dd>
+          </div>
+          <div>
+            <dt className="font-medium">{t('classifieds.postedAtLabel')}</dt>
+            <dd className="text-ink">{fmtDateTime(ad.createdAt)}</dd>
+          </div>
+        </dl>
+        {/* safety tip */}
+        <div className="flex items-start gap-2 rounded-os border border-amber-500/30 bg-amber-500/10 px-3 py-2.5">
+          <AlertCircle size={16} className="mt-0.5 shrink-0 text-amber-600" />
+          <div className="text-xs">
+            <p className="font-semibold text-amber-800 dark:text-amber-300">{t('classifieds.safetyTitle')}</p>
+            <p className="text-amber-900/80 dark:text-amber-200/80">{t('classifieds.safetyBody')}</p>
+          </div>
+        </div>
+        <div className="flex flex-wrap justify-end gap-2 pt-1">
+          <button
+            type="button"
+            onClick={() => onToggleStatus(ad)}
+            className="flex items-center gap-1 rounded-os border border-osborder px-3 py-2 text-sm hover:bg-surface"
+          >
+            {published ? <EyeOff size={14} /> : <Eye size={14} />}
+            {published ? t('classifieds.unpublish') : t('classifieds.publish')}
+          </button>
+          <button
+            type="button"
+            onClick={() => { onClose(); onEdit(ad); }}
+            className="flex items-center gap-1 rounded-os bg-accent px-3 py-2 text-sm font-medium text-white hover:brightness-110"
+          >
+            <Pencil size={14} /> {t('classifieds.editAd')}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+const SAVED_KEY = (storeId) => `driftshop:classifieds:saved:${storeId}`;
+
+function loadSaved(storeId) {
+  try {
+    const raw = localStorage.getItem(SAVED_KEY(storeId));
+    const arr = JSON.parse(raw || '[]');
+    return Array.isArray(arr) ? arr.filter((s) => s && s.id) : [];
+  } catch {
+    return [];
+  }
+}
+
 export default function ClassifiedsApp() {
   const { t } = useLang();
   const { push } = useNotifications();
@@ -408,7 +585,9 @@ export default function ClassifiedsApp() {
   const [catFilter, setCatFilter] = useState('all');
   const [editing, setEditing] = useState(null); // null | 'new' | ad
   const [deleting, setDeleting] = useState(null);
+  const [viewing, setViewing] = useState(null); // ad | null (detail view)
   const [saving, setSaving] = useState(false);
+  const [savedSearches, setSavedSearches] = useState([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -423,6 +602,7 @@ export default function ClassifiedsApp() {
       setStoreId((prev) => prev || sid);
       if (sid) {
         setAds(await cl().list(sid));
+        setSavedSearches(loadSaved(sid));
       }
     } catch (err) {
       setError(`${t('classifieds.errLoad')}: ${err?.message || err}`);
@@ -439,6 +619,7 @@ export default function ClassifiedsApp() {
     async (sid) => {
       setStoreId(sid);
       setError('');
+      setSavedSearches(loadSaved(sid));
       try {
         setAds(await cl().list(sid));
       } catch (err) {
@@ -447,6 +628,49 @@ export default function ClassifiedsApp() {
     },
     [t]
   );
+
+  const saveCurrentSearch = useCallback(() => {
+    const q = search.trim();
+    const name =
+      q ||
+      (catFilter === 'all'
+        ? t('classifieds.allCategories')
+        : t(`classifieds.${catKey(catFilter)}`));
+    const entry = {
+      id: `${Date.now()}`,
+      name,
+      q,
+      cat: catFilter,
+    };
+    setSavedSearches((prev) => {
+      // avoid exact duplicates
+      if (prev.some((s) => s.q === entry.q && s.cat === entry.cat)) return prev;
+      const next = [...prev, entry].slice(-12);
+      try {
+        localStorage.setItem(SAVED_KEY(storeId), JSON.stringify(next));
+      } catch { /* storage full/blocked: keep in-memory only */ }
+      return next;
+    });
+    push(t('classifieds.appName'), t('classifieds.searchSaved'));
+  }, [search, catFilter, storeId, push, t]);
+
+  const removeSavedSearch = useCallback(
+    (id) => {
+      setSavedSearches((prev) => {
+        const next = prev.filter((s) => s.id !== id);
+        try {
+          localStorage.setItem(SAVED_KEY(storeId), JSON.stringify(next));
+        } catch { /* ignore */ }
+        return next;
+      });
+    },
+    [storeId]
+  );
+
+  const applySavedSearch = useCallback((s) => {
+    setSearch(s.q || '');
+    setCatFilter(s.cat || 'all');
+  }, []);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -606,20 +830,71 @@ export default function ClassifiedsApp() {
             aria-label={t('classifieds.searchPlaceholder')}
           />
         </div>
-        <select
-          className="rounded-os border border-osborder bg-surface px-2 py-2 text-sm text-ink"
-          value={catFilter}
-          onChange={(e) => setCatFilter(e.target.value)}
-          aria-label={t('classifieds.categoryLabel')}
+        <button
+          type="button"
+          onClick={saveCurrentSearch}
+          disabled={!storeId}
+          className="flex items-center gap-1.5 rounded-os border border-osborder px-3 py-2 text-sm text-muted hover:bg-surface hover:text-ink disabled:opacity-50"
+          title={t('classifieds.saveSearch')}
+          aria-label={t('classifieds.saveSearch')}
         >
-          <option value="all">{t('classifieds.allCategories')}</option>
-          {cl().categories().map((c) => (
-            <option key={c} value={c}>
-              {t(`classifieds.${catKey(c)}`)}
-            </option>
-          ))}
-        </select>
+          <Bookmark size={15} /> {t('classifieds.saveSearch')}
+        </button>
       </div>
+
+      {/* flat category list (Craigslist-style: visible, not nested) */}
+      <div className="flex gap-1.5 overflow-x-auto pb-1" role="group" aria-label={t('classifieds.categoryLabel')}>
+        {['all', ...cl().categories()].map((c) => {
+          const active = catFilter === c;
+          return (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setCatFilter(c)}
+              aria-pressed={active}
+              className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium ${
+                active
+                  ? 'border-accent bg-accent text-white'
+                  : 'border-osborder bg-surface text-muted hover:text-ink'
+              }`}
+            >
+              {c === 'all' ? t('classifieds.allCategories') : t(`classifieds.${catKey(c)}`)}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* saved searches */}
+      {savedSearches.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="flex items-center gap-1 text-xs text-muted">
+            <Bookmark size={12} /> {t('classifieds.savedSearches')}:
+          </span>
+          {savedSearches.map((s) => (
+            <span
+              key={s.id}
+              className="flex items-center gap-1 rounded-full bg-surface px-2 py-1 text-xs"
+            >
+              <button
+                type="button"
+                onClick={() => applySavedSearch(s)}
+                className="max-w-40 truncate text-ink hover:underline"
+                title={s.name}
+              >
+                {s.name}
+              </button>
+              <button
+                type="button"
+                onClick={() => removeSavedSearch(s.id)}
+                className="rounded-full p-0.5 text-muted hover:text-red-600"
+                aria-label={`${t('classifieds.removeSavedSearch')}: ${s.name}`}
+              >
+                <X size={12} />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
 
       <ErrorNote message={error} />
 
@@ -644,6 +919,7 @@ export default function ClassifiedsApp() {
               <AdCard
                 key={ad.id}
                 ad={ad}
+                onView={setViewing}
                 onEdit={setEditing}
                 onDelete={setDeleting}
                 onToggleStatus={toggleStatus}
@@ -654,6 +930,20 @@ export default function ClassifiedsApp() {
       </div>
 
       <p className="text-center text-[11px] text-muted">{t('classifieds.hideAppHint')}</p>
+
+      {/* detail view */}
+      {viewing && (
+        <AdDetail
+          ad={viewing}
+          onClose={() => setViewing(null)}
+          onEdit={setEditing}
+          onToggleStatus={async (ad) => {
+            await toggleStatus(ad);
+            // refresh the detail view with the new status
+            setViewing((v) => (v && v.id === ad.id ? { ...v, status: ad.status === 'published' ? 'draft' : 'published' } : v));
+          }}
+        />
+      )}
 
       {/* editor modal */}
       {editing && (

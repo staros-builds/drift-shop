@@ -119,6 +119,33 @@ function ccCat(category) {
   return cc(map[category] || 'catForSale');
 }
 
+/** Craigslist-style relative timestamp ("2 hours ago"), locale-aware. */
+function ccRelative(iso) {
+  if (!iso) return '';
+  try {
+    const then = new Date(iso).getTime();
+    if (!Number.isFinite(then)) return '';
+    const diffSec = Math.round((then - Date.now()) / 1000);
+    const rtf = new Intl.RelativeTimeFormat(tagFor(getLang()), { numeric: 'auto' });
+    const abs = Math.abs(diffSec);
+    if (abs < 60) return rtf.format(diffSec, 'second');
+    const mins = Math.round(diffSec / 60);
+    if (Math.abs(mins) < 60) return rtf.format(mins, 'minute');
+    const hours = Math.round(mins / 60);
+    if (Math.abs(hours) < 24) return rtf.format(hours, 'hour');
+    const days = Math.round(hours / 24);
+    if (Math.abs(days) < 30) return rtf.format(days, 'day');
+    const months = Math.round(days / 30);
+    if (Math.abs(months) < 12) return rtf.format(months, 'month');
+    return rtf.format(Math.round(months / 12), 'year');
+  } catch {
+    return '';
+  }
+}
+
+/** Craigslist green for classified prices. */
+const CL_GREEN = '#1a7f37';
+
 const ORDER_STATUS_KEYS = {
   received: 'stReceived',
   preparing: 'stPreparing',
@@ -446,6 +473,46 @@ export default function StorefrontPublic({ slug, configError = null, appHome = n
     data: null,
   });
   const [classifiedAds, setClassifiedAds] = useState([]); // published ads (migration 097); [] = none / unavailable
+  // Craigslist patterns: buyer favorites + hidden ads, persisted per shop (no account needed)
+  const [favAdIds, setFavAdIds] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(`driftshop:classifieds:fav:${slug}`) || '[]');
+    } catch {
+      return [];
+    }
+  });
+  const [hiddenAdIds, setHiddenAdIds] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(`driftshop:classifieds:hidden:${slug}`) || '[]');
+    } catch {
+      return [];
+    }
+  });
+  const toggleFavAd = (id) => {
+    setFavAdIds((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      try {
+        localStorage.setItem(`driftshop:classifieds:fav:${slug}`, JSON.stringify(next));
+      } catch { /* ignore */ }
+      return next;
+    });
+  };
+  const hideAd = (id) => {
+    setHiddenAdIds((prev) => {
+      if (prev.includes(id)) return prev;
+      const next = [...prev, id];
+      try {
+        localStorage.setItem(`driftshop:classifieds:hidden:${slug}`, JSON.stringify(next));
+      } catch { /* ignore */ }
+      return next;
+    });
+  };
+  const unhideAds = () => {
+    setHiddenAdIds([]);
+    try {
+      localStorage.removeItem(`driftshop:classifieds:hidden:${slug}`);
+    } catch { /* ignore */ }
+  };
   const [session, setSession] = useState(undefined); // undefined = checking
   const [ordersReady, setOrdersReady] = useState(null); // migration 073 probe
   const [cart, setCart] = useState(() => {
@@ -1291,34 +1358,136 @@ export default function StorefrontPublic({ slug, configError = null, appHome = n
                 {cc('storefrontSectionSub')}
               </p>
               <ul style={styles.grid}>
-                {classifiedAds.map((a, i) => {
-                  const price =
-                    a.price_cents === null || a.price_cents === undefined
-                      ? cc('priceContact')
-                      : Number(a.price_cents) === 0
-                        ? cc('priceFree')
-                        : money(a.price_cents, currency);
-                  const contact = [a.contact_name, a.contact_phone, a.contact_email]
-                    .filter(Boolean)
-                    .join(' · ');
-                  return (
-                    <li key={`${a.id || a.title}-${i}`} style={styles.product}>
-                      {a.photo_data ? (
-                        <img src={a.photo_data} alt="" style={styles.adPhoto} loading="lazy" />
-                      ) : null}
-                      <span style={styles.adCat}>{ccCat(a.category)}</span>
-                      <span style={styles.productName}>{a.title}</span>
-                      <span style={{ ...styles.productPrice, color: accent }}>{price}</span>
-                      {a.description ? <span style={styles.adDesc}>{a.description}</span> : null}
-                      {contact ? (
-                        <span style={styles.adContact}>
-                          {cc('contactAd', { contact })}
-                        </span>
-                      ) : null}
-                    </li>
-                  );
-                })}
+                {classifiedAds
+                  .filter((a) => !hiddenAdIds.includes(a.id))
+                  .map((a, i) => {
+                    const price =
+                      a.price_cents === null || a.price_cents === undefined
+                        ? cc('priceContact')
+                        : Number(a.price_cents) === 0
+                          ? cc('priceFree')
+                          : money(a.price_cents, currency);
+                    const contact = [a.contact_name, a.contact_phone, a.contact_email]
+                      .filter(Boolean)
+                      .join(' · ');
+                    const fav = favAdIds.includes(a.id);
+                    const rel = ccRelative(a.created_at);
+                    return (
+                      <li key={`${a.id || a.title}-${i}`} style={{ ...styles.product, position: 'relative' }}>
+                        {a.photo_data ? (
+                          <div style={{ position: 'relative', margin: '-16px -14px 6px' }}>
+                            <img
+                              src={a.photo_data}
+                              alt=""
+                              style={{ ...styles.adPhoto, margin: 0 }}
+                              loading="lazy"
+                            />
+                            <span
+                              style={{
+                                position: 'absolute',
+                                bottom: 8,
+                                left: 8,
+                                background: CL_GREEN,
+                                color: '#fff',
+                                borderRadius: 999,
+                                padding: '4px 10px',
+                                fontSize: 13,
+                                fontWeight: 800,
+                              }}
+                            >
+                              {price}
+                            </span>
+                            <span
+                              style={{
+                                position: 'absolute',
+                                top: 8,
+                                right: 8,
+                                background: 'rgba(0,0,0,0.6)',
+                                color: '#fff',
+                                borderRadius: 999,
+                                padding: '2px 8px',
+                                fontSize: 11,
+                                fontWeight: 600,
+                              }}
+                            >
+                              {cc('photoCountOne')}
+                            </span>
+                          </div>
+                        ) : null}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ ...styles.adCat, flex: 1 }}>{ccCat(a.category)}</span>
+                          <button
+                            type="button"
+                            onClick={() => toggleFavAd(a.id)}
+                            aria-label={fav ? cc('unfavorite') : cc('favorite')}
+                            aria-pressed={fav}
+                            title={fav ? cc('unfavorite') : cc('favorite')}
+                            style={{
+                              border: 'none',
+                              background: 'transparent',
+                              cursor: 'pointer',
+                              fontSize: 17,
+                              lineHeight: 1,
+                              color: fav ? '#c81e1e' : '#a89c86',
+                              padding: 2,
+                            }}
+                          >
+                            {fav ? '♥' : '♡'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => hideAd(a.id)}
+                            aria-label={cc('hideAd')}
+                            title={cc('hideAd')}
+                            style={{
+                              border: 'none',
+                              background: 'transparent',
+                              cursor: 'pointer',
+                              fontSize: 13,
+                              lineHeight: 1,
+                              color: '#a89c86',
+                              padding: 2,
+                            }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <span style={styles.productName}>{a.title}</span>
+                        <span style={{ ...styles.productPrice, color: CL_GREEN }}>{price}</span>
+                        {rel ? <span style={{ fontSize: 12, color: '#a89c86' }}>{rel}</span> : null}
+                        {a.description ? <span style={styles.adDesc}>{a.description}</span> : null}
+                        {contact ? (
+                          <span style={styles.adContact}>
+                            {cc('contactAd', { contact })}
+                          </span>
+                        ) : null}
+                      </li>
+                    );
+                  })}
               </ul>
+              {hiddenAdIds.length > 0 && (
+                <p style={{ fontSize: 12, color: '#a89c86', marginTop: 8 }}>
+                  {cc('hiddenAds', { count: hiddenAdIds.length })}{' '}
+                  <button
+                    type="button"
+                    onClick={unhideAds}
+                    style={{
+                      border: 'none',
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      color: accent,
+                      fontSize: 12,
+                      textDecoration: 'underline',
+                      padding: 0,
+                    }}
+                  >
+                    {cc('showHidden')}
+                  </button>
+                </p>
+              )}
+              <p style={{ fontSize: 12, color: '#a89c86', marginTop: 8 }}>
+                ⚠ {cc('storefrontSafety')}
+              </p>
             </section>
           )}
 
