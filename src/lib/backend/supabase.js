@@ -3739,6 +3739,21 @@ export function createSupabaseBackend(config = null) {
         clean.online_ordering = !!p.onlineOrdering;
         clean.ordering_note = String(p.orderingNote ?? '').trim() || null;
       }
+      // Lemon Squeezy columns (migration 089). Omitted until the columns exist.
+      try {
+        const { data: lsCheck } = await client
+          .from('storefront_profiles')
+          .select('ls_enabled')
+          .limit(0);
+        // If we get here without error, columns exist
+        clean.ls_enabled = !!p.lsEnabled;
+        const checkoutUrl = String(p.lsCheckoutUrl ?? '').trim();
+        clean.ls_checkout_url = /^https:\/\//i.test(checkoutUrl) ? checkoutUrl : null;
+        const storeUrl = String(p.lsStoreUrl ?? '').trim();
+        clean.ls_store_url = /^https:\/\//i.test(storeUrl) ? storeUrl : null;
+      } catch {
+        // Columns don't exist yet, skip
+      }
       if (!/^[a-z0-9][a-z0-9-]{0,62}$/.test(clean.slug)) {
         throw new Error(
           'Storefront address must use lowercase letters, numbers and dashes only.'

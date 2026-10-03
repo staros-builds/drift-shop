@@ -890,6 +890,16 @@ export default function StorefrontPublic({ slug, configError = null, appHome = n
             <div style={styles.noteBox}>
               {oo('total')}: {money(placed.total_cents, currency)}
             </div>
+            {shop.payments?.lemonsqueezy?.enabled && shop.payments.lemonsqueezy.checkout_url ? (
+              <a
+                href={shop.payments.lemonsqueezy.checkout_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ ...styles.primaryBtn, background: '#0ea5e9', display: 'block', textAlign: 'center', textDecoration: 'none', marginBottom: 8 }}
+              >
+                Pay online now
+              </a>
+            ) : null}
             <button type="button" style={{ ...styles.primaryBtn, background: accent }} onClick={() => { setPlaced(null); setModal(null); openOrders(); }}>
               {oo('myOrdersTitle')}
             </button>

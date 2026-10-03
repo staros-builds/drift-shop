@@ -2017,6 +2017,7 @@ function StorefrontSection() {
     address: '', facebookUrl: '', instagramUrl: '', tiktokUrl: '',
     whatsappPhone: '', reviewUrl: '', directionsUrl: '', orderUrl: '',
     newsletterUrl: '', onlineOrdering: false, orderingNote: '',
+    lsEnabled: false, lsCheckoutUrl: '', lsStoreUrl: '',
   });
 
   // Full slug (saved form): the DB rule is ^[a-z0-9][a-z0-9-]{0,62}$ —
@@ -2152,6 +2153,9 @@ function StorefrontSection() {
             newsletterUrl: prof.newsletter_url || '',
             onlineOrdering: !!prof.online_ordering,
             orderingNote: prof.ordering_note || '',
+            lsEnabled: !!prof.ls_enabled,
+            lsCheckoutUrl: prof.ls_checkout_url || '',
+            lsStoreUrl: prof.ls_store_url || '',
           });
         } else {
           setForm({
@@ -2161,6 +2165,7 @@ function StorefrontSection() {
             contactEmail: '', contactPhone: '', accentColor: '',
             published: false, showPrices: true,
             onlineOrdering: false, orderingNote: '',
+            lsEnabled: false, lsCheckoutUrl: '', lsStoreUrl: '',
           });
         }
         setProducts(prods || []);
@@ -2612,6 +2617,52 @@ function StorefrontSection() {
                   className={inputCls}
                 />
                 <p className="mt-1 text-xs text-muted">{t('onlineOrders.settingsNoteHelp')}</p>
+              </div>
+              {/* Lemon Squeezy online payments (optional) */}
+              <div className="mt-4 rounded-os border border-osborder bg-surface p-3">
+                <label className="flex cursor-pointer items-start gap-2 text-sm text-ink">
+                  <input
+                    type="checkbox"
+                    checked={!!form.lsEnabled}
+                    disabled={!ordersReady}
+                    onChange={(e) => { setForm((f) => ({ ...f, lsEnabled: e.target.checked })); setSaved(false); }}
+                    className="mt-0.5 h-4 w-4 accent-[#b4542a]"
+                  />
+                  <span>
+                    <span className="font-medium">Accept online payments via Lemon Squeezy</span>
+                    <span className="block text-xs font-normal text-muted">
+                      Optional. Connect your own Lemon Squeezy store so customers can pay online.
+                      Leave off to stay pay-at-pickup.
+                    </span>
+                  </span>
+                </label>
+                {form.lsEnabled && (
+                  <div className="mt-3 space-y-3">
+                    <div>
+                      <label className={labelCls}>Lemon Squeezy checkout URL</label>
+                      <input
+                        {...field('lsCheckoutUrl')}
+                        disabled={!ordersReady}
+                        placeholder="https://your-store.lemonsqueezy.com/checkout/..."
+                        maxLength={500}
+                        className={inputCls}
+                      />
+                      <p className="mt-1 text-xs text-muted">
+                        Paste your Lemon Squeezy checkout or payment link. Customers will be sent here after placing an order.
+                      </p>
+                    </div>
+                    <div>
+                      <label className={labelCls}>Lemon Squeezy store URL (optional)</label>
+                      <input
+                        {...field('lsStoreUrl')}
+                        disabled={!ordersReady}
+                        placeholder="https://your-store.lemonsqueezy.com"
+                        maxLength={500}
+                        className={inputCls}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
