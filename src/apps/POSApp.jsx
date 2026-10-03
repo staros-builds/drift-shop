@@ -2497,7 +2497,7 @@ function SchoolListsModal({ store, onRingUp, onClose }) {
                     {l.schoolName}{l.grade ? ` · ${l.grade}` : ''}
                   </p>
                   <p className="text-xs text-muted">
-                    {t('pos.school.itemCount', { n: (l.items || []).length })}
+                    {(l.items || []).length === 1 ? t('pos.school.itemCountOne', { n: 1 }) : t('pos.school.itemCount', { n: (l.items || []).length })}
                     {' · '}
                     {fmt((l.items || []).reduce((s, i) => s + i.priceCents * i.qty, 0), store.currency)}
                   </p>
@@ -2558,7 +2558,7 @@ function ReceiptModal({ receipt, store, onClose }) {
     setPrintMsg('');
     try {
       const res = await printReceipt({ sale: receipt, store, taxLines: lines, labels: receiptLabels(t) });
-      setPrintMsg(res.via === 'browser' ? 'Sent to the system print dialog.' : 'Receipt sent to printer.');
+      setPrintMsg(res.via === 'browser' ? t('pos.ui.printSentBrowser') : t('pos.ui.printSentPrinter'));
     } catch (err) {
       setPrintMsg(`Print failed: ${err?.message || err}`);
     } finally {
@@ -2991,16 +2991,16 @@ function ProductsTab({ store, products, v4, onSave, onDelete, onToggleActive, on
                     <button
                       type="button"
                       onClick={() => onToggleActive(p)}
-                      title={p.active ? 'Hide from the sell screen' : 'Show on the sell screen'}
+                      title={p.active ? t('pos.products.hideFromSell') : t('pos.products.showOnSell')}
                       className={`rounded-os px-2 py-0.5 text-xs font-medium ${p.active ? 'bg-paper text-ink' : 'bg-osborder/40 text-muted'}`}
                     >
-                      {p.active ? 'Active' : 'Hidden'}
+                      {p.active ? t('pos.products.active') : t('pos.products.hidden')}
                     </button>
                   </td>
                   <td className="px-4 py-2.5">
                     <div className="flex justify-end gap-1">
                       <button type="button" onClick={() => setEditing(p)} className="rounded-os px-2 py-1 text-xs font-medium text-muted hover:bg-paper hover:text-ink">{t('pos.tabs2.edit')}</button>
-                      <button type="button" onClick={() => setConfirmDelete(p)} className="rounded-os p-1 text-muted hover:bg-paper hover:text-accent" aria-label="Delete product">
+                      <button type="button" onClick={() => setConfirmDelete(p)} className="rounded-os p-1 text-muted hover:bg-paper hover:text-accent" aria-label={t('pos.products.deleteAria')}>
                         <Trash2 size={14} />
                       </button>
                     </div>
@@ -3276,7 +3276,7 @@ function HistoryTab({ store, sales, memberName, onVoid, onRefund, onExchange, se
                       )}
                     </p>
                     <p className="text-xs text-muted">
-                      {dt.toLocaleDateString(localeTag())} {dt.toLocaleTimeString(localeTag(), { hour: '2-digit', minute: '2-digit' })} · {methodLabel(t, s.method)} · {t('pos.ui.itemsCount', { n: s.items.reduce((n, i) => n + i.qty, 0) })}
+                      {dt.toLocaleDateString(localeTag())} {dt.toLocaleTimeString(localeTag(), { hour: '2-digit', minute: '2-digit' })} · {methodLabel(t, s.method)} · {(() => { const n = s.items.reduce((n, i) => n + i.qty, 0); return n === 1 ? t('pos.ui.itemsCountOne', { n }) : t('pos.ui.itemsCount', { n }); })()}
                       {who && ` · ${who}`}
                       {s.customerName && ` · ${s.customerName}`}
                       {s.orgName && ` · ${t('pos.org.billedTo')}: ${s.orgName}`}
@@ -4556,7 +4556,7 @@ function DrawerTab({ store, sales, role, cashierName, extras }) {
       </section>
 
       {closing && (
-        <Modal title="Close the drawer" onClose={() => setClosing(null)}>
+        <Modal title={t('pos.ui.closeDrawerTitle')} onClose={() => setClosing(null)}>
           <div className="space-y-3">
             <div className="rounded-os bg-paper p-3 text-center">
               <p className="text-xs text-muted">{t('pos.tabs2.expectedInDrawer')}</p>
@@ -5762,7 +5762,7 @@ function SettingsTabPane({ store, v4, onSave, extras }) {
         loyaltyPointsValueCents: Math.max(0, Math.round((parseFloat(loyaltyValue) || 0) * 100)),
         taxRates: taxRates
           .map((t) => ({
-            name: String(t.name || '').trim().slice(0, 24) || 'Tax',
+            name: String(t.name || '').trim().slice(0, 24) || t('pos.tabs2.taxFallbackName'),
             rate: Number(t.rate) || 0,
             compound: t.compound === true,
           }))
@@ -5822,17 +5822,17 @@ function SettingsTabPane({ store, v4, onSave, extras }) {
           {taxRates.length === 0 && (
             <p className="text-xs text-muted">{t('pos.tabs2.taxNoStacked')}</p>
           )}
-          {taxRates.map((t, i) => (
+          {taxRates.map((row, i) => (
             <div key={i}>
               <div className="flex items-center gap-2">
                 <input
-                  value={t.name}
+                  value={row.name}
                   onChange={(e) => setTaxRow(i, { name: e.target.value })}
                   placeholder={t('pos.tabs2.taxNamePh')}
                   className={`${inputCls} flex-1`}
                 />
                 <input
-                  value={String(t.rate)}
+                  value={String(row.rate)}
                   onChange={(e) => setTaxRow(i, { rate: e.target.value.replace(/[^0-9.]/g, '') })}
                   placeholder="0"
                   inputMode="decimal"
@@ -5852,7 +5852,7 @@ function SettingsTabPane({ store, v4, onSave, extras }) {
                 <label className="mt-1 flex cursor-pointer items-center gap-1.5 pl-1 text-[11px] text-muted">
                   <input
                     type="checkbox"
-                    checked={t.compound === true}
+                    checked={row.compound === true}
                     onChange={(e) => setTaxRow(i, { compound: e.target.checked })}
                     className="accent-accent"
                   />

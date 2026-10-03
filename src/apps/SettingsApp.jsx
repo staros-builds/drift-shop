@@ -1060,9 +1060,7 @@ export default function SettingsApp({ windowApi }) {
             })}
           </div>
           <p className="mt-2 text-xs text-muted">
-            Desktop controls the desktop icons (drag them to reorder); Start controls the Start
-            menu and the touch home screen. You can also right-click the desktop: right-click an
-            icon to remove it, right-click empty space to add one back.
+            {t('settings.desktopBlurb')}
           </p>
         </section>
 
@@ -1112,18 +1110,11 @@ export default function SettingsApp({ windowApi }) {
               disabled={erasing}
               className="flex items-center gap-2 rounded-os border border-osborder bg-surface px-4 py-2 text-sm text-muted transition-colors duration-160 hover:text-ink disabled:opacity-40"
             >
-              <Trash2 size={15} /> {erasing ? 'Erasing…' : 'Erase all data'}
+              <Trash2 size={15} /> {erasing ? t('settings.erasing') : t('settings.eraseAllData')}
             </button>
           </div>
           <p className="mt-2 text-xs text-muted">
-            Downloads one backup file with your whole account: settings, profile, files
-            (including binary files), pins, spaces with their window layouts, Helm threads,
-            highscores, notifications, every POS store (products, sales, customers, staff,
-            time-clock history, appointments, drawer shifts, refunds, and shop files), plus
-            your support requests and feedback. To put a backup back, the owner uses
-            Admin → Danger zone → Restore from backup. Keep the file somewhere safe: it
-            contains private data such as staff PINs.
-            Erasing deletes everything permanently.
+            {t('settings.backupBlurb')}
           </p>
           {cloudCard}
         </section>
@@ -1176,7 +1167,7 @@ export default function SettingsApp({ windowApi }) {
           </div>
           {(showInstallHelp || installState === 'manual') && installState !== 'installed' && (
             <p className="mt-2 rounded-os border border-osborder bg-paper px-3 py-2 text-xs text-muted">
-              {installInstructions()}
+              {installInstructions(t)}
             </p>
           )}
           <p className="mt-2 text-xs text-muted">
@@ -1202,7 +1193,7 @@ export default function SettingsApp({ windowApi }) {
             </button>
           </div>
           <p className="mt-2 text-xs text-muted">
-            The welcome guide is the first-run greeting; the feature tour walks through the desktop, apps, and settings.
+            {t('settings.welcomeGuideBlurb')}
           </p>
         </section>
 
@@ -1236,8 +1227,8 @@ export default function SettingsApp({ windowApi }) {
                 {storageBytes == null ? 'computing…' : formatBytes(storageBytes)}
                 <button
                   onClick={computeStorage}
-                  title="Recompute storage used"
-                  aria-label="Recompute storage used"
+                  title={t('settings.recomputeStorage')}
+                  aria-label={t('settings.recomputeStorage')}
                   className="rounded-os p-1 text-muted transition-colors duration-160 hover:text-ink"
                 >
                   <RefreshCw size={13} />

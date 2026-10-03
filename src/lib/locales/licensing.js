@@ -58,8 +58,8 @@ export const licensing = {
     supportLoadError: 'We could not load your messages. Please try again.',
     /* ---- settings: your plan ---- */
     planTitle: 'Your plan',
-    planTrial: 'Free trial — {days} days left',
-    planTrialOne: 'Free trial — 1 day left',
+    planTrial: 'Shop trial — {days} days left',
+    planTrialOne: 'Shop trial — 1 day left',
     planTrialEnds: 'Your free trial ends on {date}. After that, the shop locks until you enter an unlock key. Your data is never deleted.',
     planActiveLifetime: 'Unlocked — this shop is paid for, for good.',
     planActiveTerm: 'Unlocked until {date} ({days} days left).',

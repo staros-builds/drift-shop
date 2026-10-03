@@ -123,9 +123,9 @@ export function appointmentIcs({ title, startsAt, endsAt, notes, customerName })
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Drift Shop//Appointments//EN',
+    'PRODID:-//Vendra//Appointments//EN',
     'BEGIN:VEVENT',
-    `UID:${Date.now()}-${Math.random().toString(36).slice(2, 10)}@drift-shop`,
+    `UID:${Date.now()}-${Math.random().toString(36).slice(2, 10)}@vendra`,
     `DTSTAMP:${icsDate(new Date())}`,
     `DTSTART:${icsDate(start)}`,
     `DTEND:${icsDate(end)}`,

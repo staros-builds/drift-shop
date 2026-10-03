@@ -873,8 +873,16 @@ export function createSupabaseBackend(config = null) {
       // old 6-char slice of a timestamp fallback was hour-stable on plain
       // HTTP and collided on profiles_username_key, 500ing every signup.
       const tag = randomHex(10);
+      // Friendly display name: adjective + animal + 4 digits (e.g. "Guest Sunny Fox 1234")
+      // The full hex tag stays in the metadata for uniqueness.
+      const adjectives = ['Sunny', 'Clever', 'Brave', 'Kind', 'Swift', 'Calm', 'Bright', 'Bold', 'Gentle', 'Wise'];
+      const animals = ['Fox', 'Owl', 'Bear', 'Wolf', 'Hawk', 'Deer', 'Robin', 'Badger', 'Otter', 'Lynx'];
+      const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+      const animal = animals[Math.floor(Math.random() * animals.length)];
+      const num = Math.floor(1000 + Math.random() * 9000);
+      const friendlyName = `Guest ${adj} ${animal} ${num}`;
       const { data, error } = await client.auth.signInAnonymously({
-        options: { data: { username: `Guest ${tag}`, is_guest: true } },
+        options: { data: { username: friendlyName, is_guest: true, guest_tag: tag } },
       });
       if (error) throw authFailure('Guest sign-in failed', error);
       return settleSession(

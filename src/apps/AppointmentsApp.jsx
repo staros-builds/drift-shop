@@ -333,7 +333,14 @@ function EditorDialog({ initial, customers, staff, appointments, canDelete, onCl
           <div className="flex gap-2">
             {editing && (
               <button type="button" onClick={() => {
-                if (!downloadAppointmentIcs({ title, startsAt, endsAt, notes, customerName: custSearch })) {
+                if (downloadAppointmentIcs({ title, startsAt, endsAt, notes, customerName: custSearch })) {
+                  setError('');
+                  // Show brief success feedback
+                  const btn = event.target.closest('button');
+                  const orig = btn.innerHTML;
+                  btn.innerHTML = '✓ ' + t('integrations.addToCalendar');
+                  setTimeout(() => { btn.innerHTML = orig; }, 2000);
+                } else {
                   setError(t('integrations.addToCalendarFail'));
                 }
               }}
@@ -432,7 +439,7 @@ function DayView({ date, appointments, onSlotClick, onOpen }) {
             className="group absolute flex w-full border-t border-osborder text-left hover:bg-paper/60"
             style={{ top: (h - DAY_START) * 60 * pxPerMin, height: 60 * pxPerMin }}>
             <span className="w-14 shrink-0 px-2 pt-1 text-[11px] text-muted">
-              {new Date(2000, 0, 1, h).toLocaleTimeString(localeTag(), { hour: 'numeric' })}
+              {new Date(2000, 0, 1, h).toLocaleTimeString(localeTag(), { hour: 'numeric', hour12: true })}
             </span>
             <span className="mt-2 hidden text-[11px] text-accent opacity-0 group-hover:opacity-100">+ {t('appointments.book')}</span>
           </button>

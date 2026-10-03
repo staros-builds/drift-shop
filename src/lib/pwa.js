@@ -71,11 +71,12 @@ export function isIOS() {
   );
 }
 
-export function installInstructions() {
+export function installInstructions(t) {
+  const tr = t || ((k) => k);
   if (isIOS()) {
-    return 'On iPhone/iPad: tap Share, then “Add to Home Screen”. Vendra will open full-screen like a native app.';
+    return tr('settings.installIos');
   }
-  return 'In your browser menu choose “Install Vendra” (or “Add to Home Screen” on Android). Vendra will open in its own window like a native app.';
+  return tr('settings.installOther');
 }
 
 let swPromise = null;
