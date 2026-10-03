@@ -5666,6 +5666,36 @@ function SettingsTabPane({ store, v4, onSave, extras }) {
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const isOwner = store.role === 'owner';
+  const [storefrontUrl, setStorefrontUrl] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  // Fetch the public storefront URL for this store
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { backend } = await import('../lib/backend/current.js');
+        const profile = await backend.pos.getStorefrontProfile(store.id).catch(() => null);
+        if (!cancelled && profile?.slug) {
+          const { BRAND } = await import('../lib/brand.js');
+          setStorefrontUrl(`${window.location.origin}${BRAND.appBasePath()}#/store/${profile.slug}`);
+        }
+      } catch {
+        // Storefront not configured — link stays hidden
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [store.id]);
+
+  const copyStorefrontUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(storefrontUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard unavailable — user can copy manually
+    }
+  };
 
   // Match saved rows against a preset so the picker reflects what's stored.
   // defaultRate matters for the "No tax" preset: it only matches when the
@@ -5789,6 +5819,28 @@ function SettingsTabPane({ store, v4, onSave, extras }) {
   return (
     <div className="mx-auto w-full max-w-md space-y-4">
       <ErrorNote message={error} />
+      {storefrontUrl && (
+        <div className="rounded-os border border-accent/40 bg-accent/10 p-3">
+          <p className="text-sm font-semibold text-ink">{t('pos.tabs2.storefrontLinkTitle')}</p>
+          <p className="mt-1 break-all text-xs text-muted">{storefrontUrl}</p>
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              onClick={() => window.open(storefrontUrl, '_blank', 'noopener')}
+              className="rounded-os bg-accent px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+            >
+              {t('pos.tabs2.viewStorefront')}
+            </button>
+            <button
+              type="button"
+              onClick={copyStorefrontUrl}
+              className="rounded-os border border-osborder bg-surface px-3 py-1.5 text-xs font-medium text-ink hover:border-accent"
+            >
+              {copied ? t('pos.tabs2.copied') : t('pos.tabs2.copyLink')}
+            </button>
+          </div>
+        </div>
+      )}
       <Field label="Store name (prints on receipts)">
         <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} />
       </Field>
