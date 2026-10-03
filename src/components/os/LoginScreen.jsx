@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { LogIn, UserPlus, AlertCircle, Timer, X, Languages, KeyRound, Mail, MailQuestion, CheckCircle2 } from 'lucide-react';
+import { LogIn, UserPlus, AlertCircle, Timer, X, Languages, KeyRound, Mail, MailQuestion, CheckCircle2, Store } from 'lucide-react';
 import { useAuth, TRIAL_USED_KEY } from '../../os/AuthContext.jsx';
 import { useLang } from '../../lib/i18n.jsx';
 import { backend } from '../../lib/backend/current.js';
@@ -409,6 +409,9 @@ export default function LoginScreen() {
   const [checkEmail, setCheckEmail] = useState(null); // { email } | null
   const [magicMode, setMagicMode] = useState(false); // passwordless: email me a login link
   const [magicSent, setMagicSent] = useState(null); // { email } | null
+  // "Visiting a shop?" — a customer-facing door on the welcome screen: type
+  // a shop's public web address to jump to its storefront (#/store/<slug>).
+  const [shopSlug, setShopSlug] = useState('');
   const [lastSentAt, setLastSentAt] = useState(0);
   const [nowTick, setNowTick] = useState(() => Date.now());
   // One-time notice from an auth callback landing (e.g. an expired
@@ -694,14 +697,34 @@ export default function LoginScreen() {
     }
   };
 
+  // "Visiting a shop?": jump to a shop's public storefront. The storefront
+  // route is evaluated once at boot (main.jsx), so set the hash and reload
+  // — the boot flow renders StorefrontPublic instead of the login screen.
+  const visitShop = (e) => {
+    e.preventDefault();
+    const slug = shopSlug.trim().toLowerCase();
+    if (!/^[a-z0-9][a-z0-9-]{0,62}$/.test(slug)) return;
+    window.location.hash = '#/store/' + encodeURIComponent(slug);
+    window.location.reload();
+  };
+
   return (
     <div className="fixed inset-0 overflow-y-auto bg-paper">
-      <div className="flex min-h-full items-center justify-center p-4">
+      {/* Warm welcome glow behind the card — decorative only. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-80"
+        style={{ background: 'radial-gradient(60% 100% at 50% 0%, color-mix(in srgb, var(--os-accent) 14%, transparent), transparent)' }}
+      />
+      <div className="relative flex min-h-full items-center justify-center p-4">
       <div className="w-full max-w-sm rounded-os border border-osborder bg-surface p-5 shadow-os sm:p-8 [@media(max-height:660px)]:px-5 [@media(max-height:660px)]:py-4">
         <div className="flex items-start justify-between">
           <div className="w-16" />
           <div className="flex flex-col items-center">
-            <span className="text-accent">
+            <span
+              className="rounded-full p-3 text-accent"
+              style={{ background: 'color-mix(in srgb, var(--os-accent) 12%, transparent)' }}
+            >
               <DriftMark size={36} />
             </span>
             <h1 className="mt-2 text-2xl font-light tracking-tight text-ink">{t('brand.name')}</h1>
@@ -1020,6 +1043,33 @@ export default function LoginScreen() {
             </p>
           </>
         )}
+
+        <div className="mt-4 rounded-os bg-paper p-3">
+          <p className="flex items-center gap-1.5 text-xs font-semibold text-ink">
+            <Store size={14} className="text-accent" />
+            {t('login.visitShopTitle')}
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-muted">{t('login.visitShopBody')}</p>
+          <form onSubmit={visitShop} className="mt-2 flex gap-2">
+            <input
+              type="text"
+              value={shopSlug}
+              onChange={(e) => setShopSlug(e.target.value)}
+              placeholder={t('login.shopAddressPh')}
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              aria-label={t('login.visitShopTitle')}
+              className="min-w-0 flex-1 rounded-os border border-osborder bg-surface px-3 py-2 text-sm text-ink outline-none duration-160 focus:border-accent"
+            />
+            <button
+              type="submit"
+              className="shrink-0 rounded-os bg-accent px-3 py-2 text-sm font-semibold text-accentink duration-160 hover:opacity-90"
+            >
+              {t('login.visitShopBtn')}
+            </button>
+          </form>
+        </div>
 
         <p className="mt-4 text-center text-xs text-muted">© {new Date().getFullYear()} {t('brand.name')}</p>
       </div>

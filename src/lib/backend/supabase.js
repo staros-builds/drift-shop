@@ -2763,6 +2763,176 @@ export function createSupabaseBackend(config = null) {
     },
   };
 
+  // ---- classifieds: Kijiji-style ads per shop ----------------------------------
+  // Migration 097 capability probe: the classified_ads table + the
+  // public_classifieds() RPC. Until 097 is applied, the app shows a
+  // friendly "needs a small system update" note instead of raw errors.
+  let classifiedsAvail = null;
+  async function classifiedsAvailable() {
+    if (classifiedsAvail !== null) return classifiedsAvail;
+    try {
+      const res = await client.from('classified_ads').select('id').limit(1);
+      classifiedsAvail =
+        !res.error || !/42P01|PGRST205|does not exist/i.test(res.error.message || '');
+    } catch {
+      classifiedsAvail = false;
+    }
+    return classifiedsAvail;
+  }
+
+  const mapClassifiedAd = (r) => ({
+    id: r.id,
+    storeId: r.store_id,
+    userId: r.user_id,
+    title: r.title,
+    description: r.description ?? '',
+    priceCents: r.price_cents ?? null,
+    category: r.category ?? 'for-sale',
+    photoData: r.photo_data ?? null,
+    contactName: r.contact_name ?? '',
+    contactPhone: r.contact_phone ?? '',
+    contactEmail: r.contact_email ?? '',
+    status: r.status ?? 'draft',
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  });
+
+  const CLASSIFIED_CATEGORIES = [
+    'for-sale',
+    'free',
+    'services',
+    'wanted',
+    'jobs',
+    'events',
+    'announcements',
+  ];
+
+  const classifieds = {
+    /** True once migration 097 has been applied. */
+    async available() {
+      return classifiedsAvailable();
+    },
+
+    categories() {
+      return [...CLASSIFIED_CATEGORIES];
+    },
+
+    async list(storeId, { status } = {}) {
+      requireUid();
+      if (!(await classifiedsAvailable())) throw new Error('classifieds-unavailable');
+      if (!storeId) throw new Error('list needs a storeId.');
+      let q = client
+        .from('classified_ads')
+        .select('*')
+        .eq('store_id', storeId)
+        .order('created_at', { ascending: false });
+      if (status === 'draft' || status === 'published') q = q.eq('status', status);
+      return check(await q, 'Listing classified ads').map(mapClassifiedAd);
+    },
+
+    async create(storeId, ad) {
+      const uid = requireUid();
+      if (!(await classifiedsAvailable())) throw new Error('classifieds-unavailable');
+      if (!storeId) throw new Error('create needs a storeId.');
+      const title = String(ad?.title ?? '').trim();
+      if (!title) throw new Error('Ad title cannot be empty.');
+      const category = CLASSIFIED_CATEGORIES.includes(ad?.category) ? ad.category : 'for-sale';
+      const status = ad?.status === 'published' ? 'published' : 'draft';
+      let priceCents = null;
+      if (ad?.priceCents !== null && ad?.priceCents !== undefined && ad?.priceCents !== '') {
+        const n = Math.round(Number(ad.priceCents));
+        if (!Number.isFinite(n) || n < 0) throw new Error('Price must be a positive number.');
+        priceCents = n;
+      }
+      const row = check(
+        await client
+          .from('classified_ads')
+          .insert({
+            store_id: storeId,
+            user_id: uid,
+            title: title.slice(0, 120),
+            description: String(ad?.description ?? ''),
+            price_cents: priceCents,
+            category,
+            photo_data: ad?.photoData || null,
+            contact_name: String(ad?.contactName ?? ''),
+            contact_phone: String(ad?.contactPhone ?? ''),
+            contact_email: String(ad?.contactEmail ?? ''),
+            status,
+          })
+          .select('*')
+          .single(),
+        'Creating classified ad'
+      );
+      return mapClassifiedAd(row);
+    },
+
+    async update(id, patch) {
+      requireUid();
+      if (!(await classifiedsAvailable())) throw new Error('classifieds-unavailable');
+      if (!id) throw new Error('update needs an id.');
+      const clean = {};
+      if (patch?.title !== undefined) {
+        const t = String(patch.title).trim();
+        if (!t) throw new Error('Ad title cannot be empty.');
+        clean.title = t.slice(0, 120);
+      }
+      if (patch?.description !== undefined) clean.description = String(patch.description);
+      if (patch?.priceCents !== undefined) {
+        if (patch.priceCents === null || patch.priceCents === '') {
+          clean.price_cents = null;
+        } else {
+          const n = Math.round(Number(patch.priceCents));
+          if (!Number.isFinite(n) || n < 0) throw new Error('Price must be a positive number.');
+          clean.price_cents = n;
+        }
+      }
+      if (patch?.category !== undefined && CLASSIFIED_CATEGORIES.includes(patch.category)) {
+        clean.category = patch.category;
+      }
+      if (patch?.photoData !== undefined) clean.photo_data = patch.photoData || null;
+      if (patch?.contactName !== undefined) clean.contact_name = String(patch.contactName);
+      if (patch?.contactPhone !== undefined) clean.contact_phone = String(patch.contactPhone);
+      if (patch?.contactEmail !== undefined) clean.contact_email = String(patch.contactEmail);
+      if (patch?.status === 'draft' || patch?.status === 'published') clean.status = patch.status;
+      if (Object.keys(clean).length === 0) throw new Error('Nothing to update.');
+      const row = check(
+        await client.from('classified_ads').update(clean).eq('id', id).select('*').single(),
+        'Updating classified ad'
+      );
+      return mapClassifiedAd(row);
+    },
+
+    async remove(id) {
+      requireUid();
+      if (!(await classifiedsAvailable())) throw new Error('classifieds-unavailable');
+      if (!id) throw new Error('remove needs an id.');
+      // RLS restricts deletes to owner/manager; this gives a clean error first.
+      check(await client.from('classified_ads').delete().eq('id', id), 'Deleting classified ad');
+    },
+
+    /**
+     * Published ads for a shop's PUBLIC storefront, by slug.
+     * Uses the public_classifieds() RPC (migration 097); returns [] when
+     * the migration is not applied yet or the slug is unknown.
+     */
+    async publicList(slug) {
+      const clean = String(slug ?? '').trim().toLowerCase();
+      if (!clean) return [];
+      try {
+        const { data, error } = await client.rpc('public_classifieds', { p_slug: clean });
+        if (error) {
+          if (/42883|PGRST202|does not exist/i.test(error.message || '')) return [];
+          throw new Error(`Loading public classifieds: ${error.message}`);
+        }
+        return Array.isArray(data) ? data : [];
+      } catch (err) {
+        if (/42883|PGRST202|does not exist/i.test(err?.message || '')) return [];
+        throw err;
+      }
+    },
+  };
+
   // ---- pos: multi-user point of sale ----------------------------------------------
   // Stores are shared across Vendra users: pos_stores + pos_store_members
   // (roles owner/manager/cashier), pos_products, pos_sales (per-store
@@ -7110,6 +7280,7 @@ export function createSupabaseBackend(config = null) {
     notifications,
     pos,
     bouquinerie,
+    classifieds,
     support,
     feedback,
     license,

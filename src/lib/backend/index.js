@@ -192,6 +192,21 @@
  *       // orders on top of the shop_customers table.
  *       linkShopCustomer(slug) -> row                     // idempotent
  *     },
+ *     classifieds: {
+ *       // Kijiji-style classified ads per shop (migration 097).
+ *       // Drafts are private; published ads appear on the shop's public
+ *       // storefront via publicList(slug) -> the public_classifieds() RPC.
+ *       // ad = { id, storeId, userId, title, description, priceCents|null,
+ *       //        category, photoData|null, contactName, contactPhone,
+ *       //        contactEmail, status: 'draft'|'published', createdAt }
+ *       available() -> bool                               // migration 097 applied?
+ *       categories() -> [string]                          // category keys
+ *       list(storeId, { status }) -> [ad]                  // newest first
+ *       create(storeId, ad) -> ad                          // any member
+ *       update(id, patch) -> ad                            // any member
+ *       remove(id) -> void                                 // owner/manager only
+ *       publicList(slug) -> [public ad]                    // published only, [] if n/a
+ *     },
  *   }
  *
  * All functions are async unless noted. All throw real Errors on failure —

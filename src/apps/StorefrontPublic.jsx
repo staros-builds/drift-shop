@@ -6,6 +6,7 @@ import { en } from '../lib/locales/en.js';
 import { fr } from '../lib/locales/fr.js';
 import { es } from '../lib/locales/es.js';
 import { pt } from '../lib/locales/pt.js';
+import { classifieds } from '../lib/locales/classifieds.js';
 import { applyStorefrontSeo } from '../lib/storefrontSeo.js';
 import StorefrontLinks from './StorefrontLinks.jsx';
 import {
@@ -90,6 +91,32 @@ function oo(key, vars) {
     for (const [k, v] of Object.entries(vars)) s = String(s).replaceAll(`{${k}}`, String(v));
   }
   return s;
+}
+
+// Classifieds UI strings: the shared `classifieds` locale namespace
+// (src/lib/locales/classifieds.js); the visitor's persisted app language
+// picks the language, same as oo() above.
+function cc(key, vars) {
+  const lang = getLang();
+  const dict = (classifieds[lang] || classifieds.fr)[key] ?? classifieds.en[key] ?? key;
+  let s = String(dict);
+  if (vars) {
+    for (const [k, v] of Object.entries(vars)) s = s.replaceAll(`{${k}}`, String(v));
+  }
+  return s;
+}
+
+function ccCat(category) {
+  const map = {
+    'for-sale': 'catForSale',
+    free: 'catFree',
+    services: 'catServices',
+    wanted: 'catWanted',
+    jobs: 'catJobs',
+    events: 'catEvents',
+    announcements: 'catAnnouncements',
+  };
+  return cc(map[category] || 'catForSale');
 }
 
 const ORDER_STATUS_KEYS = {
@@ -212,6 +239,13 @@ const styles = {
   },
   productName: { fontSize: 15, fontWeight: 600, lineHeight: 1.35, overflowWrap: 'anywhere', minWidth: 0 },
   productPrice: { fontSize: 15, fontWeight: 800, marginTop: 'auto' },
+  // Classifieds (bulletin board): same card language as products, plus a
+  // photo strip, a category pill and the seller's contact details.
+  adPhoto: { width: '100%', height: 140, objectFit: 'cover', borderRadius: '14px 14px 0 0', margin: '-16px -14px 6px', display: 'block' },
+  adTitle: { fontSize: 17, fontWeight: 800, margin: '0 0 12px', overflowWrap: 'anywhere' },
+  adCat: { fontSize: 11, fontWeight: 700, color: '#6d6252', textTransform: 'uppercase', letterSpacing: 0.6 },
+  adDesc: { fontSize: 14, color: '#6d6252', lineHeight: 1.45, overflowWrap: 'anywhere', whiteSpace: 'pre-line' },
+  adContact: { fontSize: 13, color: '#26221c', marginTop: 'auto', paddingTop: 8, borderTop: '1px solid #e2d9c8' },
   addBtn: {
     marginTop: 8,
     fontSize: 14,
@@ -411,6 +445,7 @@ export default function StorefrontPublic({ slug, configError = null, appHome = n
     phase: configError ? 'error' : 'loading',
     data: null,
   });
+  const [classifiedAds, setClassifiedAds] = useState([]); // published ads (migration 097); [] = none / unavailable
   const [session, setSession] = useState(undefined); // undefined = checking
   const [ordersReady, setOrdersReady] = useState(null); // migration 073 probe
   const [cart, setCart] = useState(() => {
@@ -447,6 +482,15 @@ export default function StorefrontPublic({ slug, configError = null, appHome = n
       setState({ phase: 'missing', data: null });
     } else {
       setState({ phase: 'ready', data });
+    }
+    // Classifieds (migration 097): published ads for this shop's bulletin
+    // board. Never blocks the storefront — on pre-migration databases the
+    // RPC is simply absent and the section stays hidden.
+    try {
+      const ads = await backend.classifieds.publicList(slug);
+      setClassifiedAds(Array.isArray(ads) ? ads : []);
+    } catch {
+      setClassifiedAds([]);
     }
   };
 
@@ -1232,6 +1276,44 @@ export default function StorefrontPublic({ slug, configError = null, appHome = n
                             ) : null}
                           </>
                         )
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
+
+          {classifiedAds.length > 0 && (
+            <section style={styles.section} aria-label={cc('storefrontSectionTitle')}>
+              <h2 style={styles.adTitle}>{cc('storefrontSectionTitle')}</h2>
+              <p style={{ ...styles.tagline, fontSize: 14, marginBottom: 4 }}>
+                {cc('storefrontSectionSub')}
+              </p>
+              <ul style={styles.grid}>
+                {classifiedAds.map((a, i) => {
+                  const price =
+                    a.price_cents === null || a.price_cents === undefined
+                      ? cc('priceContact')
+                      : Number(a.price_cents) === 0
+                        ? cc('priceFree')
+                        : money(a.price_cents, currency);
+                  const contact = [a.contact_name, a.contact_phone, a.contact_email]
+                    .filter(Boolean)
+                    .join(' · ');
+                  return (
+                    <li key={`${a.id || a.title}-${i}`} style={styles.product}>
+                      {a.photo_data ? (
+                        <img src={a.photo_data} alt="" style={styles.adPhoto} loading="lazy" />
+                      ) : null}
+                      <span style={styles.adCat}>{ccCat(a.category)}</span>
+                      <span style={styles.productName}>{a.title}</span>
+                      <span style={{ ...styles.productPrice, color: accent }}>{price}</span>
+                      {a.description ? <span style={styles.adDesc}>{a.description}</span> : null}
+                      {contact ? (
+                        <span style={styles.adContact}>
+                          {cc('contactAd', { contact })}
+                        </span>
                       ) : null}
                     </li>
                   );

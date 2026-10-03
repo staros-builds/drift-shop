@@ -17,12 +17,13 @@ import { pt } from './locales/pt.js';
 import { LANG_KEY, LANGS, getLang, localeTag, tagFor } from './localeTag.js';
 import { resiliency } from './locales/resiliency.js'; // resiliency UI strings, merged below (kept out of en.js/fr.js)
 import { licensing } from './locales/licensing.js'; // licensing UI strings, same merge pattern
+import { classifieds } from './locales/classifieds.js'; // classifieds UI strings, same merge pattern
 export { LANG_KEY, LANGS, getLang, localeTag, tagFor };
 const DICTS = {
-  fr: { ...fr, resiliency: resiliency.fr, licensing: licensing.fr },
-  en: { ...en, resiliency: resiliency.en, licensing: licensing.en },
-  es: { ...es, resiliency: resiliency.es, licensing: licensing.es },
-  pt: { ...pt, resiliency: resiliency.pt, licensing: licensing.pt },
+  fr: { ...fr, resiliency: resiliency.fr, licensing: licensing.fr, classifieds: classifieds.fr },
+  en: { ...en, resiliency: resiliency.en, licensing: licensing.en, classifieds: classifieds.en },
+  es: { ...es, resiliency: resiliency.es, licensing: licensing.es, classifieds: classifieds.es },
+  pt: { ...pt, resiliency: resiliency.pt, licensing: licensing.pt, classifieds: classifieds.pt },
 };
 
 function lookup(dict, key) {
