@@ -1836,6 +1836,7 @@ media: {
     tabSupport: 'Suporte',
     tabFeedback: 'Comentários',
     tabShops: 'Lojas',
+    tabPlatform: 'Plataforma',
     dangerTab: 'Zona de perigo',
     factoryResetTitle: 'Redefinição de fábrica — apagar tudo',
     factoryResetWhat: 'Isto apaga para sempre TUDO nesta instalação: todas as contas de usuário, todas as vendas, reembolsos, cartões-presente, itens do catálogo, agendamentos, arquivos, declarações, dados da equipe e da loja. A instalação volta então ao estado de fábrica com só a conta mestre (nome de usuário "admin").',

@@ -1845,6 +1845,7 @@ media: {
     tabSupport: 'Soutien',
     tabFeedback: 'Avis',
     tabShops: 'Boutiques',
+    tabPlatform: 'Plateforme',
     dangerTab: 'Zone danger',
     factoryResetTitle: 'Réinitialisation — tout effacer',
     factoryResetWhat: 'Ceci supprime DÉFINITIVEMENT TOUT sur cette installation : tous les comptes utilisateurs, toutes les ventes, remboursements, cartes-cadeaux, articles du catalogue, rendez-vous, fichiers, attestations, données d’équipe et de boutiques. L’appli revient ensuite à son état d’usine avec uniquement le compte maître (nom d’utilisateur « admin »).',

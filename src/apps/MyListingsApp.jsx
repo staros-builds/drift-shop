@@ -243,7 +243,9 @@ export default function MyListingsApp() {
   const [available, setAvailable] = useState(null);
   const [ads, setAds] = useState([]);
   const [limits, setLimits] = useState(null);
-  const [limitInfo] = useState(() => cl().customerLimitsInfo());
+  // Starts as built-in defaults; refresh() replaces with the platform
+  // owner's effective settings (migration 100).
+  const [limitInfo, setLimitInfo] = useState(() => ({ ...cl().customerLimitsInfo(), enabled: true }));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [tab, setTab] = useState('active');
@@ -253,12 +255,23 @@ export default function MyListingsApp() {
   const [deleting, setDeleting] = useState(null);
   const [viewing, setViewing] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [limitNotice, setLimitNotice] = useState(''); // 'active' | 'daily' | ''
+  const [limitNotice, setLimitNotice] = useState(''); // 'active' | 'daily' | 'disabled' | ''
 
   const refresh = useCallback(async () => {
-    const [list, lim] = await Promise.all([cl().customerList(), cl().customerLimits()]);
+    const [list, lim, eff] = await Promise.all([
+      cl().customerList(),
+      cl().customerLimits(),
+      cl().effectiveLimits().catch(() => cl().customerLimitsInfo()),
+    ]);
     setAds(list);
     setLimits(lim);
+    // Effective limits honor the platform owner's settings (migration 100).
+    setLimitInfo({
+      maxActive: eff.maxActive,
+      maxPerDay: eff.maxPerDay,
+      expiryDays: eff.expiryDays,
+      enabled: eff.enabled !== false,
+    });
   }, []);
 
   const load = useCallback(async () => {
@@ -282,6 +295,9 @@ export default function MyListingsApp() {
 
   const limitErrorMessage = useCallback(
     (err) => {
+      if (err?.limitKind === 'disabled') {
+        return t('classifieds.custTierDisabled');
+      }
       if (err?.limitKind === 'active') {
         return t('classifieds.custLimitHitActive', { max: limitInfo.maxActive });
       }
@@ -446,11 +462,20 @@ export default function MyListingsApp() {
       {limitNotice && (
         <UpgradeCard
           reason={
-            limitNotice === 'active'
-              ? t('classifieds.custLimitHitActive', { max: limitInfo.maxActive })
-              : t('classifieds.custLimitHitDaily', { max: limitInfo.maxPerDay })
+            limitNotice === 'disabled'
+              ? t('classifieds.custTierDisabled')
+              : limitNotice === 'active'
+                ? t('classifieds.custLimitHitActive', { max: limitInfo.maxActive })
+                : t('classifieds.custLimitHitDaily', { max: limitInfo.maxPerDay })
           }
         />
+      )}
+
+      {/* free tier paused by the platform owner */}
+      {limitInfo.enabled === false && (
+        <div className="rounded-os border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
+          {t('classifieds.custTierDisabled')}
+        </div>
       )}
 
       {/* tabs + search */}

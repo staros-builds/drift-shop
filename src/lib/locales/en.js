@@ -1837,6 +1837,7 @@ media: {
     tabSupport: 'Support',
     tabFeedback: 'Feedback',
     tabShops: 'Shops',
+    tabPlatform: 'Platform',
     dangerTab: 'Danger zone',
     factoryResetTitle: 'Factory reset — wipe everything',
     factoryResetWhat: 'This permanently deletes EVERYTHING on this install: all user accounts, all sales, refunds, gift cards, catalogue items, appointments, files, certificates, team and shop data. The build then returns to its factory state with only the master account (username "admin").',

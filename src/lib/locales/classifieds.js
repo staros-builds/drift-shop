@@ -121,6 +121,8 @@ export const classifieds = {
       'You’ve posted {max} ads today. Come back tomorrow — or upgrade to a shop for unlimited posting.',
     custErrLimitActive: 'Active ad limit reached.',
     custErrLimitDaily: 'Daily posting limit reached.',
+    custTierDisabled:
+      'Free listings are temporarily paused by the platform owner.',
     custPublishedNote: 'Published ads appear on the community board for 60 days.',
     // Public community board (#/community)
     communityTitle: 'Community listings',
@@ -216,6 +218,42 @@ export const classifieds = {
     savedSearches: 'Recherches enregistrées',
     removeSavedSearch: 'Retirer la recherche enregistrée',
     searchSaved: 'Recherche enregistrée.',
+    // Niveau gratuit (migration 099) — annonces personnelles, style Kijiji
+    custAppName: 'Mes annonces',
+    custAppTagline: 'Vos petites annonces personnelles gratuites — comme Kijiji, intégré. Aucune boutique requise.',
+    custLimitBanner: '{active} sur {max} annonces actives · {left} publications restantes aujourd’hui',
+    custTabActive: 'Actives',
+    custTabExpired: 'Expirées',
+    custTabAll: 'Toutes',
+    custExpired: 'Expirée',
+    custExpiresIn: 'Expire dans {days} jours',
+    custExpiresInOne: 'Expire demain',
+    custRenew: 'Renouveler',
+    custRenewed: 'Annonce renouvelée pour 60 jours de plus.',
+    custEmptyActive: 'Aucune annonce active. Publiez votre première annonce gratuite — ça prend une minute.',
+    custEmptyExpired: 'Aucune annonce expirée. Les annonces renouvelées restent en ligne 60 jours de plus.',
+    custEmptyAll: 'Vous n’avez encore publié aucune annonce. C’est gratuit — essayez.',
+    custEmptySearch: 'Aucune annonce ne correspond à votre recherche.',
+    custUpgradeTitle: 'Besoin de plus de place ?',
+    custUpgradeBody:
+      'Les boutiques obtiennent des annonces illimitées, plus la caisse, l’inventaire, les rendez-vous et la commande en ligne — 350 $/an, sans frais de transaction.',
+    custUpgradeCta: 'Voir les formules boutique',
+    custLimitHitActive:
+      'Vous avez atteint la limite de {max} annonces actives. Supprimez une vieille annonce ou laissez-la expirer — ou passez en boutique pour des annonces illimitées.',
+    custLimitHitDaily:
+      'Vous avez publié {max} annonces aujourd’hui. Revenez demain — ou passez en boutique pour publier sans limite.',
+    custErrLimitActive: 'Limite d’annonces actives atteinte.',
+    custErrLimitDaily: 'Limite quotidienne de publication atteinte.',
+    custTierDisabled:
+      'Les annonces gratuites sont temporairement désactivées par le propriétaire de la plateforme.',
+    custPublishedNote: 'Les annonces publiées paraissent sur le tableau communautaire pendant 60 jours.',
+    // Tableau communautaire public (#/community)
+    communityTitle: 'Annonces de la communauté',
+    communitySub: 'Annonces publiées par des voisins — pas des boutiques. Privilégiez les échanges en personne.',
+    communityEmpty: 'Aucune annonce pour l’instant. Soyez le premier à en publier une — c’est gratuit.',
+    communitySellerLabel: 'Voisin',
+    communityBrowseCta: 'Voir les annonces de la communauté',
+    communityBackHome: 'Retour à la connexion',
   },
   es: {
     appName: 'Anuncios clasificados',
@@ -329,6 +367,8 @@ export const classifieds = {
       'Publicaste {max} anuncios hoy. Vuelve mañana — o mejora a tienda para publicar sin límite.',
     custErrLimitActive: 'Límite de anuncios activos alcanzado.',
     custErrLimitDaily: 'Límite diario de publicación alcanzado.',
+    custTierDisabled:
+      'Los anuncios gratuitos están temporalmente pausados por el propietario de la plataforma.',
     custPublishedNote: 'Los anuncios publicados aparecen en el tablón comunitario durante 60 días.',
     // Tablón comunitario público (#/community)
     communityTitle: 'Anuncios de la comunidad',
@@ -450,6 +490,8 @@ export const classifieds = {
       'Você publicou {max} anúncios hoje. Volte amanhã — ou vire loja para publicar sem limite.',
     custErrLimitActive: 'Limite de anúncios ativos atingido.',
     custErrLimitDaily: 'Limite diário de publicação atingido.',
+    custTierDisabled:
+      'Os anúncios gratuitos estão temporariamente pausados pelo dono da plataforma.',
     custPublishedNote: 'Anúncios publicados aparecem no mural da comunidade por 60 dias.',
     // Mural comunitário público (#/community)
     communityTitle: 'Classificados da comunidade',

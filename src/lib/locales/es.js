@@ -1837,6 +1837,7 @@ media: {
     tabSupport: 'Soporte',
     tabFeedback: 'Comentarios',
     tabShops: 'Tiendas',
+    tabPlatform: 'Plataforma',
     dangerTab: 'Zona peligrosa',
     factoryResetTitle: 'Restablecimiento de fábrica — borrar todo',
     factoryResetWhat: 'Esto elimina para siempre TODO en esta instalación: todas las cuentas de usuario, todas las ventas, reembolsos, tarjetas regalo, artículos del catálogo, citas, archivos, constancias, datos de equipo y de tienda. La instalación vuelve luego a su estado de fábrica con solo la cuenta maestra (nombre de usuario «admin»).',

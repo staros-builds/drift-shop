@@ -1327,8 +1327,19 @@ export function createSupabaseBackend(config = null) {
   // Every method degrades to a friendly "needs system update" error when
   // migration 098 has not been applied yet (capability probe pattern).
   const recovery = {
-    /** True when the recovery tables/RPCs exist (migration 098 applied). */
+    /**
+     * True when the recovery tables/RPCs exist (migration 098 applied) AND
+     * the platform owner has not disabled recovery (migration 100 setting
+     * recovery_enabled). Every UI entry point goes through this, so the
+     * master kill-switch takes effect everywhere at once.
+     */
     async isAvailable() {
+      try {
+        const s = await platformPublicSettings();
+        if (String(s.recovery_enabled).toLowerCase() !== 'true') return false;
+      } catch {
+        /* settings unreadable: fall through to the table probe */
+      }
       try {
         const { error } = await client.from('recovery_codes').select('id').limit(1);
         return !error || !/42P01|does not exist/i.test(error.message || '');
@@ -1361,6 +1372,17 @@ export function createSupabaseBackend(config = null) {
       throw e;
     },
 
+    /** How many recovery codes to generate (platform setting, default 8). */
+    async codesCount() {
+      try {
+        const s = await platformPublicSettings();
+        const n = parseInt(s.recovery_codes_count, 10);
+        return Number.isFinite(n) ? Math.max(4, Math.min(16, n)) : RECOVERY_CODE_COUNT;
+      } catch {
+        return RECOVERY_CODE_COUNT;
+      }
+    },
+
     /**
      * Generate a fresh set of recovery codes for the signed-in user.
      * Old unused codes are deleted first. Returns the PLAINTEXT codes —
@@ -1368,7 +1390,7 @@ export function createSupabaseBackend(config = null) {
      */
     async generateCodes() {
       const uid = requireUid();
-      const codes = generateRecoveryCodes(RECOVERY_CODE_COUNT);
+      const codes = generateRecoveryCodes(await this.codesCount());
       const rows = [];
       for (const code of codes) {
         rows.push({ user_id: uid, code_hash: await hashRecoveryCode(code), label: 'recovery' });
@@ -3215,6 +3237,11 @@ export function createSupabaseBackend(config = null) {
     /** Map the DB trigger's limit errors to friendly error names. */
     _mapCustomerLimitError(err) {
       const msg = String(err?.message || '');
+      if (/CUSTOMER_TIER_DISABLED/.test(msg)) {
+        const e = new Error('customer-tier-disabled');
+        e.limitKind = 'disabled';
+        throw e;
+      }
       if (/CUSTOMER_LIMIT_ACTIVE/.test(msg)) {
         const e = new Error('customer-limit-active');
         e.limitKind = 'active';
@@ -3382,6 +3409,167 @@ export function createSupabaseBackend(config = null) {
       } catch (err) {
         if (/42883|PGRST202|does not exist/i.test(err?.message || '')) return [];
         throw err;
+      }
+    },
+
+    /**
+     * Effective free-tier limits, honoring the platform owner's settings
+     * (migration 100, platform_public_settings). Falls back to the built-in
+     * defaults when the migration is not applied yet. Cached per session;
+     * the admin panel invalidates after saving.
+     */
+    async effectiveLimits() {
+      return platformPublicSettings().then((s) => ({
+        enabled: String(s.customer_ads_enabled).toLowerCase() === 'true',
+        maxActive: Math.max(1, parseInt(s.customer_ads_max_active, 10) || CUSTOMER_MAX_ACTIVE),
+        maxPerDay: Math.max(1, parseInt(s.customer_ads_max_per_day, 10) || CUSTOMER_MAX_PER_DAY),
+        expiryDays: Math.max(1, parseInt(s.customer_ads_expiry_days, 10) || CUSTOMER_EXPIRY_DAYS),
+      }));
+    },
+  };
+
+  // ---- platform: master-owner controls (migration 100) ---------------------
+  // Adjustable platform policy (free-tier limits, recovery knobs) plus
+  // moderation tools. Everything master-gated server-side via is_master();
+  // the client degrades to built-in defaults until migration 100 is applied.
+  const PLATFORM_DEFAULTS = {
+    customer_ads_enabled: 'true',
+    customer_ads_max_active: String(CUSTOMER_MAX_ACTIVE),
+    customer_ads_max_per_day: String(CUSTOMER_MAX_PER_DAY),
+    customer_ads_expiry_days: String(CUSTOMER_EXPIRY_DAYS),
+    recovery_enabled: 'true',
+    recovery_codes_count: String(RECOVERY_CODE_COUNT),
+    recovery_max_attempts: '10',
+    recovery_window_minutes: '15',
+  };
+
+  let platformAvail = null;
+  async function platformAvailable() {
+    if (platformAvail !== null) return platformAvail;
+    try {
+      const { error } = await client.rpc('platform_public_settings');
+      platformAvail = !error || !/42883|PGRST202|does not exist/i.test(error.message || '');
+    } catch {
+      platformAvail = false;
+    }
+    return platformAvail;
+  }
+
+  // Cached public settings (safe subset, anon-readable RPC). The admin
+  // panel clears this after every save so the UI picks up new values.
+  let platformPublicCache = null;
+  async function platformPublicSettings() {
+    if (platformPublicCache) return platformPublicCache;
+    try {
+      const { data, error } = await client.rpc('platform_public_settings');
+      if (error) throw error;
+      platformPublicCache = { ...PLATFORM_DEFAULTS, ...(data || {}) };
+    } catch {
+      platformPublicCache = { ...PLATFORM_DEFAULTS };
+    }
+    return platformPublicCache;
+  }
+  function invalidatePlatformCache() {
+    platformPublicCache = null;
+  }
+
+  const platform = {
+    /** True once migration 100 has been applied. */
+    async available() {
+      return platformAvailable();
+    },
+
+    /** Full settings object (master only). Merged over defaults. */
+    async getSettings() {
+      try {
+        const { data, error } = await client.rpc('platform_get_settings');
+        if (error) throw error;
+        return { ...PLATFORM_DEFAULTS, ...(data || {}) };
+      } catch (e) {
+        if (/42883|PGRST202|does not exist/i.test(e?.message || '')) {
+          return { ...PLATFORM_DEFAULTS };
+        }
+        throw new Error(`Loading platform settings: ${e.message || e}`);
+      }
+    },
+
+    /** Update one setting (master only). Invalidates the public cache. */
+    async setSetting(key, value) {
+      try {
+        const { error } = await client.rpc('platform_set_setting', {
+          p_key: String(key ?? ''),
+          p_value: String(value ?? ''),
+        });
+        if (error) throw error;
+        invalidatePlatformCache();
+      } catch (e) {
+        if (/42883|PGRST202|does not exist/i.test(e?.message || '')) {
+          const err = new Error('platform-needs-update');
+          err.code = 'platform-needs-update';
+          throw err;
+        }
+        if (/not authorized/i.test(e?.message || '')) {
+          const err = new Error('platform-not-authorized');
+          err.code = 'platform-not-authorized';
+          throw err;
+        }
+        throw new Error(`Saving setting: ${e.message || e}`);
+      }
+    },
+
+    /** Moderation: every customer ad on the platform (master only). */
+    async listCustomerAds({ limit = 50, offset = 0, query = '' } = {}) {
+      const { data, error } = await client.rpc('platform_list_customer_ads', {
+        p_limit: limit,
+        p_offset: offset,
+        p_query: String(query ?? ''),
+      });
+      if (error) throw new Error(`Loading customer ads: ${error.message}`);
+      const d = data || {};
+      return {
+        ads: (Array.isArray(d.ads) ? d.ads : []).map(mapClassifiedAd).map((a, i) => ({
+          ...a,
+          username: (Array.isArray(d.ads) ? d.ads : [])[i]?.username ?? null,
+        })),
+        total: Number(d.total ?? 0),
+        limit: Number(d.limit ?? limit),
+        offset: Number(d.offset ?? offset),
+      };
+    },
+
+    /** Moderation: permanently remove one abusive customer ad (master only). */
+    async removeCustomerAd(id) {
+      const { error } = await client.rpc('platform_remove_customer_ad', { p_ad_id: id });
+      if (error) throw new Error(`Removing ad: ${error.message}`);
+    },
+
+    /** Support: wipe a user's recovery data so they can start over (master only). */
+    async resetUserRecovery(userId) {
+      const { error } = await client.rpc('platform_reset_user_recovery', { p_user_id: userId });
+      if (error) {
+        if (/not authorized/i.test(error.message || '')) {
+          const e = new Error('platform-not-authorized');
+          e.code = 'platform-not-authorized';
+          throw e;
+        }
+        throw new Error(`Resetting recovery: ${error.message}`);
+      }
+    },
+
+    /** Adoption stats: counts only, no personal data (master only). */
+    async recoveryStatus() {
+      try {
+        const { data, error } = await client.rpc('platform_recovery_status');
+        if (error) throw error;
+        return {
+          codesUsers: Number(data?.codes_users ?? 0),
+          questionsUsers: Number(data?.questions_users ?? 0),
+        };
+      } catch (e) {
+        if (/42883|PGRST202|does not exist/i.test(e?.message || '')) {
+          return { codesUsers: 0, questionsUsers: 0 };
+        }
+        throw new Error(`Loading recovery status: ${e.message || e}`);
       }
     },
   };
@@ -7739,5 +7927,6 @@ export function createSupabaseBackend(config = null) {
     feedback,
     license,
     customer,
+    platform,
   };
 }

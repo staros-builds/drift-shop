@@ -4,7 +4,7 @@ import {
   Search, ShieldAlert, Cloud, MessageCircleQuestion, Star, Send,
   Users, UserPlus, KeyRound, Trash2, X, Check, Pencil, Plus, CheckCircle2,
   Store, Globe, ExternalLink, LayoutGrid, ShoppingBag, UtensilsCrossed,
-  CalendarDays, Fuel, Upload,
+  CalendarDays, Fuel, Upload, SlidersHorizontal, Tag,
 } from 'lucide-react';
 import { backend } from '../lib/backend/current.js';
 import { BRAND } from '../lib/brand.js';
@@ -3241,6 +3241,453 @@ function KeysSection() {
   );
 }
 
+/* ---------------- platform owner section (master only) ----------------
+ * Migration 100: live platform policy — free-tier limits, recovery knobs,
+ * and customer-ads moderation. Every control here is master-gated
+ * server-side via is_master(); the UI degrades to a friendly "needs
+ * update" note until migration 100 is applied.
+ */
+const PLATFORM_INT_KEYS = [
+  'customer_ads_max_active',
+  'customer_ads_max_per_day',
+  'customer_ads_expiry_days',
+  'recovery_codes_count',
+  'recovery_max_attempts',
+  'recovery_window_minutes',
+];
+const PLATFORM_BOOL_KEYS = ['customer_ads_enabled', 'recovery_enabled'];
+
+function PlatformSection() {
+  const { t } = useLang();
+  const [settings, setSettings] = useState(null);
+  const [draft, setDraft] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [needsUpdate, setNeedsUpdate] = useState(false);
+  // recovery stats + reset
+  const [stats, setStats] = useState(null);
+  const [resetName, setResetName] = useState('');
+  const [resetBusy, setResetBusy] = useState(false);
+  const [resetConfirm, setResetConfirm] = useState(null); // { id, username }
+  // moderation
+  const [modQuery, setModQuery] = useState('');
+  const [modAds, setModAds] = useState([]);
+  const [modTotal, setModTotal] = useState(0);
+  const [modLoading, setModLoading] = useState(false);
+  const [modError, setModError] = useState('');
+  const [modRemove, setModRemove] = useState(null); // ad pending confirm
+  const MOD_PAGE = 25;
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    setNotice('');
+    try {
+      const [s, st] = await Promise.all([
+        backend.platform.getSettings(),
+        backend.platform.recoveryStatus().catch(() => null),
+      ]);
+      setSettings(s);
+      setDraft({ ...s });
+      setStats(st);
+      const ok = await backend.platform.available();
+      setNeedsUpdate(!ok);
+    } catch (e) {
+      setError(e?.message || t('platform.loadError'));
+    } finally {
+      setLoading(false);
+    }
+  }, [t]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const loadMods = useCallback(async (query, offset, append) => {
+    setModLoading(true);
+    setModError('');
+    try {
+      const r = await backend.platform.listCustomerAds({ limit: MOD_PAGE, offset, query });
+      setModAds((prev) => (append ? [...prev, ...r.ads] : r.ads));
+      setModTotal(r.total);
+    } catch (e) {
+      setModError(e?.message || t('platform.modRemoveError'));
+    } finally {
+      setModLoading(false);
+    }
+  }, [t]);
+
+  useEffect(() => {
+    if (!needsUpdate) loadMods('', 0, false);
+  }, [needsUpdate, loadMods]);
+
+  const saveAll = async () => {
+    if (!draft || saving) return;
+    setSaving(true);
+    setError('');
+    setNotice('');
+    try {
+      for (const k of [...PLATFORM_BOOL_KEYS, ...PLATFORM_INT_KEYS]) {
+        if (String(draft[k] ?? '') !== String(settings[k] ?? '')) {
+          await backend.platform.setSetting(k, draft[k]);
+        }
+      }
+      const s = await backend.platform.getSettings();
+      setSettings(s);
+      setDraft({ ...s });
+      setNotice(t('platform.saved'));
+    } catch (e) {
+      setError(e?.message || t('platform.saveError'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const dirty = draft && settings && [...PLATFORM_BOOL_KEYS, ...PLATFORM_INT_KEYS]
+    .some((k) => String(draft[k] ?? '') !== String(settings[k] ?? ''));
+
+  const setDraftVal = (k, v) => setDraft((d) => ({ ...d, [k]: v }));
+
+  const doResetRecovery = async () => {
+    const name = resetName.trim();
+    if (!name || resetBusy) return;
+    setResetBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      const users = await backend.auth.adminListUsers();
+      const found = (users || []).find(
+        (u) => String(u.username || '').toLowerCase() === name.toLowerCase()
+      );
+      if (!found) {
+        setError(t('platform.userNotFound'));
+        return;
+      }
+      setResetConfirm({ id: found.id, username: found.username });
+    } catch (e) {
+      setError(e?.message || t('platform.resetRecoveryError'));
+    } finally {
+      setResetBusy(false);
+    }
+  };
+
+  const confirmResetRecovery = async () => {
+    if (!resetConfirm) return;
+    setResetBusy(true);
+    setError('');
+    try {
+      await backend.platform.resetUserRecovery(resetConfirm.id);
+      setNotice(t('platform.resetRecoveryDone', { name: resetConfirm.username }));
+      setResetConfirm(null);
+      setResetName('');
+      const st = await backend.platform.recoveryStatus().catch(() => null);
+      setStats(st);
+    } catch (e) {
+      setError(e?.message || t('platform.resetRecoveryError'));
+    } finally {
+      setResetBusy(false);
+    }
+  };
+
+  const doRemoveAd = async () => {
+    if (!modRemove) return;
+    setModLoading(true);
+    try {
+      await backend.platform.removeCustomerAd(modRemove.id);
+      setModAds((prev) => prev.filter((a) => a.id !== modRemove.id));
+      setModTotal((n) => Math.max(0, n - 1));
+      setModRemove(null);
+      setNotice(t('platform.modRemoved'));
+    } catch (e) {
+      setModError(e?.message || t('platform.modRemoveError'));
+    } finally {
+      setModLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-1 items-center justify-center p-8 text-sm text-muted">
+        {t('common.loading')}
+      </div>
+    );
+  }
+
+  const numInput = (key, labelKey, hintKey, min, max) => (
+    <label className="block">
+      <span className="mb-1 block text-xs font-medium text-muted">{t(labelKey)}</span>
+      <input
+        type="number"
+        min={min}
+        max={max}
+        value={draft?.[key] ?? ''}
+        onChange={(e) => setDraftVal(key, e.target.value)}
+        disabled={!draft}
+        className="w-full rounded-os border border-osborder bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent disabled:opacity-50"
+      />
+      <span className="mt-1 block text-xs leading-relaxed text-muted">{t(hintKey)}</span>
+    </label>
+  );
+
+  const toggleRow = (key, labelKey, hintKey) => (
+    <label className="flex cursor-pointer items-start gap-3">
+      <input
+        type="checkbox"
+        checked={String(draft?.[key] ?? 'true').toLowerCase() === 'true'}
+        onChange={(e) => setDraftVal(key, e.target.checked ? 'true' : 'false')}
+        disabled={!draft}
+        className="mt-1 h-4 w-4 shrink-0 accent-[var(--accent)]"
+      />
+      <span>
+        <span className="block text-sm font-medium text-ink">{t(labelKey)}</span>
+        <span className="mt-0.5 block text-xs leading-relaxed text-muted">{t(hintKey)}</span>
+      </span>
+    </label>
+  );
+
+  return (
+    <div className="flex-1 overflow-y-auto p-4">
+      <div className="mx-auto max-w-2xl space-y-4">
+        {needsUpdate && (
+          <div className="rounded-os border border-amber-500/40 bg-amber-500/10 p-4 text-sm leading-relaxed text-amber-700">
+            {t('platform.needsUpdate')}
+          </div>
+        )}
+        {error && (
+          <div className="rounded-os border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-700" role="alert">
+            {error}
+          </div>
+        )}
+        {notice && (
+          <div className="rounded-os border border-green-500/40 bg-green-500/10 p-3 text-sm text-green-700" role="status">
+            {notice}
+          </div>
+        )}
+
+        {/* ---- free customer tier ---- */}
+        <section className="rounded-os border border-osborder bg-paper p-4">
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-ink">
+            <Tag size={15} className="text-accent" /> {t('platform.freeTierTitle')}
+          </h3>
+          <p className="mt-1 text-sm leading-relaxed text-muted">{t('platform.freeTierIntro')}</p>
+          <div className="mt-3 space-y-3">
+            {toggleRow('customer_ads_enabled', 'platform.enabledLabel', 'platform.enabledHint')}
+            <div className="grid gap-3 sm:grid-cols-3">
+              {numInput('customer_ads_max_active', 'platform.maxActiveLabel', 'platform.maxActiveHint', 1, 200)}
+              {numInput('customer_ads_max_per_day', 'platform.maxPerDayLabel', 'platform.maxPerDayHint', 1, 100)}
+              {numInput('customer_ads_expiry_days', 'platform.expiryDaysLabel', 'platform.expiryDaysHint', 1, 730)}
+            </div>
+          </div>
+        </section>
+
+        {/* ---- account recovery ---- */}
+        <section className="rounded-os border border-osborder bg-paper p-4">
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-ink">
+            <KeyRound size={15} className="text-accent" /> {t('platform.recoveryTitle')}
+          </h3>
+          <p className="mt-1 text-sm leading-relaxed text-muted">{t('platform.recoveryIntro')}</p>
+          {stats && (
+            <p className="mt-2 text-xs text-muted">
+              {t('platform.recoveryStats', { codes: stats.codesUsers, questions: stats.questionsUsers })}
+            </p>
+          )}
+          <div className="mt-3 space-y-3">
+            {toggleRow('recovery_enabled', 'platform.recoveryEnabledLabel', 'platform.recoveryEnabledHint')}
+            <div className="grid gap-3 sm:grid-cols-3">
+              {numInput('recovery_codes_count', 'platform.codesCountLabel', 'platform.codesCountHint', 4, 16)}
+              {numInput('recovery_max_attempts', 'platform.maxAttemptsLabel', 'platform.maxAttemptsHint', 3, 100)}
+              {numInput('recovery_window_minutes', 'platform.windowMinutesLabel', 'platform.windowMinutesHint', 1, 1440)}
+            </div>
+          </div>
+          <div className="mt-4 border-t border-osborder pt-3">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted">{t('platform.resetRecoveryTitle')}</h4>
+            <p className="mt-1 text-xs leading-relaxed text-muted">{t('platform.resetRecoveryHint')}</p>
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+              <input
+                type="text"
+                value={resetName}
+                onChange={(e) => setResetName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') doResetRecovery(); }}
+                placeholder={t('platform.resetRecoveryPh')}
+                className="min-w-0 flex-1 rounded-os border border-osborder bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent"
+              />
+              <button
+                type="button"
+                onClick={doResetRecovery}
+                disabled={resetBusy || !resetName.trim()}
+                className="shrink-0 rounded-os bg-accent px-3 py-2 text-sm font-medium text-white hover:brightness-110 disabled:opacity-50"
+              >
+                {t('platform.resetRecoveryBtn')}
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* ---- classifieds moderation ---- */}
+        <section className="rounded-os border border-osborder bg-paper p-4">
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-ink">
+            <ShieldAlert size={15} className="text-accent" /> {t('platform.modTitle')}
+          </h3>
+          <p className="mt-1 text-sm leading-relaxed text-muted">{t('platform.modIntro')}</p>
+          <div className="mt-3 flex gap-2">
+            <div className="relative min-w-0 flex-1">
+              <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+              <input
+                type="search"
+                value={modQuery}
+                onChange={(e) => setModQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') loadMods(modQuery.trim(), 0, false); }}
+                placeholder={t('platform.modSearchPh')}
+                className="w-full rounded-os border border-osborder bg-surface py-2 pl-9 pr-3 text-sm text-ink outline-none focus:border-accent"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => loadMods(modQuery.trim(), 0, false)}
+              disabled={modLoading}
+              className="shrink-0 rounded-os border border-osborder px-3 py-2 text-sm text-ink hover:bg-surface disabled:opacity-50"
+            >
+              <Search size={15} />
+            </button>
+            <button
+              type="button"
+              onClick={() => loadMods(modQuery.trim(), 0, false)}
+              disabled={modLoading}
+              aria-label={t('common.refresh') || 'Refresh'}
+              className="shrink-0 rounded-os border border-osborder px-3 py-2 text-sm text-ink hover:bg-surface disabled:opacity-50"
+            >
+              <RefreshCw size={15} className={modLoading ? 'animate-spin' : ''} />
+            </button>
+          </div>
+          {modError && <p className="mt-2 text-xs text-red-600" role="alert">{modError}</p>}
+          <ul className="mt-3 space-y-2">
+            {modAds.map((a) => (
+              <li key={a.id} className="flex items-start gap-3 rounded-os border border-osborder bg-surface p-3">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-ink">{a.title || '—'}</p>
+                  <p className="mt-0.5 text-xs text-muted">
+                    {t('platform.modPostedBy', { user: a.username || '?' })}
+                    {' · '}{a.status || ''}
+                    {a.priceCents != null && ` · ${(a.priceCents / 100).toFixed(2)}`}
+                  </p>
+                  {a.description && (
+                    <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted">{a.description}</p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setModRemove(a)}
+                  className="flex shrink-0 items-center gap-1 rounded-os border border-red-500/40 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-500/10"
+                >
+                  <Trash2 size={13} /> {t('platform.modRemove')}
+                </button>
+              </li>
+            ))}
+          </ul>
+          {modAds.length === 0 && !modLoading && (
+            <p className="mt-3 text-xs text-muted">{t('platform.modNoAds')}</p>
+          )}
+          {modAds.length > 0 && (
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <span className="text-xs text-muted">
+                {t('platform.modShowing', { n: modAds.length, total: modTotal })}
+              </span>
+              {modAds.length < modTotal && (
+                <button
+                  type="button"
+                  onClick={() => loadMods(modQuery.trim(), modAds.length, true)}
+                  disabled={modLoading}
+                  className="rounded-os border border-osborder px-3 py-1.5 text-xs text-ink hover:bg-surface disabled:opacity-50"
+                >
+                  {t('platform.modLoadMore')}
+                </button>
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* ---- sticky save bar ---- */}
+        <div className="sticky bottom-0 flex items-center justify-end gap-2 rounded-os border border-osborder bg-paper/95 p-3 backdrop-blur">
+          <button
+            type="button"
+            onClick={load}
+            disabled={loading || saving}
+            className="rounded-os border border-osborder px-3 py-2 text-sm text-ink hover:bg-surface disabled:opacity-50"
+          >
+            {t('common.refresh') || 'Refresh'}
+          </button>
+          <button
+            type="button"
+            onClick={saveAll}
+            disabled={!dirty || saving}
+            className="flex items-center gap-1.5 rounded-os bg-accent px-4 py-2 text-sm font-medium text-white hover:brightness-110 disabled:opacity-50"
+          >
+            <Check size={15} /> {t('platform.save')}
+          </button>
+        </div>
+      </div>
+
+      {/* reset-recovery confirm dialog */}
+      {resetConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
+          <div className="w-full max-w-sm rounded-os border border-osborder bg-paper p-4">
+            <h4 className="text-sm font-semibold text-ink">{t('platform.resetRecoveryTitle')}</h4>
+            <p className="mt-2 text-sm leading-relaxed text-muted">
+              {t('platform.resetRecoveryConfirm', { name: resetConfirm.username })}
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setResetConfirm(null)}
+                className="rounded-os border border-osborder px-3 py-2 text-sm text-ink hover:bg-surface"
+              >
+                {t('platform.cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={confirmResetRecovery}
+                disabled={resetBusy}
+                className="rounded-os bg-red-600 px-3 py-2 text-sm font-medium text-white hover:brightness-110 disabled:opacity-50"
+              >
+                {t('platform.confirm')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* remove-ad confirm dialog */}
+      {modRemove && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
+          <div className="w-full max-w-sm rounded-os border border-osborder bg-paper p-4">
+            <h4 className="text-sm font-semibold text-ink">{t('platform.modTitle')}</h4>
+            <p className="mt-2 text-sm leading-relaxed text-muted">
+              {t('platform.modRemoveConfirm', { title: modRemove.title || '—' })}
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setModRemove(null)}
+                className="rounded-os border border-osborder px-3 py-2 text-sm text-ink hover:bg-surface"
+              >
+                {t('platform.cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={doRemoveAd}
+                disabled={modLoading}
+                className="rounded-os bg-red-600 px-3 py-2 text-sm font-medium text-white hover:brightness-110 disabled:opacity-50"
+              >
+                {t('platform.confirm')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminPanel() {
   const { user } = useAuth();
   const { t } = useLang();
@@ -3321,6 +3768,9 @@ export default function AdminPanel() {
         // Unlock keys (072): same master-only gate; generate/revoke
         // RPCs re-verify is_master() server-side too.
         ...(isMaster ? [{ id: 'keys', label: t('licensing.keysTab'), icon: KeyRound }] : []),
+        // Platform controls (100): free-tier limits, recovery knobs,
+        // classifieds moderation. Master only; RPCs re-verify too.
+        ...(isMaster ? [{ id: 'platform', label: t('adminUsers.tabPlatform'), icon: SlidersHorizontal }] : []),
       ] : []),
       ...(canStorefront ? [{ id: 'storefront', label: t('storefront.tab'), icon: Globe }] : []),
       ...(canStorefront ? [{ id: 'business', label: t('presets.tab'), icon: Store }] : []),
@@ -3357,6 +3807,7 @@ export default function AdminPanel() {
       {cur === 'feedback' && admin && <FeedbackSection />}
       {cur === 'danger' && isMaster && <DangerSection />}
       {cur === 'keys' && isMaster && <KeysSection />}
+      {cur === 'platform' && isMaster && <PlatformSection />}
       {cur === 'storefront' && canStorefront && <StorefrontSection />}
       {cur === 'business' && canStorefront && <BusinessSection />}
     </div>

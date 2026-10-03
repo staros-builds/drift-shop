@@ -13,6 +13,7 @@ import { es } from '../src/lib/locales/es.js';
 import { pt } from '../src/lib/locales/pt.js';
 import { resiliency } from '../src/lib/locales/resiliency.js';
 import { recovery } from '../src/lib/locales/recovery.js';
+import { platform } from '../src/lib/locales/platform.js';
 
 let n = 0;
 function check(name, fn) {
@@ -92,3 +93,17 @@ check('recovery strings exist for all four languages with identical keys', () =>
 });
 
 console.log(process.exitCode ? 'FAILED' : 'all i18n parity tests passed');
+
+check('platform strings exist for all four languages with identical keys', () => {
+  for (const lang of ['en', 'fr', 'es', 'pt']) {
+    assert.ok(platform[lang], `platform.${lang} missing`);
+  }
+  const enKeys = keySet(platform.en);
+  for (const lang of ['fr', 'es', 'pt']) {
+    assert.deepEqual(keySet(platform[lang]), enKeys, `platform.${lang} key set differs from en`);
+  }
+  for (const lang of ['en', 'fr', 'es', 'pt']) {
+    const bad = leafEntries(platform[lang]).filter(([, v]) => typeof v !== 'string' || v.trim() === '');
+    assert.deepEqual(bad.map(([k]) => k), [], `platform.${lang} has non-string or empty leaves`);
+  }
+});
