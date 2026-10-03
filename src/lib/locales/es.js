@@ -946,6 +946,8 @@ media: {
     customerNameRequired: 'Ponle un nombre al cliente.',
     staffNameRequired: 'Ponle un nombre al empleado.',
     pinDigits: 'El PIN debe tener de 4 a 8 dígitos.',
+    onlyInStock: 'Solo quedan {n} en stock.',
+    itemOutOfStock: '{name} está agotado.',
     ui: {
       roleOwner: 'Dueño',
       roleManager: 'Gerente',
@@ -1121,6 +1123,9 @@ media: {
       testFailed: 'La prueba falló: {err}',
       drawerKicked: 'Apertura enviada vía {via}.',
       drawerFailed: 'El cajón falló: {err}',
+      receiptFailed: 'Recibo falló: {err}',
+      printerError: 'Impresora: {err}',
+      drawerOpened: 'Cajón abierto.',
       qzNoPrinters: 'QZ Tray está corriendo pero no reportó impresoras.',
       qzFound: 'Se encontraron {n} impresora{s} — elige una abajo.',
       qzFailed: 'QZ Tray: {err}',

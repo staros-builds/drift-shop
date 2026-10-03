@@ -947,6 +947,8 @@ media: {
     customerNameRequired: 'Donnez un nom au client.',
     staffNameRequired: "Donnez un nom à l'employé.",
     pinDigits: 'Le NIP doit comporter 4 à 8 chiffres.',
+    onlyInStock: 'Plus que {n} en stock.',
+    itemOutOfStock: '{name} est en rupture de stock.',
     ui: {
       roleOwner: 'Propriétaire',
       roleManager: 'Gérant',
@@ -1123,6 +1125,9 @@ media: {
       testFailed: 'Test échoué : {err}',
       drawerKicked: 'Ouverture du tiroir envoyée via {via}.',
       drawerFailed: 'Tiroir échoué : {err}',
+      receiptFailed: 'Reçu échoué : {err}',
+      printerError: 'Imprimante : {err}',
+      drawerOpened: 'Tiroir-caisse ouvert.',
       qzNoPrinters: 'QZ Tray fonctionne mais n’a signalé aucune imprimante.',
       qzFound: '{n} imprimante{s} trouvée{s} — choisissez-en une ci-dessous.',
       qzFailed: 'QZ Tray : {err}',

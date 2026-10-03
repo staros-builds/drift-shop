@@ -415,7 +415,7 @@ function SellTab({ products, store, v4, customers, customerId, onCustomerChange,
     if (p.trackStock) {
       const inCart = cartQtyFor(p.id);
       if (inCart + 1 > p.stock) {
-        flash(p.stock > 0 ? `Only ${p.stock} in stock.` : `${p.name} is out of stock.`);
+        flash(p.stock > 0 ? t('pos.onlyInStock', { n: p.stock }) : t('pos.itemOutOfStock', { name: p.name }));
         return;
       }
     }
@@ -809,7 +809,7 @@ function SellTab({ products, store, v4, customers, customerId, onCustomerChange,
           try {
             await printReceipt({ sale: receiptData, store, taxLines, config: pcfg, labels: receiptLabels(t) });
           } catch (err) {
-            flash(`Receipt failed: ${err?.message || err}`);
+            flash(t('pos.tabs2.receiptFailed', { err: err?.message || err }));
           }
         }
         if (method === 'cash' && pcfg.autoDrawerCash && pcfg.transport !== 'browser') {
@@ -818,21 +818,21 @@ function SellTab({ products, store, v4, customers, customerId, onCustomerChange,
           try {
             await openCashDrawer({ store, config: pcfg });
           } catch (err) {
-            flash(`Drawer failed: ${err?.message || err}`);
+            flash(t('pos.tabs2.drawerFailed', { err: err?.message || err }));
           }
         }
       })();
     } catch (err) {
-      flash(`Printer: ${err?.message || err}`);
+      flash(t('pos.tabs2.printerError', { err: err?.message || err }));
     }
   };
 
   const kickDrawer = async () => {
     try {
       await openCashDrawer({ store });
-      flash('Cash drawer opened.');
+      flash(t('pos.tabs2.drawerOpened'));
     } catch (err) {
-      flash(`Drawer failed: ${err?.message || err}`);
+      flash(t('pos.tabs2.drawerFailed', { err: err?.message || err }));
     }
   };
 

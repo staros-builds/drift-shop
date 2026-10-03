@@ -946,6 +946,8 @@ media: {
     customerNameRequired: 'Give the customer a name.',
     staffNameRequired: 'Give the staff member a name.',
     pinDigits: 'PIN must be 4–8 digits.',
+    onlyInStock: 'Only {n} in stock.',
+    itemOutOfStock: '{name} is out of stock.',
     ui: {
       roleOwner: 'Owner',
       roleManager: 'Manager',
@@ -1121,6 +1123,9 @@ media: {
       testFailed: 'Test failed: {err}',
       drawerKicked: 'Drawer kick sent via {via}.',
       drawerFailed: 'Drawer failed: {err}',
+      receiptFailed: 'Receipt failed: {err}',
+      printerError: 'Printer: {err}',
+      drawerOpened: 'Cash drawer opened.',
       qzNoPrinters: 'QZ Tray is running but reported no printers.',
       qzFound: 'Found {n} printer{s} — pick one below.',
       qzFailed: 'QZ Tray: {err}',

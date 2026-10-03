@@ -123,17 +123,61 @@ function punchNetMs(p, breaks, nowMs) {
 // Per staff: regular + overtime ms, grouped into weekStart-aligned weeks.
 // excludeStaffIds: staff never counted (e.g. community-service workers,
 // whose unpaid hours must stay out of payroll and overtime entirely).
+// Punches that span a week boundary are split at the boundary so each
+// week's hours (and overtime) are correct.
 // Returns [{ staffId, name, regMs, otMs, shifts }].
 function weeklyPay(punches, breaks, weekStart, nowMs, excludeStaffIds = null) {
   const weeks = new Map();
+  const addMs = (staffId, staffName, wk, ms) => {
+    const key = `${wk}|${staffId}`;
+    if (!weeks.has(key)) weeks.set(key, { staffId, name: staffName, ms: 0, shifts: 0 });
+    weeks.get(key).ms += ms;
+  };
   for (const p of punches) {
     if (excludeStaffIds && excludeStaffIds.has(p.staffId)) continue;
-    const wk = weekStartOf(localYMD(new Date(p.punchIn)), weekStart);
-    const key = `${wk}|${p.staffId}`;
+    const net = punchNetMs(p, breaks, nowMs);
+    // Count the shift in the week it started (for the shift tally).
+    const startWk = weekStartOf(localYMD(new Date(p.punchIn)), weekStart);
+    const key = `${startWk}|${p.staffId}`;
     if (!weeks.has(key)) weeks.set(key, { staffId: p.staffId, name: p.staffName, ms: 0, shifts: 0 });
-    const w = weeks.get(key);
-    w.ms += punchNetMs(p, breaks, nowMs);
-    w.shifts += 1;
+    weeks.get(key).shifts += 1;
+    if (net <= 0) continue;
+    // Split net ms across week boundaries, proportional to time in each week.
+    const pin = new Date(p.punchIn).getTime();
+    const pout = p.punchOut ? new Date(p.punchOut).getTime() : nowMs;
+    if (!Number.isFinite(pin) || !Number.isFinite(pout) || pout <= pin) {
+      addMs(p.staffId, p.staffName, startWk, net);
+      continue;
+    }
+    const total = pout - pin;
+    // Find the week-start boundaries strictly inside (pin, pout].
+    const bounds = [];
+    {
+      // Start from the week containing pin, then step week by week.
+      let wkStart = weekStartOf(localYMD(new Date(pin)), weekStart);
+      for (;;) {
+        const nextWk = addDaysYMD(wkStart, 7);
+        const [y, m, d] = nextWk.split('-').map(Number);
+        const b = new Date(y, m - 1, d).getTime();
+        if (!Number.isFinite(b) || b <= pin || b >= pout) break;
+        bounds.push(b);
+        wkStart = nextWk;
+        if (bounds.length > 520) break; // sanity: ~10 years of weeks
+      }
+    }
+    if (bounds.length === 0) {
+      addMs(p.staffId, p.staffName, startWk, net);
+      continue;
+    }
+    let prev = pin;
+    for (const b of [...bounds, pout]) {
+      const segMs = b - prev;
+      if (segMs > 0) {
+        const wk = weekStartOf(localYMD(new Date(prev)), weekStart);
+        addMs(p.staffId, p.staffName, wk, Math.round((net * segMs) / total));
+      }
+      prev = b;
+    }
   }
   const staff = new Map();
   for (const w of weeks.values()) {
