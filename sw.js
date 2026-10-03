@@ -14,7 +14,7 @@
  * assets (the build substitutes __BUILD_ID__ via vite.config.js).
  */
 
-const CACHE_VERSION = 'driftshop-202610031856';
+const CACHE_VERSION = 'driftshop-202610031858';
 // Derive shell paths from the service worker's own scope so the app works
 // when hosted under a subpath (e.g. /drift-shop/) instead of the domain root.
 // self.registration.scope is like "https://host/drift-shop/" — strip the origin
