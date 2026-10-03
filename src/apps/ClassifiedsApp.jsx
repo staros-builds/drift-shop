@@ -24,7 +24,7 @@ import { shrinkImageFile } from '../lib/imageShrink.js';
 
 const cl = () => backend.classifieds;
 
-function fmtDate(iso) {
+export function fmtDate(iso) {
   if (!iso) return '—';
   try {
     return new Date(iso).toLocaleDateString(localeTag(), {
@@ -38,7 +38,7 @@ function fmtDate(iso) {
 }
 
 /** Exact posted date+time for the detail view (trust metadata). */
-function fmtDateTime(iso) {
+export function fmtDateTime(iso) {
   if (!iso) return '—';
   try {
     return new Date(iso).toLocaleString(localeTag(), {
@@ -54,7 +54,7 @@ function fmtDateTime(iso) {
 }
 
 /** Craigslist-style relative timestamp ("2 hours ago"). */
-function fmtRelative(iso) {
+export function fmtRelative(iso) {
   if (!iso) return '—';
   try {
     const then = new Date(iso).getTime();
@@ -78,15 +78,15 @@ function fmtRelative(iso) {
 }
 
 /** Short display ID for trust metadata (first 8 chars of the UUID). */
-function shortId(id) {
+export function shortId(id) {
   const s = String(id || '');
   return s.length > 8 ? s.slice(0, 8) : s || '—';
 }
 
 /** Craigslist green for prices. */
-const PRICE_GREEN = 'text-green-700 dark:text-green-400';
+export const PRICE_GREEN = 'text-green-700 dark:text-green-400';
 
-function fmtPrice(priceCents, t) {
+export function fmtPrice(priceCents, t) {
   if (priceCents === null || priceCents === undefined) return t('classifieds.priceContact');
   if (Number(priceCents) === 0) return t('classifieds.priceFree');
   return (
@@ -97,7 +97,7 @@ function fmtPrice(priceCents, t) {
   );
 }
 
-function catKey(cat) {
+export function catKey(cat) {
   const map = {
     'for-sale': 'catForSale',
     free: 'catFree',
@@ -110,7 +110,7 @@ function catKey(cat) {
   return map[cat] || 'catForSale';
 }
 
-function ErrorNote({ message }) {
+export function ErrorNote({ message }) {
   if (!message) return null;
   return (
     <p className="flex items-start gap-2 rounded-os border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-600">
@@ -119,7 +119,7 @@ function ErrorNote({ message }) {
   );
 }
 
-function Modal({ title, onClose, children }) {
+export function Modal({ title, onClose, children }) {
   const { t } = useLang();
   return (
     <div
@@ -156,7 +156,7 @@ const inputCls =
   'w-full rounded-os border border-osborder bg-surface px-3 py-2 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/60';
 const labelCls = 'mb-1 block text-xs font-medium text-muted';
 
-function AdForm({ initial, onSave, onClose, saving }) {
+export function AdForm({ initial, onSave, onClose, saving }) {
   const { t } = useLang();
   const { push } = useNotifications();
   const [title, setTitle] = useState(initial?.title ?? '');

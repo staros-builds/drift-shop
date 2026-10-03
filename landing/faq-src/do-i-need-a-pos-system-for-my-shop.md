@@ -30,7 +30,7 @@ Even a weekend market stall benefits from a basic POS. The question isn't whethe
 
 POS pricing ranges wildly. Big-name providers charge $60–$150/month plus 2.5–2.9% of every sale, which works out to $5,000–$8,000/year for a modest shop. That made sense when POS required specialized hardware. Today, a tablet-based system does the same job.
 
-**Vendra** is built for shops that need a real POS without the enterprise price tag: $350/year flat covers the till, inventory management, appointment booking, staff time-clock, online ordering, and a public storefront page. No transaction fees from Vendra, no monthly billing. It runs on hardware you already own — a tablet, laptop, or even a phone.
+**Vendra** is built for shops that need a real POS without the enterprise price tag: $350/year flat covers the till, inventory management, appointment booking, staff time-clock, online ordering, a public storefront page, and a classifieds board. No transaction fees from Vendra, no monthly billing. It runs on hardware you already own — a tablet, laptop, or even a phone.
 
 ## The Bottom Line
 

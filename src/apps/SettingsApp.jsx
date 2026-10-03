@@ -25,6 +25,7 @@ import { useLang, localeTag } from '../lib/i18n.jsx';
 import { appTitle } from '../lib/appTitle.js';
 import { ConfirmDialog } from '../components/os/dialogs.jsx';
 import LicensePlanSection from '../components/LicensePlanSection.jsx';
+import RecoverySettings from '../components/RecoverySettings.jsx';
 import { isEnabled as soundOn, setEnabled as setSoundOn, playSound, getVolume, setVolume } from '../lib/sound.js';
 import { UNLOCK_EVENT } from '../lib/easterEgg.js';
 import { listLaunchableApps } from './registry.jsx';
@@ -967,6 +968,9 @@ export default function SettingsApp({ windowApi }) {
             })}
           </div>
         </section>
+
+        {/* Account recovery — email-independent (recovery codes, security questions) */}
+        <RecoverySettings />
 
         {/* Appearance */}
         <section className="mb-8">

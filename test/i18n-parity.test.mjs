@@ -12,6 +12,7 @@ import { fr } from '../src/lib/locales/fr.js';
 import { es } from '../src/lib/locales/es.js';
 import { pt } from '../src/lib/locales/pt.js';
 import { resiliency } from '../src/lib/locales/resiliency.js';
+import { recovery } from '../src/lib/locales/recovery.js';
 
 let n = 0;
 function check(name, fn) {
@@ -73,6 +74,20 @@ check('resiliency strings exist for all four languages with identical keys', () 
   const enKeys = keySet(resiliency.en);
   for (const lang of ['fr', 'es', 'pt']) {
     assert.deepEqual(keySet(resiliency[lang]), enKeys, `resiliency.${lang} key set differs from en`);
+  }
+});
+
+check('recovery strings exist for all four languages with identical keys', () => {
+  for (const lang of ['en', 'fr', 'es', 'pt']) {
+    assert.ok(recovery[lang], `recovery.${lang} missing`);
+  }
+  const enKeys = keySet(recovery.en);
+  for (const lang of ['fr', 'es', 'pt']) {
+    assert.deepEqual(keySet(recovery[lang]), enKeys, `recovery.${lang} key set differs from en`);
+  }
+  for (const lang of ['en', 'fr', 'es', 'pt']) {
+    const bad = leafEntries(recovery[lang]).filter(([, v]) => typeof v !== 'string' || v.trim() === '');
+    assert.deepEqual(bad.map(([k]) => k), [], `recovery.${lang} has non-string or empty leaves`);
   }
 });
 

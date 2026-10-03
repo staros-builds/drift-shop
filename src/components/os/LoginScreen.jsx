@@ -229,6 +229,9 @@ export function ForcePasswordChangeModal({ onDone }) {
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  // After the password is set, show the one-time recovery codes (the
+  // account's recovery key — works with no email). Shown exactly once.
+  const [onceCodes, setOnceCodes] = useState(null);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -240,6 +243,18 @@ export function ForcePasswordChangeModal({ onDone }) {
     setBusy(true);
     try {
       await completePasswordChange(pw);
+      // Best-effort: mint recovery codes now (the recovery key). If
+      // migration 098 is not applied yet, skip silently — the user can
+      // generate codes later from Settings.
+      try {
+        if (await backend.recovery.isAvailable()) {
+          const codes = await backend.recovery.generateCodes();
+          setOnceCodes(codes);
+          return;
+        }
+      } catch {
+        /* non-fatal: recovery stays available via Settings later */
+      }
       onDone();
     } catch (err) {
       const byCode = {
@@ -296,6 +311,24 @@ export function ForcePasswordChangeModal({ onDone }) {
               {busy ? t('common.working') : t('login.newPasswordSet')}
             </button>
           </form>
+          {onceCodes && (
+            <div className="mt-4 rounded-os border border-osborder bg-paper p-4" role="dialog" aria-label={t('recovery.codesShowOnceTitle')}>
+              <h2 className="text-sm font-semibold text-ink">{t('recovery.codesShowOnceTitle')}</h2>
+              <p className="mt-1 text-xs leading-relaxed text-muted">{t('recovery.codesShowOnceBody')}</p>
+              <div className="mt-2 select-all rounded-os border border-osborder bg-surface p-3 font-mono text-sm tracking-widest text-ink">
+                {onceCodes.map((c) => (
+                  <div key={c} className="py-0.5">{c}</div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={onDone}
+                className="mt-3 w-full rounded-os bg-accent px-4 py-2 text-sm font-semibold text-accentink duration-160 hover:opacity-90"
+              >
+                {t('recovery.codesDone')}
+              </button>
+            </div>
+          )}
           <p className="mt-4 text-center text-xs text-muted">© {new Date().getFullYear()} {t('brand.name')}</p>
         </div>
       </div>
@@ -304,19 +337,88 @@ export function ForcePasswordChangeModal({ onDone }) {
 }
 
 /**
- * "Forgot password?" dialog with two paths:
- *  1. Email reset link — for accounts that have a real email address.
- *  2. Help ticket — for username-only accounts with no email; the shop
- *     admin sees it in the support inbox and resets the password.
+ * "Forgot password?" dialog — email-INDEPENDENT recovery first:
+ *  1. Recovery code — one-time code the user saved at setup. No email.
+ *  2. Security questions — 3 answers the user chose. No email.
+ *  3. Email reset link — de-emphasized secondary option (the email
+ *     backend is not the most reliable part of the platform).
+ *  4. Help ticket — for accounts with no recovery method set up; the
+ *     shop admin sees it in the support inbox and resets the password.
  */
 function ForgotPasswordDialog({ onClose }) {
   const { t } = useLang();
+  const [tab, setTab] = useState('code'); // 'code' | 'questions'
+  const [loginId, setLoginId] = useState('');
+  const [code, setCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [answers, setAnswers] = useState(['', '', '']);
+  const [questions, setQuestions] = useState(null); // fetched prompts, null = not fetched yet
+  const [questionsFor, setQuestionsFor] = useState('');
   const [email, setEmail] = useState('');
+  const [emailOpen, setEmailOpen] = useState(false);
   const [username, setUsername] = useState('');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
+  const [recoveryReady, setRecoveryReady] = useState(null); // null = checking
+
+  useEffect(() => {
+    let live = true;
+    backend.recovery.isAvailable().then((v) => { if (live) setRecoveryReady(v); }).catch(() => { if (live) setRecoveryReady(false); });
+    return () => { live = false; };
+  }, []);
+
+  const mapError = (e) => {
+    const c = e?.code || '';
+    if (c === 'recovery-rate-limited') return t('recovery.errRateLimited');
+    if (c === 'recovery-invalid') return t('recovery.errInvalid');
+    if (c === 'recovery-needs-update') return t('recovery.needsUpdateBody');
+    if (c === 'redeem-code-required') return t('recovery.codeLabel') + ' — ' + t('login.errGeneric');
+    return e?.message || t('login.errGeneric');
+  };
+
+  const doRedeemCode = async () => {
+    setError('');
+    setBusy(true);
+    try {
+      await backend.recovery.redeemCode({ login: loginId, code, newPassword });
+      setNote(t('recovery.resetDone'));
+    } catch (e) {
+      setError(mapError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const loadQuestions = async () => {
+    setError('');
+    setBusy(true);
+    try {
+      const qs = await backend.recovery.getQuestionsForLogin(loginId);
+      setQuestions(qs);
+      setQuestionsFor(loginId.trim());
+      setAnswers(['', '', '']);
+      if (!qs.length) setError(t('recovery.errNoQuestions'));
+    } catch (e) {
+      setError(mapError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const doRedeemAnswers = async () => {
+    setError('');
+    setBusy(true);
+    try {
+      await backend.recovery.redeemAnswers({ login: loginId, answers, newPassword });
+      setNote(t('recovery.resetDone'));
+    } catch (e) {
+      setError(mapError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const sendEmail = async () => {
     setError('');
@@ -326,7 +428,6 @@ function ForgotPasswordDialog({ onClose }) {
       setNote(t('login.recoverySent'));
     } catch (e) {
       const msg = String(e?.message || '');
-      // Map the backend's English validation to the user's language.
       setError(/valid email address|adresse courriel valide/i.test(msg) ? t('login.errEmail') : (msg || t('login.errGeneric')));
     } finally {
       setBusy(false);
@@ -349,6 +450,24 @@ function ForgotPasswordDialog({ onClose }) {
       setBusy(false);
     }
   };
+
+  const resolveQuestion = (q) => {
+    const key = q?.key || '';
+    if (key.startsWith('custom:')) return key.slice(7);
+    return t(`recovery.${key}`);
+  };
+
+  const tabBtn = (id, label) => (
+    <button
+      key={id}
+      type="button"
+      onClick={() => { setTab(id); setError(''); }}
+      aria-pressed={tab === id}
+      className={`flex-1 rounded-os px-3 py-2 text-sm font-medium duration-160 ${tab === id ? 'bg-accent text-accentink' : 'bg-paper text-muted hover:text-ink'}`}
+    >
+      {label}
+    </button>
+  );
 
   return (
     <div
@@ -378,25 +497,109 @@ function ForgotPasswordDialog({ onClose }) {
           <p className="mt-3 text-sm leading-relaxed text-ink">{note}</p>
         ) : (
           <>
-            <p className="mt-3 text-xs leading-relaxed text-muted">{t('login.recoveryEmailHint')}</p>
-            <div className="mt-2 space-y-2">
-              <Field
-                label={t('login.recoveryEmailLabel')}
-                value={email}
-                onChange={setEmail}
-                autoComplete="email"
-                placeholder={t('login.emailPlaceholder')}
-              />
-              <button
-                type="button"
-                onClick={sendEmail}
-                disabled={busy}
-                className="flex w-full items-center justify-center gap-2 rounded-os bg-accent px-4 py-2 text-sm font-semibold text-accentink duration-160 hover:opacity-90 disabled:opacity-50"
-              >
-                <MailQuestion size={16} />
-                {busy ? t('common.working') : t('login.recoverySend')}
-              </button>
+            {recoveryReady === false && (
+              <p className="mt-3 rounded-os border border-osborder bg-paper px-3 py-2 text-xs leading-relaxed text-muted">
+                {t('recovery.needsUpdateBody')}
+              </p>
+            )}
+            <div className="mt-3 flex gap-1 rounded-os border border-osborder bg-paper p-1" role="tablist">
+              {tabBtn('code', t('recovery.methodCode'))}
+              {tabBtn('questions', t('recovery.methodQuestions'))}
             </div>
+
+            {tab === 'code' && (
+              <div className="mt-3 space-y-2">
+                <p className="text-xs leading-relaxed text-muted">{t('recovery.methodCodeHint')}</p>
+                <Field
+                  label={t('recovery.loginIdLabel')}
+                  value={loginId}
+                  onChange={setLoginId}
+                  autoComplete="username"
+                  placeholder={t('recovery.loginIdPh')}
+                />
+                <Field
+                  label={t('recovery.codeLabel')}
+                  value={code}
+                  onChange={setCode}
+                  autoComplete="off"
+                  placeholder={t('recovery.codePh')}
+                />
+                <Field
+                  label={t('recovery.newPasswordLabel')}
+                  value={newPassword}
+                  onChange={setNewPassword}
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder={t('recovery.newPasswordPh')}
+                />
+                <button
+                  type="button"
+                  onClick={doRedeemCode}
+                  disabled={busy || recoveryReady === false}
+                  className="flex w-full items-center justify-center gap-2 rounded-os bg-accent px-4 py-2 text-sm font-semibold text-accentink duration-160 hover:opacity-90 disabled:opacity-50"
+                >
+                  <KeyRound size={16} />
+                  {busy ? t('recovery.working') : t('recovery.resetPassword')}
+                </button>
+              </div>
+            )}
+
+            {tab === 'questions' && (
+              <div className="mt-3 space-y-2">
+                <p className="text-xs leading-relaxed text-muted">{t('recovery.methodQuestionsHint')}</p>
+                <Field
+                  label={t('recovery.loginIdLabel')}
+                  value={loginId}
+                  onChange={setLoginId}
+                  autoComplete="username"
+                  placeholder={t('recovery.loginIdPh')}
+                />
+                {questions === null ? (
+                  <button
+                    type="button"
+                    onClick={loadQuestions}
+                    disabled={busy || recoveryReady === false || !loginId.trim()}
+                    className="flex w-full items-center justify-center gap-2 rounded-os bg-accent px-4 py-2 text-sm font-semibold text-accentink duration-160 hover:opacity-90 disabled:opacity-50"
+                  >
+                    <MailQuestion size={16} />
+                    {busy ? t('recovery.working') : t('recovery.showQuestions')}
+                  </button>
+                ) : questions.length > 0 ? (
+                  <>
+                    {questions.map((q, i) => (
+                      <Field
+                        key={i}
+                        label={resolveQuestion(q)}
+                        value={answers[i] || ''}
+                        onChange={(v) => setAnswers((a) => a.map((x, j) => (j === i ? v : x)))}
+                        autoComplete="off"
+                        placeholder={t('recovery.answerLabel')}
+                      />
+                    ))}
+                    <Field
+                      label={t('recovery.newPasswordLabel')}
+                      value={newPassword}
+                      onChange={setNewPassword}
+                      type="password"
+                      autoComplete="new-password"
+                      placeholder={t('recovery.newPasswordPh')}
+                    />
+                    <button
+                      type="button"
+                      onClick={doRedeemAnswers}
+                      disabled={busy}
+                      className="flex w-full items-center justify-center gap-2 rounded-os bg-accent px-4 py-2 text-sm font-semibold text-accentink duration-160 hover:opacity-90 disabled:opacity-50"
+                    >
+                      <KeyRound size={16} />
+                      {busy ? t('recovery.working') : t('recovery.resetPassword')}
+                    </button>
+                    {questionsFor && questionsFor !== loginId.trim() && (
+                      <p className="text-xs text-muted">{t('recovery.showQuestions')}</p>
+                    )}
+                  </>
+                ) : null}
+              </div>
+            )}
 
             <div className="my-4 flex items-center gap-3 text-xs text-muted">
               <span className="h-px flex-1 bg-osborder" />
@@ -404,7 +607,40 @@ function ForgotPasswordDialog({ onClose }) {
               <span className="h-px flex-1 bg-osborder" />
             </div>
 
-            <p className="text-xs leading-relaxed text-muted">{t('login.recoveryNoEmailHint')}</p>
+            {/* Email reset — de-emphasized secondary option */}
+            <button
+              type="button"
+              onClick={() => setEmailOpen((v) => !v)}
+              aria-expanded={emailOpen}
+              className="flex w-full items-center justify-between rounded-os border border-osborder bg-paper px-3 py-2 text-sm text-muted duration-160 hover:text-ink"
+            >
+              <span>{t('recovery.emailSectionTitle')}</span>
+              <span aria-hidden="true">{emailOpen ? '−' : '+'}</span>
+            </button>
+            {emailOpen && (
+              <div className="mt-2 space-y-2">
+                <p className="text-xs leading-relaxed text-muted">{t('recovery.methodEmailHint')}</p>
+                <Field
+                  label={t('login.recoveryEmailLabel')}
+                  value={email}
+                  onChange={setEmail}
+                  autoComplete="email"
+                  placeholder={t('login.emailPlaceholder')}
+                />
+                <button
+                  type="button"
+                  onClick={sendEmail}
+                  disabled={busy}
+                  className="flex w-full items-center justify-center gap-2 rounded-os border border-osborder bg-paper px-4 py-2 text-sm font-medium text-ink duration-160 hover:border-accent disabled:opacity-50"
+                >
+                  <MailQuestion size={16} />
+                  {busy ? t('common.working') : t('login.recoverySend')}
+                </button>
+              </div>
+            )}
+
+            <p className="mt-4 text-xs font-medium text-ink">{t('recovery.ticketSectionTitle')}</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted">{t('login.recoveryNoEmailHint')}</p>
             <div className="mt-2 space-y-2">
               <Field
                 label={t('login.ticketUsername')}

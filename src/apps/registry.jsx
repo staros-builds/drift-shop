@@ -1,4 +1,4 @@
-import { Folder, Pin, LayoutGrid, Compass, Settings, PenLine, Table, Presentation, ShoppingCart, Store, LifeBuoy, Calculator, FileText, ClipboardList, ShieldCheck, CalendarDays, Timer, LibraryBig, Newspaper } from 'lucide-react';
+import { Folder, Pin, LayoutGrid, Compass, Settings, PenLine, Table, Presentation, ShoppingCart, Store, LifeBuoy, Calculator, FileText, ClipboardList, ShieldCheck, CalendarDays, Timer, LibraryBig, Newspaper, Tag } from 'lucide-react';
 import AdminPanel from './AdminPanel.jsx';
 import FilesApp from './FilesApp.jsx';
 import PinboardApp from './PinboardApp.jsx';
@@ -18,6 +18,7 @@ import PdfViewerApp from './PdfViewerApp.jsx';
 import ClipboardApp from './ClipboardApp.jsx';
 import AppointmentsApp from './AppointmentsApp.jsx';
 import ClassifiedsApp from './ClassifiedsApp.jsx';
+import MyListingsApp from './MyListingsApp.jsx';
 import WebAppViewer from './WebAppViewer.jsx';
 import { getInstalledIds, getWebApp } from '../lib/webapps.js';
 
@@ -39,6 +40,7 @@ export const APPS = [
   { id: 'bouquinerie', title: 'Catalogue', titleEn: 'Catalogue', icon: LibraryBig, component: BouquinerieApp, defaultSize: { w: 1020, h: 640 }, category: 'Business' },
   { id: 'appointments', title: 'Rendez-vous', titleEn: 'Appointments', icon: CalendarDays, component: AppointmentsApp, defaultSize: { w: 1020, h: 640 }, category: 'Business' },
   { id: 'classifieds', title: 'Petites annonces', titleEn: 'Classifieds', icon: Newspaper, component: ClassifiedsApp, defaultSize: { w: 1020, h: 640 }, category: 'Business' },
+  { id: 'mylistings', title: 'Mes annonces', titleEn: 'My listings', icon: Tag, component: MyListingsApp, defaultSize: { w: 1020, h: 640 }, category: 'Business' },
   { id: 'settings', title: 'Réglages', titleEn: 'Settings', icon: Settings,    component: SettingsApp, defaultSize: { w: 640, h: 520 }, category: 'System' },
   { id: 'help', title: 'Aide', titleEn: 'Help & Guide', icon: LifeBuoy, component: HelpApp, defaultSize: { w: 880, h: 620 }, category: 'System' },
   { id: 'calculator', title: 'Calculatrice', titleEn: 'Calculator', icon: Calculator, component: CalculatorApp, defaultSize: { w: 340, h: 500 }, category: 'System' },

@@ -35,6 +35,17 @@ import { isBusinessPreset } from '../businessPresets.js';
 import { cleanLinkFields } from '../integrations.js';
 import { normalizeDomainInput, isValidHostname } from '../hostnameResolve.js';
 import { storageUploadXhr } from './storageXhr.js';
+import {
+  generateRecoveryCodes,
+  hashRecoveryCode,
+  normalizeRecoveryCode,
+  normalizeSecurityAnswer,
+  hashSecurityAnswer,
+  generateSalt,
+  validateSecurityQuestions,
+  validateRedeemInput,
+  RECOVERY_CODE_COUNT,
+} from '../recovery.js';
 
 const MAX_SPACES = 8;
 
@@ -1305,6 +1316,254 @@ export function createSupabaseBackend(config = null) {
         .update({ must_change_password: false })
         .eq('id', uid);
       if (error) throw new Error(`Could not clear password-change flag: ${error.message}`);
+    },
+  };
+
+  // ---- recovery: email-independent account recovery (migration 098) ------------
+  // Three paths, none needing email:
+  //   1. recovery codes (one-time, hashed at rest, single-use),
+  //   2. security questions (salted + hashed answers),
+  //   3. shop-owner assisted reset for team login accounts.
+  // Every method degrades to a friendly "needs system update" error when
+  // migration 098 has not been applied yet (capability probe pattern).
+  const recovery = {
+    /** True when the recovery tables/RPCs exist (migration 098 applied). */
+    async isAvailable() {
+      try {
+        const { error } = await client.from('recovery_codes').select('id').limit(1);
+        return !error || !/42P01|does not exist/i.test(error.message || '');
+      } catch {
+        return false;
+      }
+    },
+
+    _needMigration() {
+      const e = new Error('recovery-needs-update');
+      e.code = 'recovery-needs-update';
+      throw e;
+    },
+
+    _mapRedeemError(e) {
+      const msg = String(e?.message || '');
+      if (/too many attempts/i.test(msg)) {
+        const err = new Error('recovery-rate-limited');
+        err.code = 'recovery-rate-limited';
+        throw err;
+      }
+      if (/invalid credentials/i.test(msg)) {
+        const err = new Error('recovery-invalid');
+        err.code = 'recovery-invalid';
+        throw err;
+      }
+      if (/42P01|does not exist/i.test(msg)) {
+        return this._needMigration();
+      }
+      throw e;
+    },
+
+    /**
+     * Generate a fresh set of recovery codes for the signed-in user.
+     * Old unused codes are deleted first. Returns the PLAINTEXT codes —
+     * the caller must show them to the user exactly once.
+     */
+    async generateCodes() {
+      const uid = requireUid();
+      const codes = generateRecoveryCodes(RECOVERY_CODE_COUNT);
+      const rows = [];
+      for (const code of codes) {
+        rows.push({ user_id: uid, code_hash: await hashRecoveryCode(code), label: 'recovery' });
+      }
+      // Replace any previous codes (old ones stop working).
+      const del = await client.from('recovery_codes').delete().eq('user_id', uid);
+      if (del.error) {
+        if (/42P01|does not exist/i.test(del.error.message || '')) this._needMigration();
+        throw new Error(`Could not replace recovery codes: ${del.error.message}`);
+      }
+      const { error } = await client.from('recovery_codes').insert(rows);
+      if (error) {
+        if (/42P01|does not exist/i.test(error.message || '')) this._needMigration();
+        throw new Error(`Could not save recovery codes: ${error.message}`);
+      }
+      return codes;
+    },
+
+    /** How many unused recovery codes the signed-in user has left (null when 098 missing). */
+    async unusedCodeCount() {
+      const uid = requireUid();
+      const { count, error } = await client
+        .from('recovery_codes')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', uid)
+        .is('used_at', null);
+      if (error) {
+        if (/42P01|does not exist/i.test(error.message || '')) return null;
+        throw new Error(`Could not check recovery codes: ${error.message}`);
+      }
+      return count ?? 0;
+    },
+
+    /**
+     * Set (or replace) the signed-in user's security questions.
+     * items: [{ question, answer } x3]. Answers are salted+hashed
+     * client-side; the server only stores hashes.
+     */
+    async setSecurityQuestions(items) {
+      const v = validateSecurityQuestions(items);
+      if (!v.ok) {
+        const e = new Error(`security-questions-${v.code}`);
+        e.code = `security-questions-${v.code}`;
+        throw e;
+      }
+      const uid = requireUid();
+      const salt = generateSalt();
+      const questions = items.map((it) => ({ key: String(it.question).trim().slice(0, 200) }));
+      const answer_hashes = [];
+      for (const it of items) answer_hashes.push(await hashSecurityAnswer(it.answer, salt));
+      const { error } = await client.from('security_questions').upsert(
+        {
+          user_id: uid,
+          salt,
+          questions,
+          answer_hashes,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id' }
+      );
+      if (error) {
+        if (/42P01|does not exist/i.test(error.message || '')) this._needMigration();
+        throw new Error(`Could not save security questions: ${error.message}`);
+      }
+    },
+
+    /** The signed-in user's security questions (prompts only, no answers). Null when 098 missing. */
+    async getMyQuestions() {
+      const uid = requireUid();
+      const { data, error } = await client
+        .from('security_questions')
+        .select('questions')
+        .eq('user_id', uid)
+        .maybeSingle();
+      if (error) {
+        if (/42P01|does not exist/i.test(error.message || '')) return null;
+        throw new Error(`Could not load security questions: ${error.message}`);
+      }
+      return Array.isArray(data?.questions) ? data.questions : [];
+    },
+
+    /** Logged out: fetch the security-question prompts for a login id. */
+    async getQuestionsForLogin(login) {
+      try {
+        const { data, error } = await client.rpc('get_recovery_questions', {
+          p_login: String(login ?? ''),
+        });
+        if (error) throw error;
+        return Array.isArray(data) ? data : [];
+      } catch (e) {
+        if (/42P01|does not exist/i.test(e?.message || '')) this._needMigration();
+        throw e;
+      }
+    },
+
+    /** Logged out: redeem a recovery code to set a new password. */
+    async redeemCode({ login, code, newPassword }) {
+      const v = validateRedeemInput({ login, newPassword });
+      if (!v.ok) {
+        const e = new Error(`redeem-${v.code}`);
+        e.code = `redeem-${v.code}`;
+        throw e;
+      }
+      if (!normalizeRecoveryCode(code)) {
+        const e = new Error('redeem-code-required');
+        e.code = 'redeem-code-required';
+        throw e;
+      }
+      try {
+        const { error } = await client.rpc('redeem_recovery_code', {
+          p_login: String(login).trim(),
+          p_code: normalizeRecoveryCode(code),
+          p_new_password: String(newPassword),
+        });
+        if (error) throw error;
+      } catch (e) {
+        this._mapRedeemError(e);
+      }
+    },
+
+    /** Logged out: answer security questions to set a new password. */
+    async redeemAnswers({ login, answers, newPassword }) {
+      const v = validateRedeemInput({ login, newPassword });
+      if (!v.ok) {
+        const e = new Error(`redeem-${v.code}`);
+        e.code = `redeem-${v.code}`;
+        throw e;
+      }
+      if (!Array.isArray(answers) || answers.length !== 3) {
+        const e = new Error('redeem-answers-required');
+        e.code = 'redeem-answers-required';
+        throw e;
+      }
+      try {
+        const { error } = await client.rpc('redeem_security_answers', {
+          p_login: String(login).trim(),
+          p_answers: answers.map((a) => String(a ?? '')),
+          p_new_password: String(newPassword),
+        });
+        if (error) throw error;
+      } catch (e) {
+        this._mapRedeemError(e);
+      }
+    },
+
+    /**
+     * Shop owner/manager: list the shop's team login accounts.
+     * The server enforces the owner/manager relationship.
+     */
+    async listTeamLogins(storeId) {
+      if (!storeId) throw new Error('listTeamLogins needs a store id.');
+      const { data, error } = await client.rpc('shop_list_team_logins', {
+        p_store_id: storeId,
+      });
+      if (error) {
+        if (/42P01|does not exist/i.test(error.message || '')) this._needMigration();
+        if (/not authorized/i.test(error.message || '')) {
+          const e = new Error('team-no-permission');
+          e.code = 'team-no-permission';
+          throw e;
+        }
+        throw new Error(`Could not load team accounts: ${error.message}`);
+      }
+      return (Array.isArray(data) ? data : []).map((r) => ({
+        userId: r.user_id,
+        username: r.username,
+        displayName: r.display_name,
+        shopRole: r.shop_role,
+        accountType: r.account_type,
+        createdAt: r.created_at,
+      }));
+    },
+
+    /** Shop owner/manager: reset a team member's password (no email). */
+    async resetTeamPassword(userId, newPassword) {
+      if (!userId) throw new Error('resetTeamPassword needs a user id.');
+      const pw = String(newPassword ?? '');
+      if (pw.length < 8 || pw.length > 200 || !/\S/.test(pw)) {
+        const e = new Error('redeem-password-invalid');
+        e.code = 'redeem-password-invalid';
+        throw e;
+      }
+      const { error } = await client.rpc('shop_reset_staff_password', {
+        p_target_user_id: userId,
+        p_new_password: pw,
+      });
+      if (error) {
+        if (/42P01|does not exist/i.test(error.message || '')) this._needMigration();
+        if (/not authorized/i.test(error.message || '')) {
+          const e = new Error('team-no-permission');
+          e.code = 'team-no-permission';
+          throw e;
+        }
+        throw new Error(`Password reset failed: ${error.message}`);
+      }
     },
   };
 
@@ -2784,6 +3043,7 @@ export function createSupabaseBackend(config = null) {
     id: r.id,
     storeId: r.store_id,
     userId: r.user_id,
+    ownerType: r.owner_type ?? 'shop',
     title: r.title,
     description: r.description ?? '',
     priceCents: r.price_cents ?? null,
@@ -2793,9 +3053,15 @@ export function createSupabaseBackend(config = null) {
     contactPhone: r.contact_phone ?? '',
     contactEmail: r.contact_email ?? '',
     status: r.status ?? 'draft',
+    expiresAt: r.expires_at ?? null,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   });
+
+  /** Free-tier limits for customer (personal) classifieds. Kijiji-style. */
+  const CUSTOMER_MAX_ACTIVE = 15;
+  const CUSTOMER_MAX_PER_DAY = 5;
+  const CUSTOMER_EXPIRY_DAYS = 60;
 
   const CLASSIFIED_CATEGORIES = [
     'for-sale',
@@ -2924,6 +3190,193 @@ export function createSupabaseBackend(config = null) {
         if (error) {
           if (/42883|PGRST202|does not exist/i.test(error.message || '')) return [];
           throw new Error(`Loading public classifieds: ${error.message}`);
+        }
+        return Array.isArray(data) ? data : [];
+      } catch (err) {
+        if (/42883|PGRST202|does not exist/i.test(err?.message || '')) return [];
+        throw err;
+      }
+    },
+
+    // ---- free customer tier (migration 098, Kijiji-style) -------------------
+    // Personal ads: no shop required. Limits are enforced SERVER-SIDE by the
+    // classified_ads_customer_guard trigger; these methods map the trigger's
+    // error codes to friendly, UI-translatable error names.
+
+    /** Limit constants, exposed for UI display (enforcement is in the DB). */
+    customerLimitsInfo() {
+      return {
+        maxActive: CUSTOMER_MAX_ACTIVE,
+        maxPerDay: CUSTOMER_MAX_PER_DAY,
+        expiryDays: CUSTOMER_EXPIRY_DAYS,
+      };
+    },
+
+    /** Map the DB trigger's limit errors to friendly error names. */
+    _mapCustomerLimitError(err) {
+      const msg = String(err?.message || '');
+      if (/CUSTOMER_LIMIT_ACTIVE/.test(msg)) {
+        const e = new Error('customer-limit-active');
+        e.limitKind = 'active';
+        throw e;
+      }
+      if (/CUSTOMER_LIMIT_DAILY/.test(msg)) {
+        const e = new Error('customer-limit-daily');
+        e.limitKind = 'daily';
+        throw e;
+      }
+      throw err;
+    },
+
+    /** The caller's own personal ads (any status). */
+    async customerList() {
+      const uid = requireUid();
+      if (!(await classifiedsAvailable())) throw new Error('classifieds-unavailable');
+      const q = client
+        .from('classified_ads')
+        .select('*')
+        .eq('owner_type', 'customer')
+        .eq('user_id', uid)
+        .order('created_at', { ascending: false });
+      return check(await q, 'Listing personal ads').map(mapClassifiedAd);
+    },
+
+    /** Current usage vs limits for the free tier. */
+    async customerLimits() {
+      requireUid();
+      if (!(await classifiedsAvailable())) throw new Error('classifieds-unavailable');
+      try {
+        const { data, error } = await client.rpc('customer_ad_limits');
+        if (error) throw error;
+        return {
+          active: Number(data?.active ?? 0),
+          today: Number(data?.today ?? 0),
+          maxActive: CUSTOMER_MAX_ACTIVE,
+          maxPerDay: CUSTOMER_MAX_PER_DAY,
+          expiryDays: CUSTOMER_EXPIRY_DAYS,
+        };
+      } catch (err) {
+        // Migration 098 not applied yet: report zeros so the UI degrades.
+        if (/42883|PGRST202|does not exist/i.test(err?.message || '')) {
+          return { active: 0, today: 0, maxActive: CUSTOMER_MAX_ACTIVE, maxPerDay: CUSTOMER_MAX_PER_DAY, expiryDays: CUSTOMER_EXPIRY_DAYS };
+        }
+        throw err;
+      }
+    },
+
+    async customerCreate(ad) {
+      const uid = requireUid();
+      if (!(await classifiedsAvailable())) throw new Error('classifieds-unavailable');
+      const title = String(ad?.title ?? '').trim();
+      if (!title) throw new Error('Ad title cannot be empty.');
+      const category = CLASSIFIED_CATEGORIES.includes(ad?.category) ? ad.category : 'for-sale';
+      const status = ad?.status === 'published' ? 'published' : 'draft';
+      let priceCents = null;
+      if (ad?.priceCents !== null && ad?.priceCents !== undefined && ad?.priceCents !== '') {
+        const n = Math.round(Number(ad.priceCents));
+        if (!Number.isFinite(n) || n < 0) throw new Error('Price must be a positive number.');
+        priceCents = n;
+      }
+      try {
+        const row = check(
+          await client
+            .from('classified_ads')
+            .insert({
+              store_id: null,
+              user_id: uid,
+              owner_type: 'customer',
+              title: title.slice(0, 120),
+              description: String(ad?.description ?? ''),
+              price_cents: priceCents,
+              category,
+              photo_data: ad?.photoData || null,
+              contact_name: String(ad?.contactName ?? ''),
+              contact_phone: String(ad?.contactPhone ?? ''),
+              contact_email: String(ad?.contactEmail ?? ''),
+              status,
+            })
+            .select('*')
+            .single(),
+          'Creating personal ad'
+        );
+        return mapClassifiedAd(row);
+      } catch (err) {
+        this._mapCustomerLimitError(err);
+      }
+    },
+
+    async customerUpdate(id, patch) {
+      requireUid();
+      if (!(await classifiedsAvailable())) throw new Error('classifieds-unavailable');
+      if (!id) throw new Error('update needs an id.');
+      const clean = {};
+      if (patch?.title !== undefined) {
+        const t = String(patch.title).trim();
+        if (!t) throw new Error('Ad title cannot be empty.');
+        clean.title = t.slice(0, 120);
+      }
+      if (patch?.description !== undefined) clean.description = String(patch.description);
+      if (patch?.priceCents !== undefined) {
+        if (patch.priceCents === null || patch.priceCents === '') {
+          clean.price_cents = null;
+        } else {
+          const n = Math.round(Number(patch.priceCents));
+          if (!Number.isFinite(n) || n < 0) throw new Error('Price must be a positive number.');
+          clean.price_cents = n;
+        }
+      }
+      if (patch?.category !== undefined && CLASSIFIED_CATEGORIES.includes(patch.category)) {
+        clean.category = patch.category;
+      }
+      if (patch?.photoData !== undefined) clean.photo_data = patch.photoData || null;
+      if (patch?.contactName !== undefined) clean.contact_name = String(patch.contactName);
+      if (patch?.contactPhone !== undefined) clean.contact_phone = String(patch.contactPhone);
+      if (patch?.contactEmail !== undefined) clean.contact_email = String(patch.contactEmail);
+      if (patch?.status === 'draft' || patch?.status === 'published') clean.status = patch.status;
+      if (Object.keys(clean).length === 0) throw new Error('Nothing to update.');
+      try {
+        const row = check(
+          await client
+            .from('classified_ads')
+            .update(clean)
+            .eq('id', id)
+            .eq('owner_type', 'customer')
+            .select('*')
+            .single(),
+          'Updating personal ad'
+        );
+        return mapClassifiedAd(row);
+      } catch (err) {
+        this._mapCustomerLimitError(err);
+      }
+    },
+
+    /** Renew an expired (or expiring) ad: re-publish resets the 60-day clock. */
+    async customerRenew(id) {
+      return this.customerUpdate(id, { status: 'published' });
+    },
+
+    async customerRemove(id) {
+      requireUid();
+      if (!(await classifiedsAvailable())) throw new Error('classifieds-unavailable');
+      if (!id) throw new Error('remove needs an id.');
+      check(
+        await client.from('classified_ads').delete().eq('id', id).eq('owner_type', 'customer'),
+        'Deleting personal ad'
+      );
+    },
+
+    /**
+     * Public community board: published, non-expired CUSTOMER ads.
+     * Uses the public_customer_classifieds() RPC (migration 098);
+     * returns [] when the migration is not applied yet.
+     */
+    async customerPublicList() {
+      try {
+        const { data, error } = await client.rpc('public_customer_classifieds');
+        if (error) {
+          if (/42883|PGRST202|does not exist/i.test(error.message || '')) return [];
+          throw new Error(`Loading community ads: ${error.message}`);
         }
         return Array.isArray(data) ? data : [];
       } catch (err) {
@@ -7269,6 +7722,7 @@ export function createSupabaseBackend(config = null) {
     /** Raw Supabase client — exposed for system health checks and diagnostics. */
     supabase: client,
     auth,
+    recovery,
     profile,
     settings,
     files,

@@ -335,7 +335,35 @@ function renderStorefront(slug, configCheck) {
     .catch(renderBootError);
 }
 
-if (storefrontMatch && SUPABASE_URL && SUPABASE_ANON_KEY) {
+/**
+ * Public community board (#/community) — Kijiji-style browsing of the
+ * free customer-tier ads (migration 098). Same standalone-page pattern
+ * as the storefront: no desktop chrome, no login required. The page
+ * reads only through the public_customer_classifieds() RPC, so on a
+ * pre-migration database it renders an honest empty state.
+ */
+function renderCommunity() {
+  import('./apps/CommunityBoard.jsx')
+    .then(({ default: CommunityBoard }) => {
+      root.render(
+        <React.StrictMode>
+          <RootErrorBoundary>
+            <CommunityBoard />
+          </RootErrorBoundary>
+        </React.StrictMode>,
+      );
+    })
+    .catch(renderBootError);
+}
+
+const communityMatch =
+  typeof window !== 'undefined'
+    ? /^#\/community\/?$/.test(window.location.hash)
+    : null;
+
+if (communityMatch && SUPABASE_URL && SUPABASE_ANON_KEY) {
+  renderCommunity();
+} else if (storefrontMatch && SUPABASE_URL && SUPABASE_ANON_KEY) {
   let slug = storefrontMatch[1];
   try { slug = decodeURIComponent(slug); } catch { /* keep the raw slug */ }
   // Config-shape gate (2026-10-01 hardening): a build with a truncated or

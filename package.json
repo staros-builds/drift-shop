@@ -20,7 +20,7 @@
     "build": "node scripts/write-build-json.mjs && vite build && node scripts/build-landing.mjs && node scripts/build-blog.mjs",
     "dev": "vite",
     "preview": "vite preview",
-    "test": "node test/access-policy.test.mjs && node test/config-check.test.mjs && node test/i18n-parity.test.mjs && node test/login-id.test.mjs && node test/password-policy.test.mjs && node test/tax-math.test.mjs",
+    "test": "node test/access-policy.test.mjs && node test/config-check.test.mjs && node test/i18n-parity.test.mjs && node test/login-id.test.mjs && node test/password-policy.test.mjs && node test/recovery.test.mjs && node test/tax-math.test.mjs",
     "build:landing": "node scripts/build-landing.mjs",
     "verify:bundle": "node scripts/verify-bundle.mjs dist",
     "release": "npm test && npm run build && npm run verify:bundle",

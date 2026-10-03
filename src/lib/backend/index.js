@@ -36,6 +36,19 @@
  *         -> { kind: 'confirmed', flow } | { kind: 'recovery' }
  *          | { kind: 'error', errorCode } | { kind: 'none' }
  *     },
+ *     recovery: {
+ *       // Email-independent account recovery (migration 098).
+ *       isAvailable() -> bool                 // false until 098 applied
+ *       generateCodes() -> [code]             // signed-in; plaintext shown ONCE
+ *       unusedCodeCount() -> n | null
+ *       setSecurityQuestions([{question, answer} x3]) -> void
+ *       getMyQuestions() -> [{key}] | null    // signed-in; prompts only
+ *       getQuestionsForLogin(login) -> [{key}]  // logged out
+ *       redeemCode({login, code, newPassword}) -> void    // logged out
+ *       redeemAnswers({login, answers[3], newPassword}) -> void  // logged out
+ *       listTeamLogins(storeId) -> [{userId, username, displayName, shopRole, accountType}]
+ *       resetTeamPassword(userId, newPassword) -> void  // owner/manager only
+ *     },
  *     profile: {
  *       // Display identity only — never roles/paid/lock state.
  *       get() -> { username, displayName, avatarUrl }
@@ -196,9 +209,10 @@
  *       // Kijiji-style classified ads per shop (migration 097).
  *       // Drafts are private; published ads appear on the shop's public
  *       // storefront via publicList(slug) -> the public_classifieds() RPC.
- *       // ad = { id, storeId, userId, title, description, priceCents|null,
- *       //        category, photoData|null, contactName, contactPhone,
- *       //        contactEmail, status: 'draft'|'published', createdAt }
+ *       // ad = { id, storeId, userId, ownerType: 'shop'|'customer', title,
+ *       //        description, priceCents|null, category, photoData|null,
+ *       //        contactName, contactPhone, contactEmail,
+ *       //        status: 'draft'|'published', expiresAt|null, createdAt }
  *       available() -> bool                               // migration 097 applied?
  *       categories() -> [string]                          // category keys
  *       list(storeId, { status }) -> [ad]                  // newest first
@@ -206,6 +220,16 @@
  *       update(id, patch) -> ad                            // any member
  *       remove(id) -> void                                 // owner/manager only
  *       publicList(slug) -> [public ad]                    // published only, [] if n/a
+ *       // Free customer tier (migration 098): personal ads, no shop needed.
+ *       // Limits enforced server-side (15 active, 5/day, 60-day expiry).
+ *       customerLimitsInfo() -> { maxActive, maxPerDay, expiryDays }
+ *       customerList() -> [ad]                             // caller's own
+ *       customerLimits() -> { active, today, ... }         // usage vs limits
+ *       customerCreate(ad) -> ad                           // throws customer-limit-*
+ *       customerUpdate(id, patch) -> ad
+ *       customerRenew(id) -> ad                            // re-publish, reset expiry
+ *       customerRemove(id) -> void
+ *       customerPublicList() -> [public ad]                // community board
  *     },
  *   }
  *

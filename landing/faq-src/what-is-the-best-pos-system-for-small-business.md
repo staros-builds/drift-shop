@@ -24,7 +24,7 @@ The "best" POS depends on your shop, but the criteria are the same for almost ev
 
 **Shopify POS** makes sense if you're already deep in the Shopify ecosystem, but the monthly plan plus POS fees stack up quickly.
 
-**Vendra** takes a different approach: $350/year flat covers the POS, inventory management, appointment booking, staff time-clock, online ordering, and a public storefront page. No transaction fees from Vendra (your payment processor charges its standard rate), no monthly billing, and it works in English, French, Spanish, and Portuguese out of the box.
+**Vendra** takes a different approach: $350/year flat covers the POS, inventory management, appointment booking, staff time-clock, online ordering, a public storefront page, and a classifieds board. No transaction fees from Vendra (your payment processor charges its standard rate), no monthly billing, and it works in English, French, Spanish, and Portuguese out of the box.
 
 ## How to Decide
 

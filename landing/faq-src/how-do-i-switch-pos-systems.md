@@ -50,7 +50,7 @@ Once the new system is running smoothly:
 
 ## Switching to Vendra
 
-**Vendra** supports CSV product import, so most shops get their catalog loaded in an afternoon. The $350/year flat pricing means no contract negotiation and no tier decisions — one plan covers the POS, inventory, appointments, staff time-clock, online ordering, and storefront. The 30-day free trial lets you run the parallel period at no cost before committing.
+**Vendra** supports CSV product import, so most shops get their catalog loaded in an afternoon. The $350/year flat pricing means no contract negotiation and no tier decisions — one plan covers the POS, inventory, appointments, staff time-clock, online ordering, storefront, and classifieds. The 30-day free trial lets you run the parallel period at no cost before committing.
 
 ## The Bottom Line
 

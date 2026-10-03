@@ -5064,6 +5064,9 @@ function TeamTab({ store, members, selfId, v4, onInvite, onRevokeInvite, onSetRo
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(null);
+  const [resetFor, setResetFor] = useState(null); // team member getting an assisted password reset
+  const [resetPass, setResetPass] = useState('');
+  const [resetDone, setResetDone] = useState('');
   const manager = canManage(store.role);
   const isOwner = store.role === 'owner';
 
@@ -5165,10 +5168,99 @@ function TeamTab({ store, members, selfId, v4, onInvite, onRevokeInvite, onSetRo
                   {m.userId === selfId ? <LogOut size={15} /> : <Trash2 size={15} />}
                 </button>
               )}
+              {/* Assisted password reset — owner/manager resets a teammate's
+                  login password directly, no email needed (migration 098). */}
+              {manager && m.userId !== selfId && (
+                <button
+                  type="button"
+                  onClick={() => { setResetFor(m); setResetPass(''); setResetDone(''); }}
+                  title={t('recovery.teamReset')}
+                  aria-label={`${t('recovery.teamReset')} — ${m.username}`}
+                  className="rounded-os p-1.5 text-muted hover:bg-surface hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                >
+                  <KeyRound size={15} />
+                </button>
+              )}
             </div>
           ))}
         </div>
       </section>
+
+      {/* Team password-reset dialog */}
+      {resetFor && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setResetFor(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('recovery.teamResetTitle', { name: resetFor.username })}
+        >
+          <div
+            className="w-full max-w-sm rounded-os border border-osborder bg-surface p-5 shadow-oswin"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-semibold text-ink">
+              {t('recovery.teamResetTitle', { name: resetFor.username })}
+            </h3>
+            {resetDone ? (
+              <p className="mt-3 text-sm leading-relaxed text-ink">{resetDone}</p>
+            ) : (
+              <>
+                <p className="mt-2 text-xs leading-relaxed text-muted">{t('recovery.teamResetBody')}</p>
+                <label className="mt-3 block">
+                  <span className="mb-1 block text-xs font-medium text-muted">{t('recovery.teamTempPassword')}</span>
+                  <input
+                    type="text"
+                    value={resetPass}
+                    onChange={(e) => setResetPass(e.target.value)}
+                    autoComplete="off"
+                    placeholder={t('recovery.newPasswordPh')}
+                    className="w-full rounded-os border border-osborder bg-paper px-3 py-2 text-sm text-ink outline-none duration-160 focus:border-accent"
+                  />
+                </label>
+              </>
+            )}
+            <div className="mt-4 flex gap-2">
+              {resetDone ? (
+                <button
+                  type="button"
+                  onClick={() => setResetFor(null)}
+                  className="w-full rounded-os bg-accent px-4 py-2 text-sm font-semibold text-accentink duration-160 hover:opacity-90"
+                >
+                  {t('recovery.close')}
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setError('');
+                      try {
+                        await backend.recovery.resetTeamPassword(resetFor.userId, resetPass);
+                        setResetDone(t('recovery.teamResetDone', { name: resetFor.username }));
+                      } catch (err) {
+                        setError(err?.code === 'team-no-permission' ? t('recovery.teamNoPermission') : (err.message || String(err)));
+                        setResetFor(null);
+                      }
+                    }}
+                    disabled={resetPass.length < 8}
+                    className="flex-1 rounded-os bg-accent px-4 py-2 text-sm font-semibold text-accentink duration-160 hover:opacity-90 disabled:opacity-40"
+                  >
+                    {t('recovery.teamReset')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setResetFor(null)}
+                    className="rounded-os border border-osborder bg-paper px-4 py-2 text-sm text-muted duration-160 hover:text-ink"
+                  >
+                    {t('recovery.close')}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Staff PINs (shared-device cashier login) */}
       {v4 && <StaffPinSection store={store} canManageStaff={manager} />}
