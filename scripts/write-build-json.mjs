@@ -15,7 +15,7 @@ if (!sha) {
   }
 }
 const buildId = (sha || `local-${Date.now()}`).slice(0, 40);
-const payload = { buildId, builtAt: new Date().toISOString(), product: 'vendra' };
+const payload = { buildId, builtAt: new Date().toISOString(), product: 'vendra', version: '2.0.0' };
 mkdirSync('public', { recursive: true });
 writeFileSync('public/build.json', JSON.stringify(payload, null, 2) + '\n');
 console.log(`[build] buildId=${buildId}`);
