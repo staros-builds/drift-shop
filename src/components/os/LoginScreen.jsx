@@ -71,10 +71,9 @@ function LangToggle() {
  * address to jump to its storefront (#/store/<slug>). Shared by the Shop
  * login view (compact, at the bottom) and the Customer view (prominent,
  * front and center). Designed as a welcoming doorway: medallion icon,
- * clear value props, pill input + arrow button, and a tap-to-try example.
+ * clear value props, and a pill input + arrow button.
  */
-function VisitShopPanel({ t, shopSlug, setShopSlug, visitShop, prominent }) {
-  const tryExample = () => setShopSlug(t('login.visitShopExampleSlug'));
+function VisitShopPanel({ t, shopSlug, setShopSlug, shopSlugError, setShopSlugError, visitShop, prominent }) {
   return (
     <div className={prominent
       ? 'rounded-os border border-osborder bg-paper p-5 text-center'
@@ -99,7 +98,7 @@ function VisitShopPanel({ t, shopSlug, setShopSlug, visitShop, prominent }) {
         <input
           type="text"
           value={shopSlug}
-          onChange={(e) => setShopSlug(e.target.value)}
+          onChange={(e) => { setShopSlug(e.target.value); if (shopSlugError) setShopSlugError(''); }}
           placeholder={t('login.shopAddressPh')}
           autoCapitalize="off"
           autoCorrect="off"
@@ -117,16 +116,9 @@ function VisitShopPanel({ t, shopSlug, setShopSlug, visitShop, prominent }) {
           <ArrowRight size={15} />
         </button>
       </form>
-      <p className="mt-2.5 text-xs text-muted">
-        {t('login.visitShopTryLabel')}{' '}
-        <button
-          type="button"
-          onClick={tryExample}
-          className="rounded-full border border-osborder bg-surface px-2.5 py-0.5 font-mono text-xs text-accent duration-160 hover:border-accent"
-        >
-          {t('login.visitShopExampleSlug')}
-        </button>
-      </p>
+      {shopSlugError && (
+        <p role="alert" className="mt-2 text-xs text-red-600 dark:text-red-400">{shopSlugError}</p>
+      )}
     </div>
   );
 }
@@ -345,7 +337,7 @@ export function ForcePasswordChangeModal({ onDone }) {
  *  4. Help ticket — for accounts with no recovery method set up; the
  *     shop admin sees it in the support inbox and resets the password.
  */
-function LoginHelpDialog({ onClose }) {
+function LoginHelpDialog({ onClose, trialAvailable }) {
   const { t } = useLang();
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
@@ -356,7 +348,7 @@ function LoginHelpDialog({ onClose }) {
     { icon: <LogIn size={16} />, title: t('login.helpSigninTitle'), body: t('login.helpSigninBody') },
     { icon: <KeyRound size={16} />, title: t('login.helpRecoveryTitle'), body: t('login.helpRecoveryBody') },
     { icon: <Store size={16} />, title: t('login.helpVisitTitle'), body: t('login.helpVisitBody') },
-    { icon: <Timer size={16} />, title: t('login.helpTrialTitle'), body: t('login.helpTrialBody') },
+    { icon: <Timer size={16} />, title: t('login.helpTrialTitle'), body: t('login.helpTrialBody'), hide: !trialAvailable },
   ];
   return (
     <div
@@ -382,7 +374,7 @@ function LoginHelpDialog({ onClose }) {
           </button>
         </div>
         <div className="space-y-4">
-          {topics.map((topic, i) => (
+          {topics.filter((topic) => !topic.hide).map((topic, i) => (
             <div key={i}>
               <h3 className="flex items-center gap-2 text-sm font-semibold text-ink">
                 <span className="text-accent">{topic.icon}</span>
@@ -776,6 +768,7 @@ export default function LoginScreen() {
   // "Visiting a shop?" — a customer-facing door on the welcome screen: type
   // a shop's public web address to jump to its storefront (#/store/<slug>).
   const [shopSlug, setShopSlug] = useState('');
+  const [shopSlugError, setShopSlugError] = useState('');
   const [lastSentAt, setLastSentAt] = useState(0);
   const [nowTick, setNowTick] = useState(() => Date.now());
   // One-time notice from an auth callback landing (e.g. an expired
@@ -1067,7 +1060,15 @@ export default function LoginScreen() {
   const visitShop = (e) => {
     e.preventDefault();
     const slug = shopSlug.trim().toLowerCase();
-    if (!/^[a-z0-9][a-z0-9-]{0,62}$/.test(slug)) return;
+    if (!slug) {
+      setShopSlugError(t('login.visitShopEmpty'));
+      return;
+    }
+    if (!/^[a-z0-9][a-z0-9-]{0,62}$/.test(slug)) {
+      setShopSlugError(t('login.visitShopInvalid'));
+      return;
+    }
+    setShopSlugError('');
     window.location.hash = '#/store/' + encodeURIComponent(slug);
     window.location.reload();
   };
@@ -1124,12 +1125,12 @@ export default function LoginScreen() {
                 setCheckEmail(null);
                 setNotice(null);
               }}
-              className={`flex items-center justify-center gap-1.5 rounded-os px-3 py-2 text-sm font-semibold duration-160 ${
+              className={`flex min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-os px-2 py-2 text-sm font-semibold duration-160 sm:px-3 ${
                 audience === b.id ? 'bg-surface text-ink shadow-os' : 'text-muted hover:text-ink'
               }`}
             >
-              <b.Icon size={15} className={audience === b.id ? 'text-accent' : ''} />
-              {b.label}
+              <b.Icon size={15} className={`shrink-0 ${audience === b.id ? 'text-accent' : ''}`} />
+              <span className="truncate">{b.label}</span>
             </button>
           ))}
         </div>
@@ -1401,7 +1402,7 @@ export default function LoginScreen() {
         </form>
         )}
 
-        {!checkEmail && (
+        {!checkEmail && OAUTH_PROVIDERS.length > 0 && (
           <>
             <div className="my-3 flex items-center gap-3 text-xs text-muted">
               <span className="h-px flex-1 bg-osborder" />
@@ -1447,7 +1448,7 @@ export default function LoginScreen() {
           </>
         )}
 
-        <VisitShopPanel t={t} shopSlug={shopSlug} setShopSlug={setShopSlug} visitShop={visitShop} />
+        <VisitShopPanel t={t} shopSlug={shopSlug} setShopSlug={setShopSlug} shopSlugError={shopSlugError} setShopSlugError={setShopSlugError} visitShop={visitShop} />
         </>
         ) : (
         <>
@@ -1463,7 +1464,7 @@ export default function LoginScreen() {
         </div>
 
         <div className="mt-3">
-          <VisitShopPanel t={t} shopSlug={shopSlug} setShopSlug={setShopSlug} visitShop={visitShop} prominent />
+          <VisitShopPanel t={t} shopSlug={shopSlug} setShopSlug={setShopSlug} shopSlugError={shopSlugError} setShopSlugError={setShopSlugError} visitShop={visitShop} prominent />
         </div>
 
         <p className="mt-3 text-center text-xs text-muted">
@@ -1513,7 +1514,7 @@ export default function LoginScreen() {
       </div>
       </div>
       {forgotOpen && <ForgotPasswordDialog onClose={() => setForgotOpen(false)} />}
-      {helpOpen && <LoginHelpDialog onClose={() => setHelpOpen(false)} />}
+      {helpOpen && <LoginHelpDialog onClose={() => setHelpOpen(false)} trialAvailable={trialAvailable} />}
     </div>
   );
 }

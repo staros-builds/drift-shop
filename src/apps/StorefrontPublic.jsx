@@ -947,22 +947,26 @@ export default function StorefrontPublic({ slug, configError = null, appHome = n
             >
               {authBusy ? '…' : authMode === 'signup' ? oo('signUpBtn') : oo('signInBtn')}
             </button>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, color: '#8a7f72', fontSize: 12 }}>
-              <span style={{ flex: 1, height: 1, background: '#e5ddd2' }} />
-              {oo('oauthOrContinue')}
-              <span style={{ flex: 1, height: 1, background: '#e5ddd2' }} />
-            </div>
-            {OAUTH_PROVIDERS.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                disabled={authBusy}
-                style={{ ...styles.ghostBtn, width: '100%', marginTop: 8, opacity: authBusy ? 0.6 : 1 }}
-                onClick={() => doOAuth(p.id)}
-              >
-                {oo(p.labelKey)}
-              </button>
-            ))}
+            {OAUTH_PROVIDERS.length > 0 && (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, color: '#8a7f72', fontSize: 12 }}>
+                  <span style={{ flex: 1, height: 1, background: '#e5ddd2' }} />
+                  {oo('oauthOrContinue')}
+                  <span style={{ flex: 1, height: 1, background: '#e5ddd2' }} />
+                </div>
+                {OAUTH_PROVIDERS.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    disabled={authBusy}
+                    style={{ ...styles.ghostBtn, width: '100%', marginTop: 8, opacity: authBusy ? 0.6 : 1 }}
+                    onClick={() => doOAuth(p.id)}
+                  >
+                    {oo(p.labelKey)}
+                  </button>
+                ))}
+              </>
+            )}
             <button
               type="button"
               disabled={authBusy || !authEmail.includes('@')}

@@ -164,7 +164,7 @@ export function AdForm({ initial, onSave, onClose, saving }) {
   const [price, setPrice] = useState(
     initial?.priceCents === null || initial?.priceCents === undefined
       ? ''
-      : String(Number(initial.priceCents) / 100)
+      : (Math.round(Number(initial.priceCents)) / 100).toFixed(2)
   );
   const [category, setCategory] = useState(initial?.category ?? 'for-sale');
   const [photoData, setPhotoData] = useState(initial?.photoData ?? null);

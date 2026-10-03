@@ -254,7 +254,7 @@ export default function DesktopIcons({ selectedId, onSelect }) {
             >
               <Icon size={22} strokeWidth={1.75} />
             </span>
-            <span className="line-clamp-2 max-w-full break-words text-center text-xs font-medium leading-tight text-ink">{appTitle(app)}</span>
+            <span className="line-clamp-2 w-28 -mx-2 break-words text-center text-xs font-medium leading-tight text-ink">{appTitle(app)}</span>
           </button>
         );
       })}

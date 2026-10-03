@@ -43,7 +43,8 @@ export default function BootScreen({ onDone }) {
         await backend.settings.get();
         add(`Backend ready — ${backend.kind} mode.`);
       } catch (e) {
-        add(`Backend hiccup: ${e.message}. Continuing anyway.`);
+        // Strip trailing punctuation from the error so we don't print ".."
+        add(`Backend hiccup: ${String(e.message || e).replace(/[.!\s]+$/, '')}. Continuing anyway.`);
       }
       await sleep(350);
       if (cancelled) return;

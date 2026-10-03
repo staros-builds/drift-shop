@@ -321,6 +321,8 @@ media: {
     visitShopPerks: 'Mira sus productos, precios y horarios — y pide en línea, sin crear una cuenta.',
     visitShopTryLabel: 'Prueba un ejemplo:',
     visitShopExampleSlug: 'marie-panaderia',
+    visitShopEmpty: 'Escribe primero la dirección de la tienda.',
+    visitShopInvalid: 'Esa dirección no parece válida: usa letras, números y guiones.',
     audienceLabel: 'Elige el tipo de acceso',
     audienceShop: 'Acceso tienda',
     audienceCustomer: 'Cliente',

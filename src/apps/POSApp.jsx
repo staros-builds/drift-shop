@@ -5059,6 +5059,12 @@ function StaffPinSection({ store, canManageStaff }) {
 }
 function TeamTab({ store, members, selfId, v4, onInvite, onRevokeInvite, onSetRole, onRemove, onLeave }) {
   const { t } = useLang();
+  // NOTE: manager/isOwner MUST be declared before any useEffect that lists
+  // them in its dependency array — the deps array is evaluated eagerly during
+  // render, so a later `const` would throw a TDZ ReferenceError and crash the
+  // whole POS zone.
+  const manager = canManage(store?.role);
+  const isOwner = store?.role === 'owner';
   const [invites, setInvites] = useState(null);
   const [inviteRole, setInviteRole] = useState('cashier');
   const [newCode, setNewCode] = useState(null);
@@ -5077,7 +5083,7 @@ function TeamTab({ store, members, selfId, v4, onInvite, onRevokeInvite, onSetRo
     let cancelled = false;
     (async () => {
       try {
-        const logins = await backend.recovery.listTeamLogins(store.id);
+        const logins = await backend.recovery.listTeamLogins(store?.id);
         if (cancelled) return;
         const memberIds = new Set((members || []).map((m) => m.userId));
         setOtherLogins((logins || []).filter((l) => l.userId && !memberIds.has(l.userId) && l.userId !== selfId));
@@ -5086,16 +5092,14 @@ function TeamTab({ store, members, selfId, v4, onInvite, onRevokeInvite, onSetRo
       }
     })();
     return () => { cancelled = true; };
-  }, [manager, store.id, members, selfId]);
-  const manager = canManage(store.role);
-  const isOwner = store.role === 'owner';
+  }, [manager, store?.id, members, selfId]);
 
   // UX guard for demotions/removals/leaves: the DB trigger
   // (pos_members_guard_owner) still enforces "at least one owner", but we
   // catch it here first so the user sees a friendly message instead of a
   // raw database error. Covers both local and cloud paths.
   const otherOwnersRemain = (userId) =>
-    members.some((m) => m.role === 'owner' && m.userId !== userId);
+    (members || []).some((m) => m.role === 'owner' && m.userId !== userId);
   const blockIfLastOwner = (member) => {
     if (member.role === 'owner' && !otherOwnersRemain(member.userId)) {
       setError(
@@ -5109,12 +5113,12 @@ function TeamTab({ store, members, selfId, v4, onInvite, onRevokeInvite, onSetRo
   useEffect(() => {
     let cancelled = false;
     if (manager) {
-      backend.pos.listInvites(store.id).then((list) => {
+      backend.pos.listInvites(store?.id).then((list) => {
         if (!cancelled) setInvites(list);
       }).catch(() => { if (!cancelled) setInvites([]); });
     }
     return () => { cancelled = true; };
-  }, [store.id, manager]);
+  }, [store?.id, manager]);
 
   const createInvite = async () => {
     setBusy(true);
@@ -5122,7 +5126,7 @@ function TeamTab({ store, members, selfId, v4, onInvite, onRevokeInvite, onSetRo
     try {
       const invite = await onInvite(inviteRole);
       setNewCode(invite.code);
-      const list = await backend.pos.listInvites(store.id);
+      const list = await backend.pos.listInvites(store?.id);
       setInvites(list);
     } catch (err) {
       setError(err.message || t('err.createInvite'));
@@ -5146,10 +5150,10 @@ function TeamTab({ store, members, selfId, v4, onInvite, onRevokeInvite, onSetRo
       {/* Members */}
       <section>
         <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-ink">
-          <Users size={15} className="text-accent" /> Team · {members.length} member{members.length === 1 ? '' : 's'}
+          <Users size={15} className="text-accent" /> Team · {(members || []).length} member{(members || []).length === 1 ? '' : 's'}
         </h3>
         <div className="space-y-2">
-          {members.map((m) => (
+          {(members || []).map((m) => (
             <div key={m.userId} className="flex items-center gap-2 rounded-os border border-osborder bg-paper px-3 py-2.5 sm:gap-3 sm:px-4">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-os bg-accent/15 text-sm font-bold text-accent">
                 {(m.username || '?').slice(0, 1).toUpperCase()}

@@ -321,6 +321,8 @@ media: {
     visitShopPerks: 'Voyez leurs produits, prix et heures d’ouverture — et commandez en ligne, sans compte.',
     visitShopTryLabel: 'Essayez un exemple :',
     visitShopExampleSlug: 'marie-boulangerie',
+    visitShopEmpty: 'Saisissez d’abord l’adresse de la boutique.',
+    visitShopInvalid: 'Cette adresse semble invalide — utilisez lettres, chiffres et traits d’union.',
     audienceLabel: 'Choisir le type de connexion',
     audienceShop: 'Connexion boutique',
     audienceCustomer: 'Client',

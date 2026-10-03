@@ -321,6 +321,8 @@ media: {
     visitShopPerks: 'See their products, prices and opening hours — and order online, all without an account.',
     visitShopTryLabel: 'Try an example:',
     visitShopExampleSlug: 'marie-bakery',
+    visitShopEmpty: 'Type a shop address first.',
+    visitShopInvalid: 'That address doesn’t look right — use letters, numbers, and dashes.',
     audienceLabel: 'Choose login type',
     audienceShop: 'Shop login',
     audienceCustomer: 'Customer',

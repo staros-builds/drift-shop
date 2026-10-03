@@ -321,6 +321,8 @@ media: {
     visitShopPerks: 'Veja os produtos, preços e horários — e peça online, sem criar uma conta.',
     visitShopTryLabel: 'Experimente um exemplo:',
     visitShopExampleSlug: 'marie-padaria',
+    visitShopEmpty: 'Digite primeiro o endereço da loja.',
+    visitShopInvalid: 'Esse endereço parece inválido — use letras, números e hífens.',
     audienceLabel: 'Escolha o tipo de login',
     audienceShop: 'Login da loja',
     audienceCustomer: 'Cliente',
