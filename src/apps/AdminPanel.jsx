@@ -2017,8 +2017,8 @@ function StorefrontSection() {
     address: '', facebookUrl: '', instagramUrl: '', tiktokUrl: '',
     whatsappPhone: '', reviewUrl: '', directionsUrl: '', orderUrl: '',
     newsletterUrl: '', onlineOrdering: false, orderingNote: '',
-    lsEnabled: false, lsCheckoutUrl: '', lsStoreUrl: '',
-    stripeEnabled: false, stripeCheckoutUrl: '',
+    lsEnabled: false, lsCheckoutUrl: '', lsStoreUrl: '', lsWebhookSecret: '',
+    stripeEnabled: false, stripeCheckoutUrl: '', stripeWebhookSecret: '',
   });
 
   // Full slug (saved form): the DB rule is ^[a-z0-9][a-z0-9-]{0,62}$ —
@@ -2157,8 +2157,10 @@ function StorefrontSection() {
             lsEnabled: !!prof.ls_enabled,
             lsCheckoutUrl: prof.ls_checkout_url || '',
             lsStoreUrl: prof.ls_store_url || '',
+            lsWebhookSecret: prof.ls_webhook_secret || '',
             stripeEnabled: !!prof.stripe_enabled,
             stripeCheckoutUrl: prof.stripe_checkout_url || '',
+            stripeWebhookSecret: prof.stripe_webhook_secret || '',
           });
         } else {
           setForm({
@@ -2168,8 +2170,8 @@ function StorefrontSection() {
             contactEmail: '', contactPhone: '', accentColor: '',
             published: false, showPrices: true,
             onlineOrdering: false, orderingNote: '',
-            lsEnabled: false, lsCheckoutUrl: '', lsStoreUrl: '',
-            stripeEnabled: false, stripeCheckoutUrl: '',
+            lsEnabled: false, lsCheckoutUrl: '', lsStoreUrl: '', lsWebhookSecret: '',
+            stripeEnabled: false, stripeCheckoutUrl: '', stripeWebhookSecret: '',
           });
         }
         setProducts(prods || []);
@@ -2665,6 +2667,23 @@ function StorefrontSection() {
                         className={inputCls}
                       />
                     </div>
+                    <div>
+                      <label className={labelCls}>Lemon Squeezy webhook secret</label>
+                      <input
+                        {...field('lsWebhookSecret')}
+                        disabled={!ordersReady}
+                        type="password"
+                        placeholder="whsec_..."
+                        maxLength={500}
+                        className={inputCls}
+                        autoComplete="off"
+                      />
+                      <p className="mt-1 text-xs text-muted">
+                        From Lemon Squeezy → Settings → Webhooks → your webhook → Signing secret.
+                        Required for automatic payment confirmation. Vendra verifies every webhook
+                        signature with this secret.
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -2699,6 +2718,23 @@ function StorefrontSection() {
                     <p className="mt-1 text-xs text-muted">
                       Paste your Stripe payment link. Customers will be sent here after placing an order.
                     </p>
+                    <div className="mt-3">
+                      <label className={labelCls}>Stripe webhook secret</label>
+                      <input
+                        {...field('stripeWebhookSecret')}
+                        disabled={!ordersReady}
+                        type="password"
+                        placeholder="whsec_..."
+                        maxLength={500}
+                        className={inputCls}
+                        autoComplete="off"
+                      />
+                      <p className="mt-1 text-xs text-muted">
+                        From Stripe → Developers → Webhooks → your endpoint → Signing secret.
+                        Required for automatic payment confirmation. Vendra verifies every webhook
+                        signature with this secret.
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>

@@ -3751,6 +3751,11 @@ export function createSupabaseBackend(config = null) {
         clean.ls_checkout_url = /^https:\/\//i.test(checkoutUrl) ? checkoutUrl : null;
         const storeUrl = String(p.lsStoreUrl ?? '').trim();
         clean.ls_store_url = /^https:\/\//i.test(storeUrl) ? storeUrl : null;
+        // Webhook secret (migration 095)
+        try {
+          const secret = String(p.lsWebhookSecret ?? '').trim();
+          clean.ls_webhook_secret = secret || null;
+        } catch { /* column may not exist yet */ }
       } catch {
         // Columns don't exist yet, skip
       }
@@ -3763,6 +3768,11 @@ export function createSupabaseBackend(config = null) {
         clean.stripe_enabled = !!p.stripeEnabled;
         const stripeUrl = String(p.stripeCheckoutUrl ?? '').trim();
         clean.stripe_checkout_url = /^https:\/\//i.test(stripeUrl) ? stripeUrl : null;
+        // Webhook secret (migration 095)
+        try {
+          const secret = String(p.stripeWebhookSecret ?? '').trim();
+          clean.stripe_webhook_secret = secret || null;
+        } catch { /* column may not exist yet */ }
       } catch {
         // Columns don't exist yet, skip
       }
