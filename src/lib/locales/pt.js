@@ -2705,6 +2705,18 @@ export const pt = {
             ],
             b2: 'A equipe entra em dispositivos diferentes e compartilha a mesma loja.'
           },
+          'g-payments': {
+            title: 'Pagamentos on-line (Lemon Squeezy e Stripe)',
+            keywords: 'pagamentos on-line lemon squeezy stripe webhook pagar',
+            b0: 'Permita que os clientes paguem on-line em vez de só na retirada. O Vendra não toca no dinheiro — você conecta sua própria conta Lemon Squeezy ou Stripe.',
+            b1: [
+              'Em Admin → Vitrine, ative “Aceitar pagamentos on-line via Lemon Squeezy” ou “via Stripe”.',
+              'Cole seu link de pagamento do Lemon Squeezy ou Stripe.',
+              'Copie o segredo de assinatura do webhook em Lemon Squeezy (Configurações → Webhooks) ou Stripe (Desenvolvedores → Webhooks) e cole no Vendra. Isso mantém os pagamentos seguros — o Vendra verifica cada assinatura antes de marcar um pedido como pago.',
+              'Os clientes veem um botão “Pagar on-line” após fazer o pedido. Quando pagam, o pedido é marcado como pago automaticamente.'
+            ],
+            b2: 'O Vendra não adiciona nenhuma taxa. Lemon Squeezy e Stripe cobram suas próprias taxas de processamento.'
+          },
           'g-punch': {
             title: 'Ponto (relógio de ponto)',
             keywords: 'certificados ponto bater ponto equipe horas folha escala turnos pausas',

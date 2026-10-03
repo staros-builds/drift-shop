@@ -2716,6 +2716,18 @@ export const en = {
             ],
             b2: 'Staff sign in on different devices and share the same store.'
           },
+          'g-payments': {
+            title: 'Online payments (Lemon Squeezy & Stripe)',
+            keywords: 'payments online lemon squeezy stripe webhook checkout pay',
+            b0: 'Let customers pay online instead of only at pickup. Vendra does not touch the money — you connect your own Lemon Squeezy or Stripe account.',
+            b1: [
+              'In Admin → Storefront, turn on “Accept online payments via Lemon Squeezy” or “via Stripe”.',
+              'Paste your checkout/payment link from Lemon Squeezy or Stripe.',
+              'Copy the webhook signing secret from Lemon Squeezy (Settings → Webhooks) or Stripe (Developers → Webhooks) and paste it in Vendra. This keeps payments safe — Vendra checks every signature before marking an order as paid.',
+              'Customers see a “Pay online” button after placing an order. When they pay, the order is marked as paid automatically.'
+            ],
+            b2: 'Vendra adds no fee on top. Lemon Squeezy and Stripe charge their own processing fees.'
+          },
           'g-punch': {
             title: 'Certificates (time clock)',
             keywords: 'certificates attestations punch time clock staff hours payroll schedule shifts breaks',
