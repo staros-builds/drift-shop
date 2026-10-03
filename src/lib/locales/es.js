@@ -327,6 +327,16 @@ media: {
     customerTitle: 'Explora las tiendas',
     customerBody: 'Visita escaparates públicos, mira los clasificados y haz pedidos — no necesitas una cuenta. Solo escribe la dirección web de una tienda abajo para empezar.',
     customerShopOwnerNote: '¿Tienes una tienda? Cambia a «Acceso tienda» arriba para gestionar tu negocio.',
+    helpButton: 'Ayuda',
+    helpTitle: 'Ayuda y soporte',
+    helpSigninTitle: 'Iniciar sesión',
+    helpSigninBody: 'En la parte superior de esta pantalla, elige «Inicio de tienda» para gestionar tu negocio o «Cliente» para explorar tiendas y anuncios. Una cuenta funciona en todos los dispositivos: tu nombre de usuario o correo más tu contraseña.',
+    helpRecoveryTitle: '¿Bloqueado de tu cuenta?',
+    helpRecoveryBody: 'Elige «¿Olvidaste tu contraseña?» y usa un código de recuperación o responde tus preguntas de seguridad, sin correo electrónico. Personal: el dueño de tu tienda puede restablecer tu contraseña desde la lista del equipo.',
+    helpVisitTitle: '¿Visitas una tienda?',
+    helpVisitBody: 'Escribe la dirección web de la tienda en la casilla de arriba y pulsa «Visitar tienda», sin cuenta. Puedes ver productos, clasificados y hacer pedidos.',
+    helpTrialTitle: '¿Un recorrido primero?',
+    helpTrialBody: 'Elige «Recorrido de 30 minutos» para acceso completo de demostración sin cuenta. Los dueños de tiendas también obtienen 30 días de prueba gratis al crear su tienda.',
     errEmail: 'Escribe un correo electrónico válido.',
     errIdentifier: 'Escribe tu nombre de usuario o correo.',
     errPassword: 'La contraseña debe tener al menos 8 caracteres.',
@@ -2870,13 +2880,13 @@ media: {
           accounts: {
             title: 'Iniciar sesión, crear una cuenta o probar como invitado',
             keywords: 'iniciar sesión login cuenta invitado contraseña prueba nombre de usuario correo',
-            b0: '{brand} usa un solo inicio de sesión en la nube: tu nombre de usuario o tu correo electrónico funciona en todos tus dispositivos.',
+            b0: '{brand} usa un solo inicio de sesión en la nube: tu nombre de usuario o correo funciona en todos los dispositivos. En la parte superior de la pantalla de inicio, elige «Tienda» para gestionar tu negocio o «Cliente» para comprar y ver anuncios.',
             b1: [
               'Iniciar sesión: escribe tu nombre de usuario o correo electrónico y tu contraseña.',
               'Crear una cuenta: elígela una sola vez: tus archivos, notas y ajustes te seguirán a cualquier dispositivo.',
               'Probar gratis por 30 minutos: acceso completo durante media hora, sin cuenta: una prueba por dispositivo.'
             ],
-            b2: '¿Olvidaste tu contraseña? Elige «¿Olvidaste tu contraseña?» en la pantalla de inicio de sesión para recibir un enlace de restablecimiento por correo electrónico.'
+            b2: '¿Bloqueado? Elige «¿Olvidaste tu contraseña?» en la pantalla de inicio de sesión: usa un código de recuperación o responde tus preguntas de seguridad. Sin correo electrónico.'
           },
           cloud: {
             title: 'Tu cuenta en la nube',
@@ -2887,7 +2897,18 @@ media: {
               'Tus datos te siguen: empieza una venta en la computadora de la tienda y termínala en tu teléfono.'
             ],
             b2: 'Una cuenta por persona: tus ventas, archivos y ajustes te siguen a cualquier dispositivo en el que inicies sesión.'
-          }
+          },
+          recovery: {
+            title: 'Recupera tu cuenta sin correo electrónico',
+            keywords: 'recuperar contraseña olvidada restablecer código de recuperación preguntas de seguridad bloqueado',
+            b0: 'Nunca necesitas el correo electrónico para volver a entrar en tu cuenta. Vendra te da códigos de recuperación y preguntas de seguridad que funcionan en cualquier momento, incluso si tu correo no funciona.',
+            b1: [
+              'Códigos de recuperación: al registrarte recibes códigos de un solo uso. Guárdalos en un lugar seguro (impresos o en un gestor de contraseñas). En la pantalla de inicio de sesión, elige «¿Olvidaste tu contraseña?» → «Usar un código de recuperación» para crear una nueva contraseña.',
+              'Preguntas de seguridad: configura tus propias preguntas en Ajustes → Cuenta. Respóndelas en la pantalla de inicio de sesión para restablecer tu contraseña, sin correo electrónico.',
+              'Cuentas del personal: el dueño o gerente de tu tienda puede restablecer tu contraseña desde la lista del equipo; pídeselo.'
+            ],
+            b2: 'El restablecimiento por correo sigue disponible como respaldo, pero los códigos y las preguntas siempre funcionan, incluso cuando el correo no lo hace.'
+          },
         }
       },
       desktop: {
@@ -3058,6 +3079,39 @@ media: {
               'Días de feria: registra las ventas hechas en ferias del libro por separado de la tienda.',
               'Pedidos especiales: anota lo que busca un cliente.'
             ]
+          },
+          'g-appointments': {
+            title: 'Citas',
+            keywords: 'citas reserva calendario horario servicios recordatorio',
+            b0: 'Un calendario de reservas para servicios: peluquería, reparaciones, consultas, todo lo que tenga un horario.',
+            b1: [
+              'Crea servicios con una duración (por ejemplo, 30 minutos) y un precio.',
+              'Reserva citas en el calendario; tus clientes pueden reservar solos desde tu página pública.',
+              'Envía recordatorios para reducir las ausencias; cancela o mueve una reserva con un clic.'
+            ],
+            b2: 'Vende productos y reserva servicios en la misma visita: la caja maneja ambos.'
+          },
+          'g-classifieds': {
+            title: 'Clasificados (anuncios de la tienda)',
+            keywords: 'clasificados anuncios comprar vender mercado anuncios tienda',
+            b0: 'El tablón de compraventa de tu tienda, como un mini Kijiji integrado en tu negocio.',
+            b1: [
+              'Crea anuncios con fotos, precio y descripción; clasifícalos en: En venta, Gratis, Servicios, Se busca, Empleos, Eventos o Avisos.',
+              'Publica un anuncio para mostrarlo en tu escaparate público; guarda los borradores en privado hasta que estén listos.',
+              'Los compradores pueden guardar tus anuncios como favoritos, y cada anuncio lleva un número y una fecha de publicación para dar confianza.'
+            ],
+            b2: 'Haz tratos en persona y nunca pagues por adelantado: el consejo de seguridad de cada anuncio también se lo recuerda a los compradores.'
+          },
+          'g-mylistings': {
+            title: 'Mis anuncios (anuncios gratis de clientes)',
+            keywords: 'mis anuncios gratis cliente anuncios tablón comunitario vecino publicar anuncio nivel gratis',
+            b0: 'Cualquiera puede publicar anuncios locales gratis, sin necesidad de una tienda. Es el nivel gratuito, estilo Kijiji.',
+            b1: [
+              'Crea tu cuenta, abre Mis anuncios y publica tu anuncio con fotos y precio.',
+              'Las cuentas gratuitas pueden mantener hasta 15 anuncios activos y publicar hasta 5 anuncios nuevos por día; los anuncios duran 60 días y se pueden renovar.',
+              'Explora los anuncios de todos en el tablón comunitario; guarda favoritos y oculta los anuncios que no te interesen.'
+            ],
+            b2: '¿Llegaste a un límite? Para eso está el plan de tienda: anuncios ilimitados más la caja completa.'
           },
           'g-settings': {
             title: 'Configuración',

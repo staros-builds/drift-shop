@@ -327,6 +327,16 @@ media: {
     customerTitle: 'Parcourez les boutiques',
     customerBody: 'Visitez les vitrines publiques, consultez les petites annonces et passez commande — aucun compte requis. Tapez simplement l’adresse Web d’une boutique ci-dessous pour commencer.',
     customerShopOwnerNote: 'Vous gérez une boutique ? Passez à « Connexion boutique » ci-dessus pour gérer votre commerce.',
+    helpButton: 'Aide',
+    helpTitle: 'Aide et soutien',
+    helpSigninTitle: 'Se connecter',
+    helpSigninBody: 'En haut de cet écran, choisissez « Connexion boutique » pour gérer votre commerce ou « Client » pour parcourir les boutiques et les annonces. Un seul compte fonctionne sur tous les appareils — votre nom d’utilisateur ou votre e-mail, plus votre mot de passe.',
+    helpRecoveryTitle: 'Compte verrouillé ?',
+    helpRecoveryBody: 'Choisissez « Mot de passe oublié ? » et utilisez un code de récupération ou répondez à vos questions de sécurité — aucun e-mail requis. Personnel : le propriétaire de votre boutique peut réinitialiser votre mot de passe depuis la liste de l’équipe.',
+    helpVisitTitle: 'Vous visitez une boutique ?',
+    helpVisitBody: 'Tapez l’adresse web de la boutique dans la case ci-dessus et appuyez sur « Visiter la boutique » — aucun compte requis. Vous pouvez parcourir les produits, les petites annonces et passer des commandes.',
+    helpTrialTitle: 'Une visite guidée d’abord ?',
+    helpTrialBody: 'Choisissez « Visite de 30 minutes » pour un accès démo complet sans compte. Les propriétaires de boutique obtiennent aussi un essai gratuit de 30 jours à la création de leur boutique.',
     errEmail: 'Entrez une adresse courriel valide.',
     errIdentifier: "Entrez votre nom d'utilisateur ou votre courriel.",
     errPassword: 'Le mot de passe doit contenir au moins 8 caractères.',
@@ -2879,13 +2889,13 @@ media: {
           accounts: {
             title: 'Se connecter, créer un compte ou essayer en invité',
             keywords: 'connexion identifiant compte invité mot de passe essai nom d’utilisateur email',
-            b0: '{brand} utilise une seule connexion infonuagique — votre nom d’utilisateur ou votre adresse e-mail fonctionne sur tous vos appareils.',
+            b0: '{brand} utilise une seule connexion infonuagique — votre nom d’utilisateur ou votre e-mail fonctionne sur tous les appareils. En haut de l’écran de connexion, choisissez « Boutique » pour gérer votre commerce ou « Client » pour magasiner et parcourir les annonces.',
             b1: [
               'Connexion : entrez votre nom d’utilisateur ou votre adresse e-mail, puis votre mot de passe.',
               'Créer un compte : à choisir une seule fois — vos fichiers, vos notes et vos réglages vous suivent ensuite sur tous vos appareils.',
               'Essayer gratuitement pendant 30 minutes : accès complet pendant une demi-heure, sans compte — un essai par appareil.'
             ],
-            b2: 'Mot de passe oublié ? Choisissez « Mot de passe oublié ? » sur l’écran de connexion pour recevoir un lien de réinitialisation par e-mail.'
+            b2: 'Compte verrouillé ? Choisissez « Mot de passe oublié ? » sur l’écran de connexion — utilisez un code de récupération ou répondez à vos questions de sécurité. Aucun e-mail requis.'
           },
           cloud: {
             title: 'Votre compte infonuagique',
@@ -2896,7 +2906,18 @@ media: {
               'Vos données vous suivent : commencez une vente sur l’ordinateur du magasin, terminez-la sur votre téléphone.'
             ],
             b2: 'Un compte par personne — vos ventes, vos fichiers et vos réglages vous suivent sur chaque appareil où vous vous connectez.'
-          }
+          },
+          recovery: {
+            title: 'Récupérer votre compte sans e-mail',
+            keywords: 'récupérer mot de passe oublié réinitialiser code de récupération questions de sécurité verrouillé',
+            b0: 'Vous n’avez jamais besoin d’un e-mail pour retrouver l’accès à votre compte. Vendra vous donne des codes de récupération et des questions de sécurité qui fonctionnent à tout moment — même si votre messagerie est en panne.',
+            b1: [
+              'Codes de récupération : à l’inscription, vous recevez des codes à usage unique. Gardez-les en lieu sûr (imprimés ou dans un gestionnaire de mots de passe). Sur l’écran de connexion, choisissez « Mot de passe oublié ? » → « Utiliser un code de récupération » pour définir un nouveau mot de passe.',
+              'Questions de sécurité : définissez vos propres questions dans Réglages → Compte. Répondez-y sur l’écran de connexion pour réinitialiser votre mot de passe — sans aucun e-mail.',
+              'Comptes du personnel : le propriétaire ou le gérant de votre boutique peut réinitialiser votre mot de passe depuis la liste de l’équipe — demandez-lui.'
+            ],
+            b2: 'La réinitialisation par e-mail reste disponible en solution de secours, mais les codes et les questions fonctionnent toujours, même quand l’e-mail ne fonctionne pas.'
+          },
         }
       },
       desktop: {
@@ -3067,6 +3088,39 @@ media: {
               'Journées de foire : suivez les ventes faites aux foires du livre séparément de celles du magasin.',
               'Commandes spéciales : notez ce qu’un client cherche.'
             ]
+          },
+          'g-appointments': {
+            title: 'Rendez-vous',
+            keywords: 'rendez-vous réservation calendrier horaire services rappel',
+            b0: 'Un calendrier de réservation pour les services : coiffure, réparations, consultations — tout ce qui a un créneau horaire.',
+            b1: [
+              'Créez des services avec une durée (par exemple 30 minutes) et un prix.',
+              'Réservez des rendez-vous dans le calendrier; vos clients peuvent réserver eux-mêmes depuis votre page publique.',
+              'Envoyez des rappels pour réduire les absences; annulez ou déplacez une réservation en un clic.'
+            ],
+            b2: 'Vendez des produits et réservez des services dans la même visite — la caisse gère les deux.'
+          },
+          'g-classifieds': {
+            title: 'Petites annonces (annonces de la boutique)',
+            keywords: 'petites annonces acheter vendre marché annonces boutique',
+            b0: 'Le babillard d’achat-vente de votre boutique — comme un mini Kijiji intégré à votre magasin.',
+            b1: [
+              'Créez des annonces avec photos, prix et description; classez-les : À vendre, Gratuit, Services, Recherché, Emplois, Événements ou Annonces.',
+              'Publiez une annonce pour l’afficher sur votre vitrine publique; gardez les brouillons privés jusqu’au bon moment.',
+              'Les acheteurs peuvent mettre vos annonces en favoris, et chaque annonce porte un numéro et une date de publication pour la confiance.'
+            ],
+            b2: 'Faites affaire localement et ne payez jamais d’avance — le conseil de sécurité sur chaque annonce le rappelle aussi aux acheteurs.'
+          },
+          'g-mylistings': {
+            title: 'Mes annonces (annonces gratuites des clients)',
+            keywords: 'mes annonces gratuit client annonces babillard communautaire voisin publier annonce niveau gratuit',
+            b0: 'Tout le monde peut publier des annonces locales gratuites — aucune boutique requise. C’est le niveau gratuit, à la Kijiji.',
+            b1: [
+              'Créez votre compte, ouvrez Mes annonces et publiez votre annonce avec photos et prix.',
+              'Les comptes gratuits peuvent garder jusqu’à 15 annonces actives et publier jusqu’à 5 nouvelles annonces par jour; les annonces restent en ligne 60 jours et peuvent être renouvelées.',
+              'Parcourez les annonces de tout le monde sur le babillard communautaire; enregistrez vos favoris et masquez les annonces qui ne vous intéressent pas.'
+            ],
+            b2: 'Vous atteignez une limite ? C’est à ça que sert le forfait boutique — annonces illimitées plus la caisse complète.'
           },
           'g-settings': {
             title: 'Réglages',

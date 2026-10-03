@@ -327,6 +327,16 @@ media: {
     customerTitle: 'Browse shops as a customer',
     customerBody: 'Visit public storefronts, browse classifieds and place orders — no account needed. Just type a shop’s web address below to get started.',
     customerShopOwnerNote: 'Run a shop? Switch to Shop login above to manage your business.',
+    helpButton: 'Help',
+    helpTitle: 'Help & support',
+    helpSigninTitle: 'Signing in',
+    helpSigninBody: 'At the top of this screen, choose “Shop login” to run your business or “Customer” to browse shops and listings. One account works on every device — your username or email plus your password.',
+    helpRecoveryTitle: 'Locked out of your account?',
+    helpRecoveryBody: 'Choose “Forgot password?” and use a recovery code or answer your security questions — no email needed. Staff: your shop owner can reset your password from the team list.',
+    helpVisitTitle: 'Visiting a shop?',
+    helpVisitBody: 'Type the shop’s web address in the box above and press “Visit shop” — no account needed. You can browse products, classifieds, and place orders.',
+    helpTrialTitle: 'Want a tour first?',
+    helpTrialBody: 'Choose “Take the 30-minute tour” for full demo access with no account. Shop owners also get a 30-day free trial when they create a shop.',
     errEmail: 'Enter a valid email address.',
     errIdentifier: 'Enter your username or email.',
     errPassword: 'Password must be at least 8 characters.',
@@ -2873,13 +2883,13 @@ media: {
           accounts: {
             title: 'Sign in, create an account, or try as a guest',
             keywords: 'sign in login account guest password trial username email',
-            b0: '{brand} uses one cloud login — your username or email works on every device.',
+            b0: '{brand} uses one cloud login — your username or email works on every device. At the top of the login screen, pick “Shop” to run your business or “Customer” to shop and browse listings.',
             b1: [
               'Sign in: enter your username or email and your password.',
               'Create account: pick this once — your files, notes, and settings then follow you to any device.',
               'Try free for 30 minutes: full access for half an hour, no account needed — one trial per device.'
             ],
-            b2: 'Forgot your password? Choose “Forgot password?” on the login screen to get a reset link by email.'
+            b2: 'Locked out? Choose “Forgot password?” on the login screen — use a recovery code or answer your security questions. No email needed.'
           },
           cloud: {
             title: 'Your cloud account',
@@ -2890,7 +2900,18 @@ media: {
               'Your data follows you: start a sale on the shop computer, finish it on your phone.'
             ],
             b2: 'One account per person — your sales, files, and settings follow you to any device you sign in on.'
-          }
+          },
+          recovery: {
+            title: 'Recover your account without email',
+            keywords: 'recover password forgot reset recovery code security questions locked out',
+            b0: 'You never need email to get back into your account. Vendra gives you recovery codes and security questions that work any time — even if your email is down.',
+            b1: [
+              'Recovery codes: at signup you get one-time codes. Keep them somewhere safe (printed or in a password manager). On the login screen, choose “Forgot password?” → “Use a recovery code” to set a new password.',
+              'Security questions: set up your own questions in Settings → Account. Answer them on the login screen to reset your password — no email involved.',
+              'Staff accounts: your shop owner or manager can reset your password for you from the team list — just ask them.'
+            ],
+            b2: 'Email reset is still available as a backup, but the code and question methods always work, even when email doesn’t.'
+          },
         }
       },
       desktop: {
@@ -3061,6 +3082,39 @@ media: {
               'Fair days: track sales made at book fairs separately from the shop.',
               'Special orders: note down what a customer is looking for.'
             ]
+          },
+          'g-appointments': {
+            title: 'Appointments',
+            keywords: 'appointments booking calendar schedule services reminder',
+            b0: 'A booking calendar for services: haircuts, repairs, consultations — anything with a time slot.',
+            b1: [
+              'Create services with a length (for example, 30 minutes) and a price.',
+              'Book appointments on the calendar; customers can book themselves from your public page.',
+              'Send reminders so no-shows drop; cancel or move a booking with one click.'
+            ],
+            b2: 'Sell products and book services in the same visit — the till handles both.'
+          },
+          'g-classifieds': {
+            title: 'Classifieds (shop ads)',
+            keywords: 'classifieds ads buy sell marketplace listings shop ads',
+            b0: 'Your shop’s own buy-and-sell board — like a mini Kijiji built into your store.',
+            b1: [
+              'Create ads with photos, price, and a description; mark them For sale, Free, Services, Wanted, Jobs, Events, or Announcements.',
+              'Publish an ad to show it on your public storefront; keep drafts private until ready.',
+              'Buyers can save your ads as favorites, and every ad carries a post ID and posted date for trust.'
+            ],
+            b2: 'Deal locally and never take payment in advance — the safety tip on every ad reminds buyers too.'
+          },
+          'g-mylistings': {
+            title: 'My listings (free customer ads)',
+            keywords: 'my listings free customer ads community board neighbor post ad free tier',
+            b0: 'Anyone can post free local ads — no shop needed. It’s the free tier, Kijiji-style.',
+            b1: [
+              'Create your account, open My listings, and post your ad with photos and a price.',
+              'Free accounts can keep up to 15 ads active and post up to 5 new ads a day; ads stay up for 60 days and can be renewed.',
+              'Browse everyone’s ads on the community board; save favorites and hide ads you don’t want to see.'
+            ],
+            b2: 'Hit a limit? That’s what the shop plan is for — unlimited ads plus the full point of sale.'
           },
           'g-settings': {
             title: 'Settings',

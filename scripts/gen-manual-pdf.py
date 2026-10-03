@@ -593,6 +593,33 @@ section('More parts of the shop (in plain words)', 'Les autres parties de la bou
     ('h2', 'Appointments / Rendez-vous'),
     ('p', '<b>Appointments</b> is a booking book: customers book a time, and two bookings cannot take the same time by accident.'),
     ('p', '<b>Rendez-vous</b> est un cahier de r\u00e9servations : les clients r\u00e9servent une heure, et deux r\u00e9servations ne peuvent pas prendre la m\u00eame heure par accident.'),
+    ('h2', 'Classifieds \u2014 your shop\u2019s buy-and-sell board / Petites annonces \u2014 le babillard d\u2019achat-vente de votre boutique'),
+    ('p', '<b>Classifieds</b> is your shop\u2019s own classified-ads board, like a small Kijiji built into your store. '
+          'Create ads with photos, a price and a description; mark them For sale, Free, Services, Wanted, Jobs, Events or Announcements. '
+          'Published ads appear on your public storefront, where buyers can save them as favourites. Every ad shows a post number and its posted date, '
+          'and a safety tip reminds everyone to deal locally and never pay in advance.'),
+    ('p', '<b>Petites annonces</b>, c\u2019est le babillard de petites annonces de votre boutique, comme un petit Kijiji int\u00e9gr\u00e9 \u00e0 votre magasin. '
+          'Cr\u00e9ez des annonces avec photos, prix et description; classez-les : \u00c0 vendre, Gratuit, Services, Recherch\u00e9, Emplois, \u00c9v\u00e9nements ou Annonces. '
+          'Les annonces publi\u00e9es apparaissent sur votre vitrine publique, o\u00f9 les acheteurs peuvent les mettre en favoris. Chaque annonce montre un num\u00e9ro et sa date de publication, '
+          'et un conseil de s\u00e9curit\u00e9 rappelle \u00e0 tout le monde de faire affaire localement et de ne jamais payer d\u2019avance.'),
+    ('h2', 'My listings \u2014 free ads for everyone / Mes annonces \u2014 des annonces gratuites pour tout le monde'),
+    ('p', 'Anyone can post <b>free</b> local ads \u2014 no shop needed. Open <b>My listings</b> and post with photos and a price. '
+          'Free accounts can keep up to 15 ads active and post up to 5 new ads a day; ads stay up for 60 days and can be renewed. '
+          'Everyone\u2019s ads are browsed on the community board, with favourites and a safety tip on every ad. '
+          'If you outgrow the free limits, the shop plan gives unlimited ads plus the full point of sale.'),
+    ('p', 'Tout le monde peut publier des annonces locales <b>gratuites</b> \u2014 aucune boutique requise. Ouvrez <b>Mes annonces</b> et publiez avec photos et prix. '
+          'Les comptes gratuits peuvent garder jusqu\u2019\u00e0 15 annonces actives et publier jusqu\u2019\u00e0 5 nouvelles annonces par jour; les annonces restent en ligne 60 jours et peuvent \u00eatre renouvel\u00e9es. '
+          'Les annonces de tout le monde se parcourent sur le babillard communautaire, avec favoris et conseil de s\u00e9curit\u00e9 sur chaque annonce. '
+          'Si les limites gratuites deviennent trop petites, le forfait boutique donne des annonces illimit\u00e9es plus la caisse compl\u00e8te.'),
+    ('h2', 'Locked out? Get back in without email / Verrouill\u00e9? Reprenez l\u2019acc\u00e8s sans courriel'),
+    ('p', 'You never need email to recover your account. At sign-up you receive <b>recovery codes</b> \u2014 one-time codes to keep somewhere safe '
+          '(printed, or in a password manager). On the sign-in screen, choose \u201cForgot password?\u201d then \u201cUse a recovery code\u201d to set a new password. '
+          'You can also set <b>security questions</b> in Settings \u2014 Account and answer them on the sign-in screen. '
+          'Staff: your shop owner or manager can reset your password from the team list \u2014 just ask.'),
+    ('p', 'Vous n\u2019avez jamais besoin de courriel pour r\u00e9cup\u00e9rer votre compte. \u00c0 l\u2019inscription, vous recevez des <b>codes de r\u00e9cup\u00e9ration</b> \u2014 des codes \u00e0 usage unique \u00e0 garder en lieu s\u00fbr '
+          '(imprim\u00e9s, ou dans un gestionnaire de mots de passe). Sur l\u2019\u00e9cran de connexion, choisissez \u00ab Mot de passe oubli\u00e9 ? \u00bb puis \u00ab Utiliser un code de r\u00e9cup\u00e9ration \u00bb pour d\u00e9finir un nouveau mot de passe. '
+          'Vous pouvez aussi d\u00e9finir des <b>questions de s\u00e9curit\u00e9</b> dans R\u00e9glages \u2014 Compte et y r\u00e9pondre sur l\u2019\u00e9cran de connexion. '
+          'Personnel : le propri\u00e9taire ou le g\u00e9rant de votre boutique peut r\u00e9initialiser votre mot de passe depuis la liste de l\u2019\u00e9quipe \u2014 demandez-lui.'),
     ('h2', 'Files / Fichiers'),
     ('p', '<b>Files</b> keeps your documents and pictures in the shop, and you can search the words inside them.'),
     ('p', '<b>Fichiers</b> garde vos documents et photos dans la boutique, et vous pouvez chercher les mots dedans.'),
@@ -947,6 +974,12 @@ section_es('More parts of the shop (in plain words)', [
           'each have their own simple flow.'),
     ('h2', 'TODO[ES] Appointments'),
     ('p', 'TODO[ES] <b>Appointments</b> is a booking book: customers book a time, and two bookings cannot take the same time by accident.'),
+    ('h2', 'TODO[ES] Classifieds — your shop’s buy-and-sell board'),
+    ('p', 'TODO[ES] <b>Classifieds</b> is your shop’s own classified-ads board, like a small Kijiji built into your store. Create ads with photos, a price and a description; mark them For sale, Free, Services, Wanted, Jobs, Events or Announcements. Published ads appear on your public storefront, where buyers can save them as favourites.'),
+    ('h2', 'TODO[ES] My listings — free ads for everyone'),
+    ('p', 'TODO[ES] Anyone can post <b>free</b> local ads — no shop needed. Open <b>My listings</b> and post with photos and a price. Free accounts can keep up to 15 ads active and post up to 5 new ads a day; ads stay up for 60 days and can be renewed.'),
+    ('h2', 'TODO[ES] Locked out? Get back in without email'),
+    ('p', 'TODO[ES] You never need email to recover your account. At sign-up you receive <b>recovery codes</b> — one-time codes to keep somewhere safe. On the sign-in screen, choose “Forgot password?” then “Use a recovery code” to set a new password. You can also set <b>security questions</b> in Settings — Account.'),
     ('h2', 'TODO[ES] Files'),
     ('p', 'TODO[ES] <b>Files</b> keeps your documents and pictures in the shop, and you can search the words inside them.'),
     ('h2', 'TODO[ES] Certificates — the staff time clock'),
@@ -1228,6 +1261,12 @@ section_pt('More parts of the shop (in plain words)', [
           'each have their own simple flow.'),
     ('h2', 'TODO[PT] Appointments'),
     ('p', 'TODO[PT] <b>Appointments</b> is a booking book: customers book a time, and two bookings cannot take the same time by accident.'),
+    ('h2', 'TODO[PT] Classifieds — your shop’s buy-and-sell board'),
+    ('p', 'TODO[PT] <b>Classifieds</b> is your shop’s own classified-ads board, like a small Kijiji built into your store. Create ads with photos, a price and a description; mark them For sale, Free, Services, Wanted, Jobs, Events or Announcements. Published ads appear on your public storefront, where buyers can save them as favourites.'),
+    ('h2', 'TODO[PT] My listings — free ads for everyone'),
+    ('p', 'TODO[PT] Anyone can post <b>free</b> local ads — no shop needed. Open <b>My listings</b> and post with photos and a price. Free accounts can keep up to 15 ads active and post up to 5 new ads a day; ads stay up for 60 days and can be renewed.'),
+    ('h2', 'TODO[PT] Locked out? Get back in without email'),
+    ('p', 'TODO[PT] You never need email to recover your account. At sign-up you receive <b>recovery codes</b> — one-time codes to keep somewhere safe. On the sign-in screen, choose “Forgot password?” then “Use a recovery code” to set a new password. You can also set <b>security questions</b> in Settings — Account.'),
     ('h2', 'TODO[PT] Files'),
     ('p', 'TODO[PT] <b>Files</b> keeps your documents and pictures in the shop, and you can search the words inside them.'),
     ('h2', 'TODO[PT] Certificates — the staff time clock'),

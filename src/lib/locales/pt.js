@@ -327,6 +327,16 @@ media: {
     customerTitle: 'Explore as lojas',
     customerBody: 'Visite vitrines públicas, veja os classificados e faça pedidos — sem precisar de conta. Basta digitar o endereço web de uma loja abaixo para começar.',
     customerShopOwnerNote: 'Tem uma loja? Mude para «Login da loja» acima para gerenciar seu negócio.',
+    helpButton: 'Ajuda',
+    helpTitle: 'Ajuda e suporte',
+    helpSigninTitle: 'Entrar',
+    helpSigninBody: 'No topo desta tela, escolha “Login da loja” para gerenciar seu negócio ou “Cliente” para ver lojas e anúncios. Uma conta funciona em todos os dispositivos — seu nome de usuário ou e-mail mais sua senha.',
+    helpRecoveryTitle: 'Bloqueado da sua conta?',
+    helpRecoveryBody: 'Escolha “Esqueceu a senha?” e use um código de recuperação ou responda às suas perguntas de segurança — sem e-mail. Funcionários: o dono da sua loja pode redefinir sua senha na lista da equipe.',
+    helpVisitTitle: 'Visitando uma loja?',
+    helpVisitBody: 'Digite o endereço web da loja na caixa acima e pressione “Visitar loja” — sem conta. Você pode ver produtos, classificados e fazer pedidos.',
+    helpTrialTitle: 'Um tour primeiro?',
+    helpTrialBody: 'Escolha “Tour de 30 minutos” para acesso completo de demonstração sem conta. Donos de loja também ganham 30 dias de teste grátis ao criar a loja.',
     errEmail: 'Digite um e-mail válido.',
     errIdentifier: 'Digite seu nome de usuário ou e-mail.',
     errPassword: 'A senha deve ter pelo menos 8 caracteres.',
@@ -2862,13 +2872,13 @@ media: {
           accounts: {
             title: 'Entrar, criar uma conta ou experimentar como visitante',
             keywords: 'entrar login conta visitante senha teste nome de usuário email',
-            b0: '{brand} usa um único login na nuvem — seu nome de usuário ou e-mail funciona em todos os seus dispositivos.',
+            b0: '{brand} usa um único login na nuvem — seu nome de usuário ou e-mail funciona em todos os dispositivos. No topo da tela de login, escolha “Loja” para gerenciar seu negócio ou “Cliente” para comprar e ver anúncios.',
             b1: [
               'Entrar: digite seu nome de usuário ou e-mail e sua senha.',
               'Criar uma conta: escolha isso uma única vez — seus arquivos, notas e configurações acompanharão você em qualquer dispositivo.',
               'Experimentar grátis por 30 minutos: acesso total por meia hora, sem conta — um teste por dispositivo.'
             ],
-            b2: 'Esqueceu sua senha? Escolha “Esqueceu a senha?” na tela de login para receber um link de redefinição por e-mail.'
+            b2: 'Bloqueado? Escolha “Esqueceu a senha?” na tela de login — use um código de recuperação ou responda às suas perguntas de segurança. Sem precisar de e-mail.'
           },
           cloud: {
             title: 'Sua conta na nuvem',
@@ -2879,7 +2889,18 @@ media: {
               'Seus dados acompanham você: comece uma venda no computador da loja e termine no seu celular.'
             ],
             b2: 'Uma conta por pessoa — suas vendas, arquivos e configurações acompanham você em qualquer dispositivo em que você entrar.'
-          }
+          },
+          recovery: {
+            title: 'Recupere sua conta sem e-mail',
+            keywords: 'recuperar senha esqueci redefinir código de recuperação perguntas de segurança bloqueado',
+            b0: 'Você nunca precisa de e-mail para voltar à sua conta. A Vendra oferece códigos de recuperação e perguntas de segurança que funcionam a qualquer momento — mesmo se o seu e-mail estiver fora do ar.',
+            b1: [
+              'Códigos de recuperação: ao se cadastrar, você recebe códigos de uso único. Guarde-os em um lugar seguro (impressos ou em um gerenciador de senhas). Na tela de login, escolha “Esqueceu a senha?” → “Usar um código de recuperação” para criar uma nova senha.',
+              'Perguntas de segurança: configure suas próprias perguntas em Ajustes → Conta. Responda-as na tela de login para redefinir sua senha — sem e-mail.',
+              'Contas de funcionários: o dono ou gerente da sua loja pode redefinir sua senha na lista da equipe — é só pedir.'
+            ],
+            b2: 'A redefinição por e-mail continua disponível como alternativa, mas os códigos e as perguntas sempre funcionam, mesmo quando o e-mail não funciona.'
+          },
         }
       },
       desktop: {
@@ -3050,6 +3071,39 @@ media: {
               'Dias de feira: acompanhe as vendas feitas em feiras de livros separadamente da loja.',
               'Pedidos especiais: anote o que um cliente está procurando.'
             ]
+          },
+          'g-appointments': {
+            title: 'Agendamentos',
+            keywords: 'agendamentos reserva calendário horário serviços lembrete',
+            b0: 'Um calendário de reservas para serviços: corte de cabelo, reparos, consultas — tudo que tenha um horário.',
+            b1: [
+              'Crie serviços com duração (por exemplo, 30 minutos) e preço.',
+              'Agende compromissos no calendário; seus clientes podem agendar sozinhos pela sua página pública.',
+              'Envie lembretes para reduzir faltas; cancele ou remarque com um clique.'
+            ],
+            b2: 'Venda produtos e agende serviços na mesma visita — o caixa cuida dos dois.'
+          },
+          'g-classifieds': {
+            title: 'Classificados (anúncios da loja)',
+            keywords: 'classificados anúncios comprar vender mercado anúncios loja',
+            b0: 'O mural de compra e venda da sua loja — como um mini Kijiji dentro do seu negócio.',
+            b1: [
+              'Crie anúncios com fotos, preço e descrição; classifique em: À venda, Grátis, Serviços, Procura-se, Empregos, Eventos ou Avisos.',
+              'Publique um anúncio para exibi-lo na sua vitrine pública; mantenha rascunhos privados até estarem prontos.',
+              'Compradores podem salvar seus anúncios como favoritos, e cada anúncio traz número e data de publicação para gerar confiança.'
+            ],
+            b2: 'Negocie pessoalmente e nunca pague adiantado — a dica de segurança em cada anúncio também lembra os compradores.'
+          },
+          'g-mylistings': {
+            title: 'Meus anúncios (anúncios grátis de clientes)',
+            keywords: 'meus anúncios grátis cliente anúncios mural comunitário vizinho publicar anúncio nível grátis',
+            b0: 'Qualquer pessoa pode publicar anúncios locais grátis — sem precisar de loja. É o nível gratuito, estilo Kijiji.',
+            b1: [
+              'Crie sua conta, abra Meus anúncios e publique seu anúncio com fotos e preço.',
+              'Contas gratuitas podem manter até 15 anúncios ativos e publicar até 5 anúncios novos por dia; os anúncios ficam no ar por 60 dias e podem ser renovados.',
+              'Veja os anúncios de todos no mural comunitário; salve favoritos e oculte anúncios que não interessam.'
+            ],
+            b2: 'Atingiu um limite? É para isso que serve o plano de loja — anúncios ilimitados mais o caixa completo.'
           },
           'g-settings': {
             title: 'Configurações',

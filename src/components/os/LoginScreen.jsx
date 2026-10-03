@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { LogIn, UserPlus, AlertCircle, Timer, X, Languages, KeyRound, Mail, MailQuestion, CheckCircle2, Store, ShoppingBag, ArrowRight } from 'lucide-react';
+import { LogIn, UserPlus, AlertCircle, Timer, X, Languages, KeyRound, Mail, MailQuestion, CheckCircle2, Store, ShoppingBag, ArrowRight, LifeBuoy } from 'lucide-react';
 import { useAuth, TRIAL_USED_KEY } from '../../os/AuthContext.jsx';
 import { useLang } from '../../lib/i18n.jsx';
 import { backend } from '../../lib/backend/current.js';
@@ -345,6 +345,65 @@ export function ForcePasswordChangeModal({ onDone }) {
  *  4. Help ticket — for accounts with no recovery method set up; the
  *     shop admin sees it in the support inbox and resets the password.
  */
+function LoginHelpDialog({ onClose }) {
+  const { t } = useLang();
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  const topics = [
+    { icon: <LogIn size={16} />, title: t('login.helpSigninTitle'), body: t('login.helpSigninBody') },
+    { icon: <KeyRound size={16} />, title: t('login.helpRecoveryTitle'), body: t('login.helpRecoveryBody') },
+    { icon: <Store size={16} />, title: t('login.helpVisitTitle'), body: t('login.helpVisitBody') },
+    { icon: <Timer size={16} />, title: t('login.helpTrialTitle'), body: t('login.helpTrialBody') },
+  ];
+  return (
+    <div
+      className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={t('login.helpTitle')}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-os bg-surface p-5 shadow-os">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="flex items-center gap-2 text-base font-semibold text-ink">
+            <LifeBuoy size={18} className="text-accent" />
+            {t('login.helpTitle')}
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t('common.close')}
+            className="rounded-os p-1.5 text-muted duration-160 hover:bg-paper hover:text-ink"
+          >
+            <X size={18} />
+          </button>
+        </div>
+        <div className="space-y-4">
+          {topics.map((topic, i) => (
+            <div key={i}>
+              <h3 className="flex items-center gap-2 text-sm font-semibold text-ink">
+                <span className="text-accent">{topic.icon}</span>
+                {topic.title}
+              </h3>
+              <p className="mt-1 text-sm leading-relaxed text-muted">{topic.body}</p>
+            </div>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-5 w-full rounded-os bg-accent px-4 py-2 text-sm font-semibold text-accentink duration-160 hover:opacity-90"
+        >
+          {t('common.close')}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ForgotPasswordDialog({ onClose }) {
   const { t } = useLang();
   const [tab, setTab] = useState('code'); // 'code' | 'questions'
@@ -708,6 +767,7 @@ export default function LoginScreen() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   // After signupWithEmail returns needs-confirmation: the check-your-email
   // panel replaces the form until the user confirms via the email link.
   const [checkEmail, setCheckEmail] = useState(null); // { email } | null
@@ -1412,10 +1472,22 @@ export default function LoginScreen() {
         </>
         )}
 
-        <p className="mt-4 text-center text-xs text-muted">© {new Date().getFullYear()} {t('brand.name')}</p>
+        <div className="mt-4 flex items-center justify-center gap-3 text-xs text-muted">
+          <span>© {new Date().getFullYear()} {t('brand.name')}</span>
+          <span aria-hidden="true">·</span>
+          <button
+            type="button"
+            onClick={() => setHelpOpen(true)}
+            className="inline-flex items-center gap-1 font-medium text-accent duration-160 hover:underline"
+          >
+            <LifeBuoy size={13} />
+            {t('login.helpButton')}
+          </button>
+        </div>
       </div>
       </div>
       {forgotOpen && <ForgotPasswordDialog onClose={() => setForgotOpen(false)} />}
+      {helpOpen && <LoginHelpDialog onClose={() => setHelpOpen(false)} />}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import {
   Gamepad2, ShoppingCart, Settings as SettingsIcon, ChevronDown,
   Lightbulb, TriangleAlert, ExternalLink, RotateCcw, X, Keyboard,
   MessageCircleQuestion, Star, Send, CheckCircle2, BookOpen, FileText,
+  Newspaper, Tag, CalendarDays, KeyRound,
 } from 'lucide-react';
 import { useWindows } from '../os/WindowsContext.jsx';
 import { SHORTCUTS, availableShortcuts } from '../os/shortcuts.js';
@@ -62,6 +63,20 @@ function buildSections(t) {
               T('helpContent.sections.start.articles.cloud.b1.1'),
             ] },
             { t: 'tip', text: T('helpContent.sections.start.articles.cloud.b2') },
+          ],
+        },
+        {
+          id: 'recovery',
+          title: T('helpContent.sections.start.articles.recovery.title'),
+          keywords: T('helpContent.sections.start.articles.recovery.keywords'),
+          blocks: [
+            { t: 'p', text: T('helpContent.sections.start.articles.recovery.b0') },
+            { t: 'steps', items: [
+              T('helpContent.sections.start.articles.recovery.b1.0'),
+              T('helpContent.sections.start.articles.recovery.b1.1'),
+              T('helpContent.sections.start.articles.recovery.b1.2'),
+            ] },
+            { t: 'tip', text: T('helpContent.sections.start.articles.recovery.b2') },
           ],
         },
       ],
@@ -278,6 +293,51 @@ function buildSections(t) {
               T('helpContent.sections.apps.articles.g-catalogue.b1.2'),
               T('helpContent.sections.apps.articles.g-catalogue.b1.3'),
             ] },
+          ],
+        },
+        {
+          id: 'g-appointments',
+          title: T('helpContent.sections.apps.articles.g-appointments.title'),
+          keywords: T('helpContent.sections.apps.articles.g-appointments.keywords'),
+          appId: 'appointments',
+          blocks: [
+            { t: 'p', text: T('helpContent.sections.apps.articles.g-appointments.b0') },
+            { t: 'steps', items: [
+              T('helpContent.sections.apps.articles.g-appointments.b1.0'),
+              T('helpContent.sections.apps.articles.g-appointments.b1.1'),
+              T('helpContent.sections.apps.articles.g-appointments.b1.2'),
+            ] },
+            { t: 'tip', text: T('helpContent.sections.apps.articles.g-appointments.b2') },
+          ],
+        },
+        {
+          id: 'g-classifieds',
+          title: T('helpContent.sections.apps.articles.g-classifieds.title'),
+          keywords: T('helpContent.sections.apps.articles.g-classifieds.keywords'),
+          appId: 'classifieds',
+          blocks: [
+            { t: 'p', text: T('helpContent.sections.apps.articles.g-classifieds.b0') },
+            { t: 'steps', items: [
+              T('helpContent.sections.apps.articles.g-classifieds.b1.0'),
+              T('helpContent.sections.apps.articles.g-classifieds.b1.1'),
+              T('helpContent.sections.apps.articles.g-classifieds.b1.2'),
+            ] },
+            { t: 'tip', text: T('helpContent.sections.apps.articles.g-classifieds.b2') },
+          ],
+        },
+        {
+          id: 'g-mylistings',
+          title: T('helpContent.sections.apps.articles.g-mylistings.title'),
+          keywords: T('helpContent.sections.apps.articles.g-mylistings.keywords'),
+          appId: 'mylistings',
+          blocks: [
+            { t: 'p', text: T('helpContent.sections.apps.articles.g-mylistings.b0') },
+            { t: 'steps', items: [
+              T('helpContent.sections.apps.articles.g-mylistings.b1.0'),
+              T('helpContent.sections.apps.articles.g-mylistings.b1.1'),
+              T('helpContent.sections.apps.articles.g-mylistings.b1.2'),
+            ] },
+            { t: 'tip', text: T('helpContent.sections.apps.articles.g-mylistings.b2') },
           ],
         },
         {
