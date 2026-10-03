@@ -2683,6 +2683,10 @@ function StorefrontSection() {
                         Required for automatic payment confirmation. Vendra verifies every webhook
                         signature with this secret.
                       </p>
+                      <p className="mt-2 text-xs text-muted">
+                        <span className="font-medium">Webhook URL to use in Lemon Squeezy:</span><br />
+                        <code className="break-all rounded bg-muted/20 px-1 py-0.5 text-[11px]">https://mkbozzeucotbxilkpapd.supabase.co/functions/v1/ls-webhook</code>
+                      </p>
                     </div>
                   </div>
                 )}
@@ -2733,6 +2737,10 @@ function StorefrontSection() {
                         From Stripe → Developers → Webhooks → your endpoint → Signing secret.
                         Required for automatic payment confirmation. Vendra verifies every webhook
                         signature with this secret.
+                      </p>
+                      <p className="mt-2 text-xs text-muted">
+                        <span className="font-medium">Webhook URL to use in Stripe:</span><br />
+                        <code className="break-all rounded bg-muted/20 px-1 py-0.5 text-[11px]">https://mkbozzeucotbxilkpapd.supabase.co/functions/v1/stripe-webhook</code>
                       </p>
                     </div>
                   </div>
