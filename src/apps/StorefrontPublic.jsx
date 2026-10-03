@@ -892,7 +892,7 @@ export default function StorefrontPublic({ slug, configError = null, appHome = n
             </div>
             {shop.payments?.lemonsqueezy?.enabled && shop.payments.lemonsqueezy.checkout_url ? (
               <a
-                href={shop.payments.lemonsqueezy.checkout_url}
+                href={`${shop.payments.lemonsqueezy.checkout_url}${shop.payments.lemonsqueezy.checkout_url.includes('?') ? '&' : '?'}vendra_order=${placed.id}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{ ...styles.primaryBtn, background: '#0ea5e9', display: 'block', textAlign: 'center', textDecoration: 'none', marginBottom: 8 }}
@@ -902,13 +902,18 @@ export default function StorefrontPublic({ slug, configError = null, appHome = n
             ) : null}
             {shop.payments?.stripe?.enabled && shop.payments.stripe.checkout_url ? (
               <a
-                href={shop.payments.stripe.checkout_url}
+                href={`${shop.payments.stripe.checkout_url}${shop.payments.stripe.checkout_url.includes('?') ? '&' : '?'}vendra_order=${placed.id}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{ ...styles.primaryBtn, background: '#635bff', display: 'block', textAlign: 'center', textDecoration: 'none', marginBottom: 8 }}
               >
                 Pay with Stripe
               </a>
+            ) : null}
+            {(shop.payments?.lemonsqueezy?.enabled || shop.payments?.stripe?.enabled) ? (
+              <p style={{ ...styles.sheetSub, fontSize: 13, textAlign: 'center', marginTop: 8 }}>
+                After paying, the shop will confirm your payment and start preparing your order.
+              </p>
             ) : null}
             <button type="button" style={{ ...styles.primaryBtn, background: accent }} onClick={() => { setPlaced(null); setModal(null); openOrders(); }}>
               {oo('myOrdersTitle')}
