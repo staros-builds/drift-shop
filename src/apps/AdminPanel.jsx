@@ -2018,6 +2018,7 @@ function StorefrontSection() {
     whatsappPhone: '', reviewUrl: '', directionsUrl: '', orderUrl: '',
     newsletterUrl: '', onlineOrdering: false, orderingNote: '',
     lsEnabled: false, lsCheckoutUrl: '', lsStoreUrl: '',
+    stripeEnabled: false, stripeCheckoutUrl: '',
   });
 
   // Full slug (saved form): the DB rule is ^[a-z0-9][a-z0-9-]{0,62}$ —
@@ -2156,6 +2157,8 @@ function StorefrontSection() {
             lsEnabled: !!prof.ls_enabled,
             lsCheckoutUrl: prof.ls_checkout_url || '',
             lsStoreUrl: prof.ls_store_url || '',
+            stripeEnabled: !!prof.stripe_enabled,
+            stripeCheckoutUrl: prof.stripe_checkout_url || '',
           });
         } else {
           setForm({
@@ -2166,6 +2169,7 @@ function StorefrontSection() {
             published: false, showPrices: true,
             onlineOrdering: false, orderingNote: '',
             lsEnabled: false, lsCheckoutUrl: '', lsStoreUrl: '',
+            stripeEnabled: false, stripeCheckoutUrl: '',
           });
         }
         setProducts(prods || []);
@@ -2661,6 +2665,40 @@ function StorefrontSection() {
                         className={inputCls}
                       />
                     </div>
+                  </div>
+                )}
+              </div>
+              {/* Stripe online payments (optional) */}
+              <div className="mt-4 rounded-os border border-osborder bg-surface p-3">
+                <label className="flex cursor-pointer items-start gap-2 text-sm text-ink">
+                  <input
+                    type="checkbox"
+                    checked={!!form.stripeEnabled}
+                    disabled={!ordersReady}
+                    onChange={(e) => { setForm((f) => ({ ...f, stripeEnabled: e.target.checked })); setSaved(false); }}
+                    className="mt-0.5 h-4 w-4 accent-[#b4542a]"
+                  />
+                  <span>
+                    <span className="font-medium">Accept online payments via Stripe</span>
+                    <span className="block text-xs font-normal text-muted">
+                      Optional. Connect your own Stripe payment link so customers can pay online.
+                      Lower fees than Lemon Squeezy, but you handle tax compliance yourself.
+                    </span>
+                  </span>
+                </label>
+                {form.stripeEnabled && (
+                  <div className="mt-3">
+                    <label className={labelCls}>Stripe payment link</label>
+                    <input
+                      {...field('stripeCheckoutUrl')}
+                      disabled={!ordersReady}
+                      placeholder="https://buy.stripe.com/..."
+                      maxLength={500}
+                      className={inputCls}
+                    />
+                    <p className="mt-1 text-xs text-muted">
+                      Paste your Stripe payment link. Customers will be sent here after placing an order.
+                    </p>
                   </div>
                 )}
               </div>

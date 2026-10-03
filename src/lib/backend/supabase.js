@@ -3754,6 +3754,18 @@ export function createSupabaseBackend(config = null) {
       } catch {
         // Columns don't exist yet, skip
       }
+      // Stripe columns (migration 091). Omitted until the columns exist.
+      try {
+        const { data: stripeCheck } = await client
+          .from('storefront_profiles')
+          .select('stripe_enabled')
+          .limit(0);
+        clean.stripe_enabled = !!p.stripeEnabled;
+        const stripeUrl = String(p.stripeCheckoutUrl ?? '').trim();
+        clean.stripe_checkout_url = /^https:\/\//i.test(stripeUrl) ? stripeUrl : null;
+      } catch {
+        // Columns don't exist yet, skip
+      }
       if (!/^[a-z0-9][a-z0-9-]{0,62}$/.test(clean.slug)) {
         throw new Error(
           'Storefront address must use lowercase letters, numbers and dashes only.'

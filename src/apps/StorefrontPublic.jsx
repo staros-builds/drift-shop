@@ -900,6 +900,16 @@ export default function StorefrontPublic({ slug, configError = null, appHome = n
                 Pay online now
               </a>
             ) : null}
+            {shop.payments?.stripe?.enabled && shop.payments.stripe.checkout_url ? (
+              <a
+                href={shop.payments.stripe.checkout_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ ...styles.primaryBtn, background: '#635bff', display: 'block', textAlign: 'center', textDecoration: 'none', marginBottom: 8 }}
+              >
+                Pay with Stripe
+              </a>
+            ) : null}
             <button type="button" style={{ ...styles.primaryBtn, background: accent }} onClick={() => { setPlaced(null); setModal(null); openOrders(); }}>
               {oo('myOrdersTitle')}
             </button>
