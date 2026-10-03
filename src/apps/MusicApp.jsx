@@ -5,6 +5,7 @@ import {
   ChevronRight, AudioLines, Gauge,
 } from 'lucide-react';
 import { useNotifications } from '../os/NotificationsContext.jsx';
+import { useLang } from '../lib/i18n.jsx';
 import { useWindows } from '../os/WindowsContext.jsx';
 import {
   scanMedia, mediaUrl, safePlay, formatTime,
@@ -57,6 +58,7 @@ const sameEntry = (a, b) =>
  * playback (cleanup below disconnects the graph and pauses the element).
  */
 export default function MusicApp({ windowApi, path: initialPath }) {
+  const { t } = useLang();
   const { push } = useNotifications();
   const { openWindow } = useWindows();
   const audioRef = useRef(null);
@@ -558,7 +560,7 @@ export default function MusicApp({ windowApi, path: initialPath }) {
               step={0.1}
               value={Math.min(time, duration || 0)}
               onChange={(e) => { const a = el(); if (a) a.currentTime = Number(e.target.value); }}
-              aria-label="Seek"
+              aria-label={t('media.seek')}
               className="h-2 min-h-0 flex-1 cursor-pointer accent-accent"
             />
             <span className="w-12 shrink-0 text-xs tabular-nums text-muted">{formatTime(duration)}</span>
@@ -566,50 +568,50 @@ export default function MusicApp({ windowApi, path: initialPath }) {
 
           {/* Controls */}
           <div className="flex flex-wrap items-center gap-0.5 border-b border-osborder bg-surface px-3 pb-2">
-            <button type="button" onClick={() => setShuffle((s) => !s)} title="Shuffle" aria-label="Shuffle" aria-pressed={shuffle} className={`${ctl} ${shuffle ? 'text-accent' : ''}`}>
+            <button type="button" onClick={() => setShuffle((s) => !s)} title={t('media.shuffle')} aria-label={t('media.shuffle')} aria-pressed={shuffle} className={`${ctl} ${shuffle ? 'text-accent' : ''}`}>
               <Shuffle size={17} />
             </button>
-            <button type="button" onClick={prev} title="Previous (P)" aria-label="Previous" className={ctl} disabled={playlist.length === 0}>
+            <button type="button" onClick={prev} title={t('media.previous')} aria-label={t('media.previous')} className={ctl} disabled={playlist.length === 0}>
               <SkipBack size={19} />
             </button>
-            <button type="button" onClick={togglePlay} title="Play/Pause (Space)" aria-label={playing ? 'Pause' : 'Play'} className={ctl} disabled={!url}>
+            <button type="button" onClick={togglePlay} title={t('media.playPause')} aria-label={playing ? t('media.pause') : t('media.play')} className={ctl} disabled={!url}>
               {playing ? <Pause size={22} /> : <Play size={22} />}
             </button>
-            <button type="button" onClick={stop} title="Stop" aria-label="Stop" className={ctl} disabled={!url}>
+            <button type="button" onClick={stop} title={t('media.stop')} aria-label={t('media.stop')} className={ctl} disabled={!url}>
               <Square size={16} />
             </button>
-            <button type="button" onClick={next} title="Next (N)" aria-label="Next" className={ctl} disabled={playlist.length === 0}>
+            <button type="button" onClick={next} title={t('media.next')} aria-label={t('media.next')} className={ctl} disabled={playlist.length === 0}>
               <SkipForward size={19} />
             </button>
             <button
               type="button"
               onClick={() => setRepeat((r) => (r === 'off' ? 'all' : r === 'all' ? 'one' : 'off'))}
               title={`Repeat: ${repeat}`}
-              aria-label="Repeat mode"
+              aria-label={t('media.repeatMode')}
               className={`${ctl} ${repeat !== 'off' ? 'text-accent' : ''}`}
             >
               {repeat === 'one' ? <Repeat1 size={17} /> : <Repeat size={17} />}
             </button>
             <span className="mx-1 hidden h-6 w-px bg-osborder sm:block" />
-            <button type="button" onClick={() => setMuted((m) => !m)} title="Mute (M)" aria-label={muted ? 'Unmute' : 'Mute'} className={ctl}>
+            <button type="button" onClick={() => setMuted((m) => !m)} title={t('media.mute')} aria-label={muted ? t('media.unmute') : t('media.mute')} className={ctl}>
               {muted || volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
             </button>
             <input
               type="range" min={0} max={1} step={0.05}
               value={muted ? 0 : volume}
               onChange={(e) => { setMuted(false); setVolume(Number(e.target.value)); }}
-              aria-label="Volume" title="Volume (↑/↓)"
+              aria-label={t('media.volume')} title={t('media.volume')}
               className="h-2 w-24 min-h-0 cursor-pointer accent-accent"
             />
             <span className="min-w-0 flex-1" />
-            <button type="button" onClick={() => setShowViz((v) => !v)} title="Toggle visualizer" aria-label="Toggle visualizer" aria-pressed={showViz} className={`${ctl} ${showViz ? 'text-accent' : ''}`}>
+            <button type="button" onClick={() => setShowViz((v) => !v)} title={t('media.toggleVisualizer')} aria-label={t('media.toggleVisualizer')} aria-pressed={showViz} className={`${ctl} ${showViz ? 'text-accent' : ''}`}>
               <AudioLines size={17} />
             </button>
             <button
               type="button"
               onClick={() => setShowEq((s) => !s)}
-              title="Equalizer"
-              aria-label="Equalizer"
+              title={t('media.equalizer')}
+              aria-label={t('media.equalizer')}
               aria-expanded={showEq}
               className={`${ctl} ${showEq ? 'text-accent' : ''}`}
             >
@@ -618,8 +620,8 @@ export default function MusicApp({ windowApi, path: initialPath }) {
             <button
               type="button"
               onClick={() => setShowSidebar((s) => !s)}
-              title="Toggle playlist"
-              aria-label="Toggle playlist"
+              title={t('media.togglePlaylist')}
+              aria-label={t('media.togglePlaylist')}
               className={`${ctl} ${showSidebar ? 'text-accent' : ''}`}
             >
               <ListMusic size={18} />

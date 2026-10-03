@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { backend } from '../lib/backend/current.js';
 import { useNotifications } from '../os/NotificationsContext.jsx';
+import { useLang } from '../lib/i18n.jsx';
 import { useWindows } from '../os/WindowsContext.jsx';
 import { PromptDialog } from '../components/os/dialogs.jsx';
 import {
@@ -47,6 +48,7 @@ function aspectStyle(mode) {
 }
 
 export default function VideoApp({ windowApi, path: initialPath }) {
+  const { t } = useLang();
   const { push } = useNotifications();
   const { openWindow } = useWindows();
   const videoRef = useRef(null);
@@ -691,7 +693,7 @@ export default function VideoApp({ windowApi, path: initialPath }) {
                 step={0.1}
                 value={Math.min(time, duration || 0)}
                 onChange={(e) => { const v = video(); if (v) v.currentTime = Number(e.target.value); }}
-                aria-label="Seek"
+                aria-label={t('media.seek')}
                 className="h-2 min-h-0 flex-1 cursor-pointer accent-accent"
                 style={{ background: `linear-gradient(to right, var(--accent) ${seekPct}%, transparent ${seekPct}%)` }}
               />
@@ -699,23 +701,23 @@ export default function VideoApp({ windowApi, path: initialPath }) {
             </div>
             {/* Buttons */}
             <div className="mt-1 flex flex-wrap items-center gap-0.5">
-              <button type="button" onClick={togglePlay} title="Play/Pause (Space)" aria-label={playing ? 'Pause' : 'Play'} className={ctl} disabled={!url}>
+              <button type="button" onClick={togglePlay} title={t('media.playPause')} aria-label={playing ? t('media.pause') : t('media.play')} className={ctl} disabled={!url}>
                 {playing ? <Pause size={20} /> : <Play size={20} />}
               </button>
-              <button type="button" onClick={stop} title="Stop" aria-label="Stop" className={ctl} disabled={!url}>
+              <button type="button" onClick={stop} title={t('media.stop')} aria-label={t('media.stop')} className={ctl} disabled={!url}>
                 <Square size={16} />
               </button>
-              <button type="button" onClick={prev} title="Previous (P)" aria-label="Previous" className={ctl} disabled={playlist.length === 0}>
+              <button type="button" onClick={prev} title={t('media.previous')} aria-label={t('media.previous')} className={ctl} disabled={playlist.length === 0}>
                 <SkipBack size={18} />
               </button>
-              <button type="button" onClick={next} title="Next (N)" aria-label="Next" className={ctl} disabled={playlist.length === 0}>
+              <button type="button" onClick={next} title={t('media.next')} aria-label={t('media.next')} className={ctl} disabled={playlist.length === 0}>
                 <SkipForward size={18} />
               </button>
               <span className="mx-1 hidden h-6 w-px bg-osborder sm:block" />
               <button
                 type="button"
                 onClick={() => setMuted((m) => !m)}
-                title="Mute (M)"
+                title={t('media.mute')}
                 aria-label={muted ? 'Unmute' : 'Mute'}
                 className={ctl}
               >
@@ -728,16 +730,16 @@ export default function VideoApp({ windowApi, path: initialPath }) {
                 step={0.05}
                 value={muted ? 0 : volume}
                 onChange={(e) => { setMuted(false); setVolume(Number(e.target.value)); }}
-                aria-label="Volume"
-                title="Volume (↑/↓)"
+                aria-label={t('media.volume')}
+                title={t('media.volume')}
                 className="h-2 w-24 min-h-0 cursor-pointer accent-accent"
               />
               <span className="mx-1 hidden h-6 w-px bg-osborder sm:block" />
               <button
                 type="button"
                 onClick={() => setLoopAll((l) => !l)}
-                title="Loop playlist"
-                aria-label="Loop playlist"
+                title={t('media.loopPlaylist')}
+                aria-label={t('media.loopPlaylist')}
                 aria-pressed={loopAll}
                 className={`${ctl} ${loopAll ? 'text-accent' : ''}`}
               >
@@ -746,8 +748,8 @@ export default function VideoApp({ windowApi, path: initialPath }) {
               <button
                 type="button"
                 onClick={() => setShowExtended((s) => !s)}
-                title="Extended controls (speed, A-B loop, aspect, snapshot, subtitles)"
-                aria-label="Extended controls"
+                title={t('media.extendedControls')}
+                aria-label={t('media.extendedControls')}
                 aria-expanded={showExtended}
                 className={`${ctl} ${showExtended ? 'text-accent' : ''}`}
               >
@@ -757,8 +759,8 @@ export default function VideoApp({ windowApi, path: initialPath }) {
               <button
                 type="button"
                 onClick={() => uploadInputRef.current?.click()}
-                title="Upload videos from this device into your library"
-                aria-label="Upload videos"
+                title={t('media.uploadVideosTitle')}
+                aria-label={t('media.uploadVideos')}
                 className={ctl}
               >
                 <Upload size={18} />
@@ -774,8 +776,8 @@ export default function VideoApp({ windowApi, path: initialPath }) {
               <button
                 type="button"
                 onClick={() => { setSaveStatus(null); setSaveLinkOpen(true); }}
-                title="Save video from link — paste a direct MP4/WebM link to download it into your library"
-                aria-label="Save video from link"
+                title={t('media.saveVideoLinkTitle')}
+                aria-label={t('media.saveVideoLink')}
                 className={ctl}
               >
                 <Download size={18} />
@@ -783,13 +785,13 @@ export default function VideoApp({ windowApi, path: initialPath }) {
               <button
                 type="button"
                 onClick={() => setShowSidebar((s) => !s)}
-                title="Toggle playlist"
-                aria-label="Toggle playlist"
+                title={t('media.togglePlaylist')}
+                aria-label={t('media.togglePlaylist')}
                 className={`${ctl} ${showSidebar ? 'text-accent' : ''}`}
               >
                 <ListVideo size={18} />
               </button>
-              <button type="button" onClick={toggleFullscreen} title="Fullscreen (F)" aria-label="Fullscreen" className={ctl}>
+              <button type="button" onClick={toggleFullscreen} title={t('media.fullscreen')} aria-label={t('media.fullscreen')} className={ctl}>
                 {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
               </button>
             </div>
@@ -798,7 +800,7 @@ export default function VideoApp({ windowApi, path: initialPath }) {
             {showExtended && (
               <div className="mt-2 flex flex-wrap items-center gap-2 rounded-os border border-osborder bg-paper p-2">
                 <span className="text-xs font-medium uppercase tracking-wide text-muted">Speed</span>
-                <button type="button" onClick={() => setSpeed((s) => SPEEDS[Math.max(0, SPEEDS.indexOf(s) - 1)] ?? s)} title="Slower ([)" aria-label="Slower" className={extBtn}>−</button>
+                <button type="button" onClick={() => setSpeed((s) => SPEEDS[Math.max(0, SPEEDS.indexOf(s) - 1)] ?? s)} title={t('media.slower')} aria-label={t('media.slower')} className={extBtn}>−</button>
                 <select
                   value={speed}
                   onChange={(e) => setSpeed(Number(e.target.value))}

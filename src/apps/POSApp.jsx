@@ -86,7 +86,7 @@ function PinPadModal({ title, subtitle, error, busy, onSubmit, onClose }) {
   return (
     <Modal title={title || t('pos.tabs2.cashierSignIn')} onClose={onClose}>
       {subtitle && <p className="mb-3 text-center text-sm text-muted">{subtitle}</p>}
-      <div className="mb-3 flex justify-center" aria-label="PIN entry">
+      <div className="mb-3 flex justify-center" aria-label={t('pos.a11y.pinEntry')}>
         <div className="flex gap-2">
           {Array.from({ length: 8 }).map((_, i) => (
             <div
@@ -114,7 +114,7 @@ function PinPadModal({ title, subtitle, error, busy, onSubmit, onClose }) {
           type="button"
           onClick={() => setPin((p) => p.slice(0, -1))}
           className="rounded-os bg-paper py-3 text-sm font-semibold text-muted duration-160 hover:text-ink"
-          aria-label="Backspace"
+          aria-label={t('pos.a11y.backspace')}
         >
           ⌫
         </button>
@@ -207,7 +207,7 @@ function Modal({ title, onClose, children, wide }) {
             ref={closeRef}
             onClick={onClose}
             className="rounded-os p-1 text-muted hover:bg-paper hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-            aria-label="Close"
+            aria-label={t('pos.a11y.close')}
           >
             <X size={18} />
           </button>
@@ -964,7 +964,7 @@ function SellTab({ products, store, v4, customers, customerId, onCustomerChange,
           ) : visible.length === 0 ? (
             <EmptyState
               icon={Package}
-              title="No products yet"
+              title={t('pos.a11y.noProductsYet')}
               body={canManage(store.role)
                 ? 'Add your first product in the Products tab, then come back here to ring up sales.'
                 : t('pos.ui.catalogEmpty')}
@@ -1023,7 +1023,7 @@ function SellTab({ products, store, v4, customers, customerId, onCustomerChange,
               </button>
             )}
             {cashier?.name && (
-              <span className="flex shrink-0 items-center gap-1 rounded-os bg-surface px-2 py-1.5 text-muted" title="Cashier on this sale">
+              <span className="flex shrink-0 items-center gap-1 rounded-os bg-surface px-2 py-1.5 text-muted" title={t('pos.a11y.cashierOnSale')}>
                 <KeyRound size={13} /> {cashier.name}
               </span>
             )}
@@ -1180,7 +1180,7 @@ function SellTab({ products, store, v4, customers, customerId, onCustomerChange,
                       value={promoInput}
                       onChange={(e) => { setPromoInput(e.target.value); setPromoError(''); }}
                       onKeyDown={(e) => { if (e.key === 'Enter') applyPromo(); }}
-                      placeholder="CODE"
+                      placeholder={t('pos.tabs2.forms.code')}
                       className={`${inputCls} py-1 uppercase`}
                     />
                     <button
@@ -1367,10 +1367,10 @@ function CustomerPickerModal({ customers, selectedId, onSelect, onClose }) {
     return !s || c.name.toLowerCase().includes(s) || (c.phone || '').includes(s);
   });
   return (
-    <Modal title="Attach customer" onClose={onClose}>
+    <Modal title={t('pos.a11y.attachCustomer')} onClose={onClose}>
       <div className="relative mb-3">
         <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search customers…" autoFocus className={`${inputCls} pl-9`} />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('pos.tabs2.forms.searchCustomers')} autoFocus className={`${inputCls} pl-9`} />
       </div>
       <div className="max-h-64 space-y-1.5 overflow-y-auto">
         <button
@@ -1480,7 +1480,7 @@ function ItemDiscountModal({ line, currency, onClose, onSave }) {
           type="button"
           onClick={() => setType((t) => (t === 'amount' ? 'percent' : 'amount'))}
           className="shrink-0 rounded-os border border-osborder bg-surface px-3 text-sm font-medium text-ink hover:border-accent"
-          title="Toggle $ / %"
+          title={t('pos.a11y.togglePercent')}
         >
           {type === 'amount' ? currency : '%'}
         </button>
@@ -1640,7 +1640,7 @@ function TenderModal({ total, currency, v4, customer, loyaltyValueCents, initial
                 </span>
                 <span className="flex shrink-0 items-center gap-1 font-medium text-ink">
                   −{fmt(a.cents, currency)}
-                  <button type="button" onClick={() => removeAdjustment(i)} className="rounded-os p-0.5 text-muted hover:text-accent" aria-label="Remove">
+                  <button type="button" onClick={() => removeAdjustment(i)} className="rounded-os p-0.5 text-muted hover:text-accent" aria-label={t('pos.a11y.remove')}>
                     <X size={12} />
                   </button>
                 </span>
@@ -2243,7 +2243,7 @@ function DepositsModal({ store, cashier, onSaleComplete, onCollect, onClose }) {
         <div className="mb-4 space-y-2 rounded-os border border-osborder bg-paper/60 p-3">
           <div className="grid grid-cols-2 gap-2">
             <Field label={t('pos.deposit.customer')}>
-              <input value={form.customerName} onChange={(e) => setForm({ ...form, customerName: e.target.value })} placeholder="Nom / Name" className={inputCls} />
+              <input value={form.customerName} onChange={(e) => setForm({ ...form, customerName: e.target.value })} placeholder={t('pos.tabs2.forms.customerName')} className={inputCls} />
             </Field>
             <Field label={t('pos.deposit.phone')}>
               <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="514…" className={inputCls} />
@@ -2771,7 +2771,7 @@ function ProductFormModal({ initial, v4, onClose, onSave }) {
     <Modal title={initial ? 'Edit product' : 'New product'} onClose={onClose} wide={v4}>
       <div className="space-y-3">
         <Field label="Name">
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Blue T-shirt" autoFocus className={inputCls} />
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('pos.tabs2.forms.productNameEx')} autoFocus className={inputCls} />
         </Field>
         <div>
           <Field label={t('pos.isbn.label')}>
@@ -2801,12 +2801,12 @@ function ProductFormModal({ initial, v4, onClose, onSave }) {
             <input value={price} onChange={(e) => setPrice(e.target.value.replace(/[^0-9.]/g, ''))} placeholder="0.00" inputMode="decimal" className={inputCls} />
           </Field>
           <Field label="SKU (optional)">
-            <input value={sku} onChange={(e) => setSku(e.target.value)} placeholder="e.g. TSH-BLU-M" className={inputCls} />
+            <input value={sku} onChange={(e) => setSku(e.target.value)} placeholder={t('pos.tabs2.forms.skuEx')} className={inputCls} />
           </Field>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Category (optional)">
-            <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g. Apparel" className={inputCls} />
+            <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder={t('pos.tabs2.forms.categoryEx')} className={inputCls} />
           </Field>
           {v4 && (
             <Field label="Cost (for margin, optional)">
@@ -2856,10 +2856,10 @@ function ProductFormModal({ initial, v4, onClose, onSave }) {
                 <div className="space-y-2">
                   {variants.map((v, i) => (
                     <div key={i} className="flex items-center gap-2">
-                      <input value={v.name} onChange={(e) => setVariant(i, { name: e.target.value })} placeholder="Option name" className={`${inputCls} flex-1`} />
-                      <input value={v.priceDelta} onChange={(e) => setVariant(i, { priceDelta: e.target.value.replace(/[^0-9.\-]/g, '') })} placeholder="+0.00" inputMode="decimal" title="Price adjustment" className={`${inputCls} w-24 text-right`} />
-                      <input value={v.sku} onChange={(e) => setVariant(i, { sku: e.target.value })} placeholder="SKU" className={`${inputCls} w-28`} />
-                      <button type="button" onClick={() => setVariants((vs) => vs.filter((_, j) => j !== i))} className="rounded-os p-1.5 text-muted hover:text-accent" aria-label="Remove variant">
+                      <input value={v.name} onChange={(e) => setVariant(i, { name: e.target.value })} placeholder={t('pos.tabs2.forms.optionName')} className={`${inputCls} flex-1`} />
+                      <input value={v.priceDelta} onChange={(e) => setVariant(i, { priceDelta: e.target.value.replace(/[^0-9.\-]/g, '') })} placeholder="+0.00" inputMode="decimal" title={t('pos.a11y.priceAdjustment')} className={`${inputCls} w-24 text-right`} />
+                      <input value={v.sku} onChange={(e) => setVariant(i, { sku: e.target.value })} placeholder={t('pos.tabs2.forms.sku')} className={`${inputCls} w-28`} />
+                      <button type="button" onClick={() => setVariants((vs) => vs.filter((_, j) => j !== i))} className="rounded-os p-1.5 text-muted hover:text-accent" aria-label={t('pos.a11y.removeVariant')}>
                         <Trash2 size={14} />
                       </button>
                     </div>
@@ -2908,7 +2908,7 @@ function ProductsTab({ store, products, v4, onSave, onDelete, onToggleActive, on
       <div className="mb-3 flex gap-2">
         <div className="relative flex-1">
           <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search products…" className={`${inputCls} pl-9`} />
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('pos.tabs2.forms.searchProducts')} className={`${inputCls} pl-9`} />
         </div>
         {v4 && (
           <button
@@ -2973,11 +2973,11 @@ function ProductsTab({ store, products, v4, onSave, onDelete, onToggleActive, on
                     <td className="px-4 py-2.5 text-center">
                       {p.trackStock ? (
                         <span className="inline-flex items-center gap-1">
-                          <button type="button" onClick={() => onAdjustStock(p, -1)} className="rounded-os p-2 text-muted hover:bg-paper hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" aria-label="Decrease stock">
+                          <button type="button" onClick={() => onAdjustStock(p, -1)} className="rounded-os p-2 text-muted hover:bg-paper hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" aria-label={t('pos.a11y.decreaseStock')}>
                             <Minus size={13} />
                           </button>
                           <span className={`min-w-8 text-sm font-semibold ${isLow(p) ? 'text-accent' : 'text-ink'}`}>{p.stock}</span>
-                          <button type="button" onClick={() => onAdjustStock(p, 1)} className="rounded-os p-2 text-muted hover:bg-paper hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" aria-label="Increase stock">
+                          <button type="button" onClick={() => onAdjustStock(p, 1)} className="rounded-os p-2 text-muted hover:bg-paper hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" aria-label={t('pos.a11y.increaseStock')}>
                             <Plus size={13} />
                           </button>
                         </span>
@@ -3229,14 +3229,14 @@ function HistoryTab({ store, sales, memberName, onVoid, onRefund, onExchange, se
       <div className="mb-3">
         <div className="relative">
           <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by sale # or item…" className={`${inputCls} pl-9`} />
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('pos.tabs2.forms.searchSales')} className={`${inputCls} pl-9`} />
         </div>
       </div>
       {voidWarnings.length > 0 && (
         <div className="mb-3 rounded-os border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800">
           <div className="flex items-start justify-between gap-2">
             <p className="font-semibold">{t('pos.tabs2.voidStockWarn')}</p>
-            <button type="button" onClick={() => setVoidWarnings([])} className="shrink-0 text-amber-600 hover:text-amber-800" aria-label="Dismiss">
+            <button type="button" onClick={() => setVoidWarnings([])} className="shrink-0 text-amber-600 hover:text-amber-800" aria-label={t('pos.a11y.dismiss')}>
               <X size={14} />
             </button>
           </div>
@@ -3247,7 +3247,7 @@ function HistoryTab({ store, sales, memberName, onVoid, onRefund, onExchange, se
       )}
       <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
         {visible.length === 0 ? (
-          <EmptyState icon={Receipt} title="No sales yet" body="Completed sales will show up here with totals, history, and voiding." />
+          <EmptyState icon={Receipt} title={t('pos.a11y.noSalesYet')} body={t('pos.a11y.noSalesBody')} />
         ) : (
           visible.map((s) => {
             const dt = new Date(s.createdAt);
@@ -3293,7 +3293,7 @@ function HistoryTab({ store, sales, memberName, onVoid, onRefund, onExchange, se
                     <button
                       type="button"
                       onClick={() => setViewReceipt(s)}
-                      title="View receipt"
+                      title={t('pos.a11y.viewReceipt')}
                       className="flex items-center gap-1 rounded-os border border-osborder px-2 py-1 text-xs font-medium text-muted hover:border-accent hover:text-ink"
                     >
                       <Printer size={12} /> {t('pos.ui.receiptBtn')}
@@ -3909,7 +3909,7 @@ function CustomerFormModal({ initial, onClose, onSave }) {
     <Modal title={initial ? 'Edit customer' : 'New customer'} onClose={onClose}>
       <div className="space-y-3">
         <Field label="Name">
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Ada Lovelace" autoFocus className={inputCls} />
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('pos.tabs2.forms.personNameEx')} autoFocus className={inputCls} />
         </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Phone (optional)">
@@ -4151,7 +4151,7 @@ function CustomersPanel({ store, customers, sales, onSave, onDelete, extras }) {
       <div className="mb-3 flex gap-2">
         <div className="relative flex-1">
           <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search customers…" className={`${inputCls} pl-9`} />
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('pos.tabs2.forms.searchCustomers')} className={`${inputCls} pl-9`} />
         </div>
         <button
           type="button"
@@ -4185,7 +4185,7 @@ function CustomersPanel({ store, customers, sales, onSave, onDelete, extras }) {
                   </div>
                   <div className="flex shrink-0 gap-1">
                     <button type="button" onClick={() => setEditing(c)} className="rounded-os px-2 py-1 text-xs font-medium text-muted hover:bg-surface hover:text-ink">{t('pos.tabs2.edit')}</button>
-                    <button type="button" onClick={() => setConfirmDelete(c)} className="rounded-os p-1 text-muted hover:text-accent" aria-label="Delete customer">
+                    <button type="button" onClick={() => setConfirmDelete(c)} className="rounded-os p-1 text-muted hover:text-accent" aria-label={t('pos.a11y.deleteCustomer')}>
                       <Trash2 size={14} />
                     </button>
                   </div>
@@ -4576,7 +4576,7 @@ function DrawerTab({ store, sales, role, cashierName, extras }) {
               />
             </Field>
             <Field label="Note (optional)">
-              <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. $20 drop to safe" className={inputCls} />
+              <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('pos.tabs2.forms.drawerNoteEx')} className={inputCls} />
             </Field>
             {counted && (
               <p className={`text-center text-sm font-semibold ${
@@ -4915,7 +4915,7 @@ function StaffFormModal({ initial, onClose, onSave }) {
     <Modal title={initial ? 'Edit staff' : 'New staff'} onClose={onClose}>
       <div className="space-y-3">
         <Field label="Name">
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Sam Rivera" autoFocus className={inputCls} />
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('pos.tabs2.forms.personNameEx')} autoFocus className={inputCls} />
         </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Role">
@@ -5022,7 +5022,7 @@ function StaffPinSection({ store, canManageStaff }) {
               {canManageStaff && (
                 <>
                   <button type="button" onClick={() => setEditing(m)} className="rounded-os px-2 py-1 text-xs font-medium text-muted hover:bg-surface hover:text-ink">{t('pos.tabs2.edit')}</button>
-                  <button type="button" onClick={() => setConfirmDelete(m)} className="rounded-os p-1.5 text-muted hover:text-accent" aria-label="Delete staff">
+                  <button type="button" onClick={() => setConfirmDelete(m)} className="rounded-os p-1.5 text-muted hover:text-accent" aria-label={t('pos.a11y.deleteStaff')}>
                     <Trash2 size={15} />
                   </button>
                 </>
@@ -5147,7 +5147,7 @@ function TeamTab({ store, members, selfId, v4, onInvite, onRevokeInvite, onSetRo
                     onSetRole(m.userId, next).catch((err) => setError(err.message));
                   }}
                   className="rounded-os border border-osborder bg-surface px-2 py-1 text-xs text-ink"
-                  title="Change role"
+                  title={t('pos.a11y.changeRole')}
                 >
                   <option value="owner">{t('pos.tabs2.owner')}</option>
                   <option value="manager">{t('pos.tabs2.manager')}</option>
@@ -5588,7 +5588,7 @@ function PrinterSettingsSection({ store }) {
             <input
               value={cfg.qzPrinterName}
               onChange={(e) => update({ qzPrinterName: e.target.value })}
-              placeholder="Printer name as QZ Tray sees it"
+              placeholder={t('pos.tabs2.forms.printerName')}
               className={`${inputCls} flex-1`}
             />
             <button type="button" onClick={findQzPrinters} disabled={busy} className="shrink-0 rounded-os border border-osborder px-3 py-2 text-sm font-medium text-ink hover:border-accent disabled:opacity-40">
@@ -5630,7 +5630,7 @@ function PrinterSettingsSection({ store }) {
 
       <label className="block">
         <span className="mb-1 block text-xs font-medium text-muted">{t('pos.tabs2.receiptHeader')}</span>
-        <input value={cfg.header} onChange={(e) => update({ header: e.target.value })} placeholder="Address, phone…" className={inputCls} />
+        <input value={cfg.header} onChange={(e) => update({ header: e.target.value })} placeholder={t('pos.tabs2.forms.receiptHeader')} className={inputCls} />
       </label>
       <label className="block">
         <span className="mb-1 block text-xs font-medium text-muted">{t('pos.tabs2.receiptFooter')}</span>
@@ -6358,7 +6358,7 @@ function ClockTab({ store }) {
 
         {!who ? (
           <div className="mt-2">
-            <div className="mb-3 flex justify-center" aria-label="PIN entry">
+            <div className="mb-3 flex justify-center" aria-label={t('pos.a11y.pinEntry')}>
               <div className="flex gap-2">
                 {Array.from({ length: 8 }).map((_, i) => (
                   <div
@@ -6384,7 +6384,7 @@ function ClockTab({ store }) {
               <button
                 type="button"
                 onClick={() => setPin((p) => p.slice(0, -1))}
-                aria-label="Backspace"
+                aria-label={t('pos.a11y.backspace')}
                 className="rounded-os bg-surface py-3 text-sm font-semibold text-muted duration-160 hover:text-ink"
               >
                 ⌫
@@ -7219,7 +7219,7 @@ export default function POSApp({
               value={storeId}
               onChange={(e) => { setStoreId(e.target.value); setTab('sell'); }}
               className="max-w-44 rounded-os border border-osborder bg-paper px-2 py-1.5 text-sm text-ink"
-              title="Switch store"
+              title={t('pos.a11y.switchStore')}
             >
               {stores.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
@@ -7394,7 +7394,7 @@ export default function POSApp({
               <button
                 type="button"
                 onClick={() => !posModeBusy && setPosModeOpen(false)}
-                aria-label="Close dialog"
+                aria-label={t('pos.a11y.closeDialog')}
                 className="rounded-os p-1 text-muted hover:bg-paper hover:text-ink"
               >
                 <X size={16} />

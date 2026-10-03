@@ -880,7 +880,7 @@ function TicketsSection() {
                         disabled={busy}
                         onChange={(e) => save(ticket, { status: e.target.value }, 'Status change')}
                         className="rounded-os border border-osborder bg-surface px-2 py-1 text-xs text-ink outline-none focus:border-accent disabled:opacity-50"
-                        aria-label="Ticket status"
+                        aria-label={t('adminUsers.ticketStatusAria')}
                       >
                         <option value="open">{t('adminAccounts.tickets.statusOpen')}</option>
                         <option value="in_progress">{t('adminAccounts.tickets.statusInProgress')}</option>

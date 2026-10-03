@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { backend } from '../lib/backend/current.js';
 import { useNotifications } from '../os/NotificationsContext.jsx';
+import { useLang } from '../lib/i18n.jsx';
 import { useWindows } from '../os/WindowsContext.jsx';
 import {
   scanMedia, mediaUrl, formatSize, IMAGE_EXT,
@@ -57,6 +58,7 @@ function Thumb({ entry, selected, onOpen }) {
 }
 
 export default function PicturesApp({ windowApi, path: initialPath }) {
+  const { t } = useLang();
   const { push } = useNotifications();
   const { openWindow } = useWindows();
   const [images, setImages] = useState([]);
@@ -220,8 +222,8 @@ export default function PicturesApp({ windowApi, path: initialPath }) {
               <button
                 type="button"
                 onClick={() => setRefreshTick((t) => t + 1)}
-                title="Rescan for pictures"
-                aria-label="Rescan"
+                title={t('media.rescanPictures')}
+                aria-label={t('media.rescan')}
                 className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-os border border-osborder bg-paper transition-colors duration-160 hover:bg-surface"
               >
                 <RefreshCw size={15} />
@@ -264,10 +266,10 @@ export default function PicturesApp({ windowApi, path: initialPath }) {
         <>
           {/* Viewer toolbar */}
           <div className="flex flex-wrap items-center gap-1 border-b border-osborder bg-surface px-2 py-1.5">
-            <button type="button" onClick={() => step(-1)} title="Previous (←)" aria-label="Previous" className={barBtn}>
+            <button type="button" onClick={() => step(-1)} title={t('media.previous')} aria-label={t('media.previous')} className={barBtn}>
               <ChevronLeft size={18} />
             </button>
-            <button type="button" onClick={() => step(1)} title="Next (→)" aria-label="Next" className={barBtn}>
+            <button type="button" onClick={() => step(1)} title={t('media.next')} aria-label={t('media.next')} className={barBtn}>
               <ChevronRight size={18} />
             </button>
             <span className="mx-1 hidden min-w-0 flex-1 truncate text-sm text-muted sm:block">
@@ -275,20 +277,20 @@ export default function PicturesApp({ windowApi, path: initialPath }) {
               {dims ? ` · ${dims.w}×${dims.h}` : ''}
               {entry ? ` · ${formatSize(entry.size)}` : ''}
             </span>
-            <button type="button" onClick={() => { setFit(false); setZoom((z) => Math.min(8, +(z + 0.25).toFixed(2))); }} title="Zoom in (+)" aria-label="Zoom in" className={barBtn}>
+            <button type="button" onClick={() => { setFit(false); setZoom((z) => Math.min(8, +(z + 0.25).toFixed(2))); }} title={t('media.zoomIn')} aria-label={t('media.zoomIn')} className={barBtn}>
               <ZoomIn size={17} />
             </button>
-            <button type="button" onClick={() => { setFit(false); setZoom((z) => Math.max(0.25, +(z - 0.25).toFixed(2))); }} title="Zoom out (−)" aria-label="Zoom out" className={barBtn}>
+            <button type="button" onClick={() => { setFit(false); setZoom((z) => Math.max(0.25, +(z - 0.25).toFixed(2))); }} title={t('media.zoomOut')} aria-label={t('media.zoomOut')} className={barBtn}>
               <ZoomOut size={17} />
             </button>
-            <button type="button" onClick={() => { setZoom(1); setFit((f) => !f); }} title="Fit to screen (F)" aria-label="Fit to screen" className={barBtn}>
+            <button type="button" onClick={() => { setZoom(1); setFit((f) => !f); }} title={t('media.fitToScreen')} aria-label={t('media.fitToScreen')} className={barBtn}>
               <Maximize2 size={16} />
             </button>
             <select
               value={slideDelay}
               onChange={(e) => setSlideDelay(Number(e.target.value))}
-              title="Slideshow delay"
-              aria-label="Slideshow delay"
+              title={t('media.slideshowDelay')}
+              aria-label={t('media.slideshowDelay')}
               className="min-h-[44px] rounded-os border border-osborder bg-paper px-2 text-sm text-ink"
             >
               {SLIDE_DELAYS.map((d) => (
@@ -307,8 +309,8 @@ export default function PicturesApp({ windowApi, path: initialPath }) {
             <button
               type="button"
               onClick={() => { setSlideshow(false); setViewIndex(null); }}
-              title="Back to grid (Esc)"
-              aria-label="Close viewer"
+              title={t('media.backToGrid')}
+              aria-label={t('media.closeViewer')}
               className={barBtn}
             >
               <X size={17} />

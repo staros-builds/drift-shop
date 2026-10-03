@@ -1101,7 +1101,7 @@ export default function SettingsApp({ windowApi }) {
                 max={100}
                 value={Math.round(volume * 100)}
                 onChange={(e) => changeVolume(Number(e.target.value) / 100)}
-                aria-label="Interface sound volume"
+                aria-label={t('settings.soundVolumeAria')}
                 className="h-2 flex-1 cursor-pointer appearance-none rounded-full bg-osborder accent-accent"
               />
               <span className="w-10 text-right text-sm text-muted">{Math.round(volume * 100)}%</span>
@@ -1530,7 +1530,7 @@ export default function SettingsApp({ windowApi }) {
       </div>
       {confirmErase && (
         <ConfirmDialog
-          title="Erase everything?"
+          title={t('settings.eraseConfirmTitle')}
           message="This permanently deletes files, pins, Helm threads, spaces, and settings. This cannot be undone."
           confirmLabel="Erase everything"
           cancelLabel="Keep my data"
