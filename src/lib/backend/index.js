@@ -240,7 +240,7 @@ export function createBackend(kind, config = null) {
       if (!config.url || !config.key) {
         throw new Error(
           'Supabase is not configured (explicit backend settings are incomplete). ' +
-          'Drift Shop needs its cloud backend to sign in.'
+          'Vendra needs its cloud backend to sign in.'
         );
       }
       return createSupabaseBackend({ url: config.url, key: config.key });

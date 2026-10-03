@@ -161,8 +161,8 @@ export const licensing = {
     supportLoadError: 'No pudimos cargar tus mensajes. Inténtalo de nuevo.',
     /* ---- configuración: tu plan ---- */
     planTitle: 'Tu plan',
-    planTrial: 'Prueba gratis — te quedan {days} días',
-    planTrialOne: 'Prueba gratis — te queda 1 día',
+    planTrial: 'Prueba de tienda — te quedan {days} días',
+    planTrialOne: 'Prueba de tienda — te queda 1 día',
     planTrialEnds: 'Tu prueba gratis termina el {date}. Después de eso, la tienda se bloquea hasta que ingreses una clave de desbloqueo. Tus datos nunca se borran.',
     planActiveLifetime: 'Desbloqueada — esta tienda está pagada para siempre.',
     planActiveTerm: 'Desbloqueada hasta el {date} ({days} días restantes).',
@@ -264,8 +264,8 @@ export const licensing = {
     supportLoadError: 'Nous n’avons pas pu charger vos messages. Veuillez réessayer.',
     /* ---- réglages : votre forfait ---- */
     planTitle: 'Votre forfait',
-    planTrial: 'Essai gratuit — {days} jours restants',
-    planTrialOne: 'Essai gratuit — 1 jour restant',
+    planTrial: 'Essai boutique — {days} jours restants',
+    planTrialOne: 'Essai boutique — 1 jour restant',
     planTrialEnds: 'Votre essai gratuit se termine le {date}. Après cette date, la boutique se verrouille jusqu’à ce que vous entriez une clé de déverrouillage. Vos données ne sont jamais supprimées.',
     planActiveLifetime: 'Déverrouillée — cette boutique est payée, pour de bon.',
     planActiveTerm: 'Déverrouillée jusqu’au {date} ({days} jours restants).',
@@ -367,8 +367,8 @@ export const licensing = {
     supportLoadError: 'Não foi possível carregar suas mensagens. Tente de novo.',
     /* ---- configurações: seu plano ---- */
     planTitle: 'Seu plano',
-    planTrial: 'Teste grátis — faltam {days} dias',
-    planTrialOne: 'Teste grátis — falta 1 dia',
+    planTrial: 'Teste de loja — faltam {days} dias',
+    planTrialOne: 'Teste de loja — falta 1 dia',
     planTrialEnds: 'Seu teste grátis termina em {date}. Depois disso, a loja bloqueia até você digitar uma chave de desbloqueio. Seus dados nunca são apagados.',
     planActiveLifetime: 'Desbloqueada — esta loja está paga, para sempre.',
     planActiveTerm: 'Desbloqueada até {date} (faltam {days} dias).',

@@ -5761,12 +5761,12 @@ function SettingsTabPane({ store, v4, onSave, extras }) {
         loyaltyPointsPerDollar: Math.max(0, parseFloat(loyaltyPerDollar) || 0),
         loyaltyPointsValueCents: Math.max(0, Math.round((parseFloat(loyaltyValue) || 0) * 100)),
         taxRates: taxRates
-          .map((t) => ({
-            name: String(t.name || '').trim().slice(0, 24) || t('pos.tabs2.taxFallbackName'),
-            rate: Number(t.rate) || 0,
-            compound: t.compound === true,
+          .map((row) => ({
+            name: String(row.name || '').trim().slice(0, 24) || t('pos.tabs2.taxFallbackName'),
+            rate: Number(row.rate) || 0,
+            compound: row.compound === true,
           }))
-          .filter((t) => t.rate > 0),
+          .filter((row) => row.rate > 0),
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
