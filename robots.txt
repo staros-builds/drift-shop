@@ -1,0 +1,6 @@
+# Vendra landing — every crawler is welcome; the app itself lives
+# behind the link on these pages and needs no separate entry.
+User-agent: *
+Allow: /
+
+Sitemap: https://vendra-1f2.pages.dev/sitemap.xml

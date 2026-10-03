@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Redirecting…</title>
+<script>
+(function () {
+  // SPA fallback for path-based deep links on static hosts that serve this
+  // file for unknown paths (in practice: GitHub Pages. Netlify and
+  // Cloudflare Pages use their own SPA redirect rules and never serve
+  // this file). Deep links land here because only static files exist.
+  // Stash the requested URL, then bounce to the app root — the app
+  // restores the URL via history before it boots.
+  //
+  // App-root rule: the first path segment is the project path on GitHub
+  // Pages project sites (/drift-shop/…), so the root is /<first-segment>/;
+  // a single-segment path means the app already lives at the domain root.
+  // Two-segment stray paths on root-hosted hosts are the known blind spot —
+  // those hosts (Netlify/Cloudflare) serve index.html directly anyway.
+  try {
+    sessionStorage.setItem('driftshop_spa_redirect',
+      location.pathname + location.search + location.hash);
+  } catch (e) { /* storage unavailable (private mode): just go home */ }
+  var segs = location.pathname.split('/');
+  var root = segs.length > 2 ? '/' + segs[1] + '/' : '/';
+  location.replace(root);
+})();
+</script>
+</head>
+<body></body>
+</html>
