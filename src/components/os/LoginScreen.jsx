@@ -315,7 +315,7 @@ export function ForcePasswordChangeModal({ onDone }) {
             <div className="mt-4 rounded-os border border-osborder bg-paper p-4" role="dialog" aria-label={t('recovery.codesShowOnceTitle')}>
               <h2 className="text-sm font-semibold text-ink">{t('recovery.codesShowOnceTitle')}</h2>
               <p className="mt-1 text-xs leading-relaxed text-muted">{t('recovery.codesShowOnceBody')}</p>
-              <div className="mt-2 select-all rounded-os border border-osborder bg-surface p-3 font-mono text-sm tracking-widest text-ink">
+              <div className="mt-2 select-all break-all rounded-os border border-osborder bg-surface p-3 font-mono text-sm tracking-widest text-ink">
                 {onceCodes.map((c) => (
                   <div key={c} className="py-0.5">{c}</div>
                 ))}
@@ -463,7 +463,7 @@ function ForgotPasswordDialog({ onClose }) {
       type="button"
       onClick={() => { setTab(id); setError(''); }}
       aria-pressed={tab === id}
-      className={`flex-1 rounded-os px-3 py-2 text-sm font-medium duration-160 ${tab === id ? 'bg-accent text-accentink' : 'bg-paper text-muted hover:text-ink'}`}
+      className={`flex-1 rounded-os px-2 py-2 text-xs font-medium duration-160 sm:px-3 sm:text-sm ${tab === id ? 'bg-accent text-accentink' : 'bg-paper text-muted hover:text-ink'}`}
     >
       {label}
     </button>

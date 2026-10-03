@@ -50,12 +50,12 @@ function ShowOnceModal({ codes, onDone, t }) {
           <ShieldCheck size={18} className="shrink-0 text-accent" />
         </div>
         <p className="mt-2 text-xs leading-relaxed text-muted">{t('recovery.codesShowOnceBody')}</p>
-        <div className="mt-3 select-all rounded-os border border-osborder bg-paper p-3 font-mono text-sm tracking-widest text-ink">
+        <div className="mt-3 select-all break-all rounded-os border border-osborder bg-paper p-3 font-mono text-sm tracking-widest text-ink">
           {codes.map((c) => (
             <div key={c} className="py-0.5">{c}</div>
           ))}
         </div>
-        <div className="mt-3 flex gap-2">
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
           <button
             type="button"
             onClick={copyAll}

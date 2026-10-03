@@ -5130,7 +5130,7 @@ function TeamTab({ store, members, selfId, v4, onInvite, onRevokeInvite, onSetRo
         </h3>
         <div className="space-y-2">
           {members.map((m) => (
-            <div key={m.userId} className="flex items-center gap-3 rounded-os border border-osborder bg-paper px-4 py-2.5">
+            <div key={m.userId} className="flex items-center gap-2 rounded-os border border-osborder bg-paper px-3 py-2.5 sm:gap-3 sm:px-4">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-os bg-accent/15 text-sm font-bold text-accent">
                 {(m.username || '?').slice(0, 1).toUpperCase()}
               </div>

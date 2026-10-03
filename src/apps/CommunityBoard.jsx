@@ -81,7 +81,9 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
     gap: 12,
+    rowGap: 10,
     padding: '12px 16px',
     background: '#fffdf8',
     borderBottom: '1px solid #e2d9c8',
@@ -100,7 +102,7 @@ const styles = {
   },
   main: { maxWidth: 960, margin: '0 auto', padding: '0 16px 48px' },
   hero: { padding: '36px 0 8px', textAlign: 'center' },
-  h1: { fontSize: 30, lineHeight: 1.15, margin: '0 0 8px', fontWeight: 800 },
+  h1: { fontSize: 'clamp(24px, 6vw, 30px)', lineHeight: 1.15, margin: '0 0 8px', fontWeight: 800 },
   tagline: { fontSize: 15, color: '#6d6252', margin: '0 auto', maxWidth: 640 },
   toolbar: { display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 20, alignItems: 'center' },
   search: {

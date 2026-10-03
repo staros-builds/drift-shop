@@ -84,8 +84,8 @@ await check('normalizeRecoveryCode strips separators and uppercases', () => {
 });
 
 await check('isPlausibleRecoveryCode validates shape', () => {
-  assert.ok(isPlausibleRecoveryCode('XK7D-Q2M9-PL4Z'));
-  assert.ok(isPlausibleRecoveryCode('xk7d q2m9 pl4z'));
+  assert.ok(isPlausibleRecoveryCode('XK7D-Q3M9-PN4Z'));
+  assert.ok(isPlausibleRecoveryCode('xk7d q3m9 pn4z'));
   assert.ok(!isPlausibleRecoveryCode('short'));
   assert.ok(!isPlausibleRecoveryCode('XK7D-Q2M9-PL4')); // 11 chars
   assert.ok(!isPlausibleRecoveryCode('0000-0000-0000')); // 0 not in alphabet
