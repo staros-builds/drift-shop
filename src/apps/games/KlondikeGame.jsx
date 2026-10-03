@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Undo2, Wand2, RotateCcw } from 'lucide-react';
 import { GameBar, ResultBanner } from './ChessGame.jsx';
 import { recordKlondikeWin, fmtTime } from './scores.js';
+import { useLang } from '../../lib/i18n.jsx';
+
+const SUIT_KEY = { S: 'suitSpades', H: 'suitHearts', D: 'suitDiamonds', C: 'suitClubs' };
 
 const SUITS = ['S', 'H', 'D', 'C'];
 const SUIT_GLYPH = { S: '♠', H: '♥', D: '♦', C: '♣' };
@@ -67,6 +70,7 @@ function canOnFoundation(card, f) {
 }
 
 export default function KlondikeGame({ onExit }) {
+  const { t } = useLang();
   const [state, setState] = useState(() => deal(1));
   const [sel, setSel] = useState(null); // { from: 'waste'|'tableau'|'foundation', col, idx }
   const [drawCount, setDrawCount] = useState(1);
@@ -322,15 +326,16 @@ export default function KlondikeGame({ onExit }) {
   return (
     <div className="flex h-full flex-col gap-3 p-4">
       <GameBar
-        title="Klondike"
+        title={t('games.nameKlondike')}
         onExit={onExit}
         onNew={() => newGame()}
         onUndo={undo}
         undoDisabled={false}
+        t={t}
         extra={
           <>
             <div className="flex items-center gap-1 text-xs text-muted">
-              Draw:
+              {t('games.drawLabel')}
               {[1, 3].map((d) => (
                 <button
                   key={d}
@@ -344,22 +349,23 @@ export default function KlondikeGame({ onExit }) {
             </div>
             {canAutoFinish && (
               <button type="button" onClick={autoFinish} className="flex items-center gap-1 rounded-os border border-accent/50 bg-accent/10 px-2 py-1.5 text-xs font-medium text-ink hover:bg-accent/20">
-                <Wand2 size={14} /> Auto-finish
+                <Wand2 size={14} /> {t('games.autoFinish')}
               </button>
             )}
           </>
         }
       />
       <div className="flex flex-wrap items-center gap-4 text-xs text-muted">
-        <span>Score: <b className="text-ink">{state.score}</b></span>
-        <span>Moves: <b className="text-ink">{state.moves}</b></span>
-        <span>Time: <b className="text-ink">{fmtTime(state.elapsed)}</b></span>
-        {state.won && <span className="font-semibold text-accent">You win!</span>}
+        <span>{t('games.scoreLabel')} <b className="text-ink">{state.score}</b></span>
+        <span>{t('games.movesLabel')} <b className="text-ink">{state.moves}</b></span>
+        <span>{t('games.timeLabel')} <b className="text-ink">{fmtTime(state.elapsed)}</b></span>
+        {state.won && <span className="font-semibold text-accent">{t('games.youWin')}</span>}
       </div>
       {state.won && (
         <ResultBanner
+          t={t}
           over={{ result: 'win' }}
-          label={`You win! Score ${state.score} · ${state.moves} moves · ${fmtTime(state.elapsed)}`}
+          label={t('games.winSummary', { score: state.score, moves: state.moves, time: fmtTime(state.elapsed) })}
           onNew={() => newGame()}
         />
       )}
@@ -367,13 +373,13 @@ export default function KlondikeGame({ onExit }) {
         {/* Top row: stock, waste, foundations */}
         <div className="mb-4 flex items-start justify-between gap-2">
           <div className="flex gap-3">
-            <PileSlot label={state.stock.length ? `${state.stock.length}` : null} onClick={onStock}>
+            <PileSlot t={t} label={state.stock.length ? `${state.stock.length}` : null} onClick={onStock}>
               {state.stock.length > 0 ? <CardBack /> : <RotateCcw size={20} className="opacity-50" />}
             </PileSlot>
             <div className="flex">
               {state.waste.slice(-3).map((c, i, arr) => (
                 <div key={c.id} className={i > 0 ? '-ml-8' : ''} style={{ zIndex: i }}>
-                  <CardView
+                  <CardView t={t}
                     card={c}
                     selected={isSel('waste', -1, 0) && i === arr.length - 1}
                     onClick={i === arr.length - 1 ? () => onCardClick('waste', -1, 0) : undefined}
@@ -381,16 +387,16 @@ export default function KlondikeGame({ onExit }) {
                   />
                 </div>
               ))}
-              {state.waste.length === 0 && <PileSlot />}
+              {state.waste.length === 0 && <PileSlot t={t} />}
             </div>
           </div>
           <div className="flex gap-3">
             {state.foundations.map((f, fi) => {
               const t = topOf(f);
               return (
-                <PileSlot key={fi} onClick={() => onEmptyClick('foundation', fi)} suit={fi}>
+                <PileSlot t={t} key={fi} onClick={() => onEmptyClick('foundation', fi)} suit={fi}>
                   {t && (
-                    <CardView
+                    <CardView t={t}
                       card={t}
                       selected={isSel('foundation', fi, 0)}
                       onClick={() => onCardClick('foundation', fi, 0)}
@@ -406,12 +412,12 @@ export default function KlondikeGame({ onExit }) {
           {state.tableau.map((col, ci) => (
             <div key={ci} className="flex-1" style={{ minWidth: 0 }}>
               {col.length === 0 ? (
-                <PileSlot onClick={() => onEmptyClick('tableau', ci)} king />
+                <PileSlot t={t} onClick={() => onEmptyClick('tableau', ci)} king />
               ) : (
                 <div className="flex flex-col">
                   {col.map((c, idx) => (
                     <div key={c.id} className={idx > 0 ? '-mt-7 sm:-mt-9' : ''} style={{ zIndex: idx }}>
-                      <CardView
+                      <CardView t={t}
                         card={c}
                         selected={isSel('tableau', ci, idx) || (sel?.from === 'tableau' && sel.col === ci && idx >= sel.idx)}
                         onClick={() => onCardClick('tableau', ci, idx)}
@@ -429,15 +435,16 @@ export default function KlondikeGame({ onExit }) {
   );
 }
 
-function PileSlot({ children, onClick, label, suit, king }) {
+function PileSlot({ children, onClick, label, suit, king, t }) {
   // A div with button semantics (not a <button>) so card buttons can nest inside.
+  const tt = t || ((k) => k);
   const slotName = king
-    ? 'empty column'
+    ? tt('games.emptyColumn')
     : suit != null
-      ? `empty ${['spades', 'hearts', 'diamonds', 'clubs'][suit]} foundation`
+      ? tt('games.foundationSlot', { suit: tt('games.' + SUIT_KEY[SUITS[suit]]) })
       : label
-        ? `stock pile, ${label} cards remaining`
-        : 'empty waste pile';
+        ? tt('games.stockPile', { n: label })
+        : tt('games.emptyWaste');
   return (
     <div
       role="button"
@@ -458,10 +465,11 @@ function CardBack() {
   );
 }
 
-export function CardView({ card, onClick, onDoubleClick, selected }) {
+export function CardView({ card, onClick, onDoubleClick, selected, t }) {
+  const tt = t || ((k) => k);
   if (!card.faceUp) {
     return (
-      <button type="button" onClick={onClick} className="block" aria-label="face-down card">
+      <button type="button" onClick={onClick} className="block" aria-label={tt('games.faceDownCard')}>
         <CardBack />
       </button>
     );
@@ -475,7 +483,7 @@ export function CardView({ card, onClick, onDoubleClick, selected }) {
       className={`block h-20 w-14 rounded-md border bg-paper text-left shadow-sm sm:h-24 sm:w-16 ${
         selected ? 'border-accent ring-2 ring-accent' : 'border-osborder'
       }`}
-      aria-label={`${RANK_LABEL[card.rank] || card.rank} of ${card.suit}`}
+      aria-label={tt('games.cardAria', { rank: RANK_LABEL[card.rank] || card.rank, suit: tt('games.' + SUIT_KEY[card.suit]) })}
     >
       <span className={`flex flex-col items-center justify-center pt-1 text-sm font-bold leading-tight sm:text-base ${isRed ? 'text-red-600' : 'text-ink'}`}>
         {RANK_LABEL[card.rank] || card.rank}

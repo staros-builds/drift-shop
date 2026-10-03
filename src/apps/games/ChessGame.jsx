@@ -5,8 +5,21 @@ import {
   PIECE_GLYPH, sqName,
 } from './chessEngine.js';
 import { recordResult } from './scores.js';
+import { useLang } from '../../lib/i18n.jsx';
+
+const PIECE_KEY = { k: 'pieceK', q: 'pieceQ', r: 'pieceR', b: 'pieceB', n: 'pieceN', p: 'pieceP' };
+
+export function pieceAria(t, sq, piece) {
+  if (!piece) return sqName(sq);
+  return t('games.squareWithPiece', {
+    square: sqName(sq),
+    color: t(piece.c === W ? 'games.white' : 'games.black'),
+    piece: t('games.' + (PIECE_KEY[piece.t] || 'pieceP')),
+  });
+}
 
 export default function ChessGame({ onExit }) {
+  const { t } = useLang();
   const [state, setState] = useState(() => initialState());
   const [selected, setSelected] = useState(null);
   const [history, setHistory] = useState([]); // { san, state }
@@ -109,7 +122,7 @@ export default function ChessGame({ onExit }) {
   return (
     <div className="flex h-full flex-col gap-3 p-4">
       <GameBar
-        title="Chess"
+        title={t('games.nameChess')}
         onExit={onExit}
         onNew={() => newGame()}
         onUndo={undo}
@@ -117,17 +130,17 @@ export default function ChessGame({ onExit }) {
         onResign={resign}
         extra={
           <>
-            <ModeBtn active={mode === 'ai'} onClick={() => newGame('ai')} icon={<Bot size={15} />} label="vs AI" />
-            <ModeBtn active={mode === '2p'} onClick={() => newGame('2p')} icon={<Users size={15} />} label="2 players" />
+            <ModeBtn active={mode === 'ai'} onClick={() => newGame('ai')} icon={<Bot size={15} />} label={t('games.vsAI')} />
+            <ModeBtn active={mode === '2p'} onClick={() => newGame('2p')} icon={<Users size={15} />} label={t('games.twoPlayers')} />
             {mode === 'ai' && (
               <button
                 type="button"
                 onClick={() => newGame('ai', aiColor === W ? B : W)}
                 className="flex items-center gap-1 rounded-os border border-osborder bg-surface px-2 py-1.5 text-xs text-ink hover:bg-paper"
-                title="Switch sides"
+                title={t('games.switchSides')}
               >
                 <ArrowLeftRight size={14} />
-                {aiColor === B ? 'You: White' : 'You: Black'}
+                {aiColor === B ? t('games.youWhite') : t('games.youBlack')}
               </button>
             )}
             <button
@@ -135,12 +148,12 @@ export default function ChessGame({ onExit }) {
               onClick={() => setFlipped((f) => !f)}
               className="rounded-os border border-osborder bg-surface px-2 py-1.5 text-xs text-ink hover:bg-paper"
             >
-              Flip
+              {t('games.flip')}
             </button>
           </>
         }
       />
-      {over && <ResultBanner over={over} mode={mode} aiColor={aiColor} onNew={() => newGame()} />}
+      {over && <ResultBanner t={t} over={over} mode={mode} aiColor={aiColor} onNew={() => newGame()} />}
       <div className="flex min-h-0 flex-1 items-start justify-center gap-4">
         <div
           className="grid aspect-square w-full max-w-[min(100%,calc(100vh-260px))] select-none grid-cols-8 overflow-hidden rounded-os border border-osborder shadow-os"
@@ -162,7 +175,7 @@ export default function ChessGame({ onExit }) {
                   className={`relative flex aspect-square items-center justify-center text-[clamp(20px,4.5vmin,38px)] leading-none ${
                     light ? 'bg-[#ecdcb9]' : 'bg-[#a5714f]'
                   } ${isSel ? 'ring-2 ring-inset ring-accent' : ''}`}
-                  aria-label={sqName(sq) + (piece ? ` ${piece.c === W ? 'white' : 'black'} ${piece.t}` : '')}
+                  aria-label={pieceAria(t, sq, piece)}
                 >
                   {piece && (
                     <span
@@ -183,7 +196,7 @@ export default function ChessGame({ onExit }) {
             })
           )}
         </div>
-        <MoveList history={history} />
+        <MoveList history={history} t={t} />
       </div>
       {promo && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setPromo(null)}>
@@ -207,7 +220,8 @@ export default function ChessGame({ onExit }) {
   );
 }
 
-export function GameBar({ title, onExit, onNew, onUndo, undoDisabled, onResign, extra }) {
+export function GameBar({ title, onExit, onNew, onUndo, undoDisabled, onResign, extra, t }) {
+  const tt = t || ((k) => k);
   const btn =
     'flex min-h-[40px] items-center gap-1 rounded-os border border-osborder bg-surface px-2 py-1.5 text-xs text-ink hover:bg-paper disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent';
   return (
@@ -216,21 +230,21 @@ export function GameBar({ title, onExit, onNew, onUndo, undoDisabled, onResign, 
       <div className="ml-auto flex flex-wrap items-center gap-2">
         {extra}
         {onUndo && (
-          <button type="button" onClick={onUndo} disabled={undoDisabled} className={btn} title="Undo">
-            <Undo2 size={14} /> Undo
+          <button type="button" onClick={onUndo} disabled={undoDisabled} className={btn} title={tt('games.undo')}>
+            <Undo2 size={14} /> {tt('games.undo')}
           </button>
         )}
-        <button type="button" onClick={onNew} className={btn} title="New game">
-          <RotateCcw size={14} /> New
+        <button type="button" onClick={onNew} className={btn} title={tt('games.newGame')}>
+          <RotateCcw size={14} /> {tt('games.new')}
         </button>
         {onResign && (
-          <button type="button" onClick={onResign} className={btn} title="Resign">
-            <Flag size={14} /> Resign
+          <button type="button" onClick={onResign} className={btn} title={tt('games.resign')}>
+            <Flag size={14} /> {tt('games.resign')}
           </button>
         )}
         {onExit && (
-          <button type="button" onClick={onExit} data-testid="game-back" className={btn} title="Back to Arcade">
-            <ArrowLeft size={14} /> Back
+          <button type="button" onClick={onExit} data-testid="game-back" className={btn} title={tt('games.backToArcade')}>
+            <ArrowLeft size={14} /> {tt('games.back')}
           </button>
         )}
       </div>
@@ -252,25 +266,27 @@ function ModeBtn({ active, onClick, icon, label }) {
   );
 }
 
-export function ResultBanner({ over, onNew, label }) {
+export function ResultBanner({ over, onNew, label, t }) {
+  const tt = t || ((k) => k);
   let text = label || '';
   if (!text) {
-    if (over.result === 'checkmate') text = over.winner === W ? 'Checkmate — White wins' : 'Checkmate — Black wins';
-    else if (over.result === 'stalemate') text = 'Stalemate — draw';
-    else if (over.result === 'resignation') text = `Resignation — ${over.winner === W ? 'White' : 'Black'} wins`;
-    else text = `Draw — ${over.result}`;
+    if (over.result === 'checkmate') text = over.winner === W ? tt('games.checkmateWhite') : tt('games.checkmateBlack');
+    else if (over.result === 'stalemate') text = tt('games.stalemateDraw');
+    else if (over.result === 'resignation') text = tt('games.resignationWin', { winner: over.winner === W ? tt('games.white') : tt('games.black') });
+    else text = tt('games.drawResult', { result: over.result });
   }
   return (
     <div className="flex items-center justify-between gap-2 rounded-os border border-accent/40 bg-accent/10 px-3 py-2">
       <span className="text-sm font-medium text-ink">{text}</span>
       <button type="button" onClick={onNew} className="flex items-center gap-1 rounded-os bg-accent px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90">
-        <RotateCcw size={14} /> Play again
+        <RotateCcw size={14} /> {tt('games.playAgain')}
       </button>
     </div>
   );
 }
 
-function MoveList({ history }) {
+function MoveList({ history, t }) {
+  const tt = t || ((k) => k);
   const ref = useRef(null);
   useEffect(() => {
     if (ref.current) ref.current.scrollTop = ref.current.scrollHeight;
@@ -279,7 +295,7 @@ function MoveList({ history }) {
   for (let i = 0; i < history.length; i += 2) pairs.push([history[i], history[i + 1]]);
   return (
     <div ref={ref} className="hidden w-40 shrink-0 self-stretch overflow-y-auto rounded-os border border-osborder bg-surface p-2 sm:block" style={{ maxHeight: '100%' }}>
-      {pairs.length === 0 && <p className="text-xs text-muted">No moves yet.</p>}
+      {pairs.length === 0 && <p className="text-xs text-muted">{tt('games.noMovesYet')}</p>}
       <table className="w-full text-xs">
         <tbody>
           {pairs.map((pr, i) => (

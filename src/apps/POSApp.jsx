@@ -1614,16 +1614,16 @@ function TenderModal({ total, currency, v4, customer, loyaltyValueCents, initial
   return (
     <Modal title={t('pos.tender.title')} onClose={onClose}>
       <div className={`mb-4 grid gap-1 rounded-os bg-paper p-1 ${methods.length === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
-        {methods.map((t) => (
+        {methods.map((m) => (
           <button
-            key={t.id}
+            key={m.id}
             type="button"
-            onClick={() => { setMethod(t.id); setError(''); }}
+            onClick={() => { setMethod(m.id); setError(''); }}
             className={`flex items-center justify-center gap-2 rounded-os px-3 py-2 text-sm font-medium duration-160 ${
-              method === t.id ? 'bg-surface text-ink shadow-os' : 'text-muted hover:text-ink'
+              method === m.id ? 'bg-surface text-ink shadow-os' : 'text-muted hover:text-ink'
             }`}
           >
-            <t.icon size={16} /> {t.label}
+            <m.icon size={16} /> {m.label}
           </button>
         ))}
       </div>
@@ -5936,7 +5936,7 @@ function SettingsTabPane({ store, v4, onSave, extras }) {
           <p className="mt-1 text-[11px] text-muted">{t('pos.tabs2.taxPresetControls')}</p>
         )}
       </Field>
-      <Field label="Currency symbol">
+      <Field label={t('pos.tabs2.currencySymbol')}>
         <input value={currency} onChange={(e) => setCurrency(e.target.value)} className={inputCls} />
       </Field>
       {extras && (

@@ -3,6 +3,7 @@ import { Play, Pause, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from '
 import { GameBar, ResultBanner } from './ChessGame.jsx';
 import { recordBest, useScores } from './scores.js';
 import { useAuth } from '../../os/AuthContext.jsx';
+import { useLang } from '../../lib/i18n.jsx';
 
 const N = 20;
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
@@ -18,6 +19,7 @@ const rndCell = (snake) => {
 
 export default function SnakeGame({ onExit }) {
   const { user } = useAuth();
+  const { t } = useLang();
   const [scores] = useScores(user?.id);
   const [snake, setSnake] = useState(() => [[10, 10], [9, 10], [8, 10]]);
   const [food, setFood] = useState(() => rndCell([[10, 10], [9, 10], [8, 10]]));
@@ -128,26 +130,27 @@ export default function SnakeGame({ onExit }) {
   return (
     <div className="flex h-full flex-col gap-3 p-4">
       <GameBar
-        title="Snake"
+        title={t('games.nameSnake')}
         onExit={onExit}
         onNew={reset}
         onUndo={null}
+        t={t}
         extra={
           <button
             type="button"
             onClick={() => !over && setRunning((r) => !r)}
             className="flex items-center gap-1 rounded-os border border-osborder bg-surface px-2 py-1.5 text-xs text-ink hover:bg-paper"
           >
-            {running ? <Pause size={14} /> : <Play size={14} />} {running ? 'Pause' : 'Play'}
+            {running ? <Pause size={14} /> : <Play size={14} />} {running ? t('games.pause') : t('games.play')}
           </button>
         }
       />
       <div className="flex items-center gap-4 text-xs text-muted">
-        <span>Score: <b className="text-ink">{score}</b></span>
-        <span>Best: <b className="text-ink">{Math.max(best, score)}</b></span>
-        {!running && !over && <span>Press an arrow key or tap Play to start</span>}
+        <span>{t('games.scoreLabel')} <b className="text-ink">{score}</b></span>
+        <span>{t('games.bestLabel')} <b className="text-ink">{Math.max(best, score)}</b></span>
+        {!running && !over && <span>{t('games.pressStart')}</span>}
       </div>
-      {over && <ResultBanner over={{ result: 'gameover' }} label={`Game over — score ${score}`} onNew={reset} />}
+      {over && <ResultBanner t={t} over={{ result: 'gameover' }} label={t('games.gameOverScore', { score })} onNew={reset} />}
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3">
         <div
           className="grid aspect-square w-full max-w-[min(100%,calc(100vh-330px))] select-none overflow-hidden rounded-os border border-osborder bg-surface shadow-os"
@@ -171,11 +174,11 @@ export default function SnakeGame({ onExit }) {
         </div>
         <div className="grid grid-cols-3 gap-1">
           <span />
-          <DPadBtn onPress={() => queueDir('up')} label="up"><ChevronUp size={20} /></DPadBtn>
+          <DPadBtn onPress={() => queueDir('up')} label={t('games.dirUp')}><ChevronUp size={20} /></DPadBtn>
           <span />
-          <DPadBtn onPress={() => queueDir('left')} label="left"><ChevronLeft size={20} /></DPadBtn>
-          <DPadBtn onPress={() => queueDir('down')} label="down"><ChevronDown size={20} /></DPadBtn>
-          <DPadBtn onPress={() => queueDir('right')} label="right"><ChevronRight size={20} /></DPadBtn>
+          <DPadBtn onPress={() => queueDir('left')} label={t('games.dirLeft')}><ChevronLeft size={20} /></DPadBtn>
+          <DPadBtn onPress={() => queueDir('down')} label={t('games.dirDown')}><ChevronDown size={20} /></DPadBtn>
+          <DPadBtn onPress={() => queueDir('right')} label={t('games.dirRight')}><ChevronRight size={20} /></DPadBtn>
         </div>
       </div>
     </div>

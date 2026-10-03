@@ -2,11 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { Flag, Bomb } from 'lucide-react';
 import { GameBar, ResultBanner } from './ChessGame.jsx';
 import { recordMinesweeperTime, fmtTime } from './scores.js';
+import { useLang } from '../../lib/i18n.jsx';
+
+const LEVEL_KEY = { beginner: 'levelEasy', intermediate: 'levelMedium', expert: 'levelHard' };
 
 const LEVELS = {
-  beginner: { label: 'Easy', rows: 9, cols: 9, mines: 10 },
-  intermediate: { label: 'Medium', rows: 16, cols: 16, mines: 40 },
-  expert: { label: 'Hard', rows: 16, cols: 30, mines: 99 },
+  beginner: { rows: 9, cols: 9, mines: 10 },
+  intermediate: { rows: 16, cols: 16, mines: 40 },
+  expert: { rows: 16, cols: 30, mines: 99 },
 };
 
 function neighbors(rows, cols, r, c) {
@@ -42,6 +45,7 @@ function countAt(mines, rows, cols, r, c) {
 const NUM_COLORS = ['', 'text-blue-500', 'text-green-500', 'text-red-500', 'text-indigo-400', 'text-amber-500', 'text-teal-400', 'text-ink', 'text-gray-500'];
 
 export default function MinesweeperGame({ onExit }) {
+  const { t } = useLang();
   const [level, setLevel] = useState('beginner');
   const cfg = LEVELS[level];
   const [mines, setMines] = useState(null); // Set of idx, planted on first click
@@ -148,42 +152,44 @@ export default function MinesweeperGame({ onExit }) {
   return (
     <div className="flex h-full flex-col gap-3 p-4">
       <GameBar
-        title="Minesweeper"
+        title={t('games.nameMinesweeper')}
         onExit={onExit}
         onNew={() => reset()}
         onUndo={null}
+        t={t}
         extra={
           <>
-            {Object.entries(LEVELS).map(([id, l]) => (
+            {Object.keys(LEVELS).map((id) => (
               <button
                 key={id}
                 type="button"
                 onClick={() => reset(id)}
                 className={`min-h-[40px] rounded-os border px-2 py-1.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${level === id ? 'border-accent bg-accent/15 text-ink' : 'border-osborder bg-surface text-muted hover:text-ink'}`}
               >
-                {l.label}
+                {t('games.' + LEVEL_KEY[id])}
               </button>
             ))}
             <button
               type="button"
               onClick={() => setFlagMode((f) => !f)}
               className={`flex min-h-[40px] items-center gap-1 rounded-os border px-2 py-1.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${flagMode ? 'border-accent bg-accent/15 text-ink' : 'border-osborder bg-surface text-muted hover:text-ink'}`}
-              title="Flag mode: tap places flags"
+              title={t('games.flagModeTitle')}
             >
-              <Flag size={14} /> {flagMode ? 'Flagging' : 'Flag'}
+              <Flag size={14} /> {flagMode ? t('games.flagging') : t('games.flag')}
             </button>
           </>
         }
       />
       <div className="flex items-center gap-4 text-xs text-muted">
-        <span>Mines: <b className="text-ink">{cfg.mines - flags.size}</b></span>
-        <span>Time: <b className="text-ink">{fmtTime(seconds)}</b></span>
-        <span className="hidden sm:inline">Left-click: open · Right-click / long-press: flag</span>
+        <span>{t('games.minesLabel')} <b className="text-ink">{cfg.mines - flags.size}</b></span>
+        <span>{t('games.timeLabel')} <b className="text-ink">{fmtTime(seconds)}</b></span>
+        <span className="hidden sm:inline">{t('games.clickHint')}</span>
       </div>
       {over && (
         <ResultBanner
+          t={t}
           over={{ result: over }}
-          label={over === 'won' ? `Cleared in ${fmtTime(seconds)}!` : 'Boom! You hit a mine.'}
+          label={over === 'won' ? t('games.clearedIn', { time: fmtTime(seconds) }) : t('games.boomMine')}
           onNew={() => reset()}
         />
       )}
@@ -214,7 +220,7 @@ export default function MinesweeperGame({ onExit }) {
                       : 'bg-paper'
                     : 'bg-surface hover:bg-paper active:bg-paper'
                 }`}
-                aria-label={`cell ${r},${c}`}
+                aria-label={t('games.cellAria', { r, c })}
               >
                 {isRev ? (
                   isMine ? <Bomb size={14} className="text-ink" /> : n > 0 ? <span className={NUM_COLORS[n]}>{n}</span> : null

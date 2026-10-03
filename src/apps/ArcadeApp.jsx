@@ -10,49 +10,50 @@ import MinesweeperGame from './games/MinesweeperGame.jsx';
 import Game2048 from './games/Game2048.jsx';
 import { useScores, loadScores, scoreSummary } from './games/scores.js';
 import { useAuth } from '../os/AuthContext.jsx';
+import { useLang } from '../lib/i18n.jsx';
 
 const GAMES = [
   {
-    id: 'chess', title: 'Chess', icon: Crown,
-    desc: 'The classic game of strategy. Play a friend or take on the computer.',
+    id: 'chess', titleKey: 'nameChess', descKey: 'descChess', icon: Crown,
     component: ChessGame, tile: 'from-amber-500/80 to-yellow-700/80',
   },
   {
-    id: 'checkers', title: 'Checkers', icon: Circle,
-    desc: 'Jump, capture, and crown your pieces. Forced jumps keep it honest.',
+    id: 'checkers', titleKey: 'nameCheckers', descKey: 'descCheckers', icon: Circle,
     component: CheckersGame, tile: 'from-red-500/80 to-rose-700/80',
   },
   {
-    id: 'klondike', title: 'Klondike', icon: Layers,
-    desc: 'The timeless solitaire. Clear all four suits to win.',
+    id: 'klondike', titleKey: 'nameKlondike', descKey: 'descKlondike', icon: Layers,
     component: KlondikeGame, tile: 'from-emerald-500/80 to-green-700/80',
   },
   {
-    id: 'snake', title: 'Snake', icon: Zap,
-    desc: 'Eat, grow, and don\'t crash. How long can you survive?',
+    id: 'snake', titleKey: 'nameSnake', descKey: 'descSnake', icon: Zap,
     component: SnakeGame, tile: 'from-lime-500/80 to-green-600/80',
   },
   {
-    id: 'minesweeper', title: 'Minesweeper', icon: Bomb,
-    desc: 'Clear the minefield with logic. Three difficulties.',
+    id: 'minesweeper', titleKey: 'nameMinesweeper', descKey: 'descMinesweeper', icon: Bomb,
     component: MinesweeperGame, tile: 'from-sky-500/80 to-blue-700/80',
   },
   {
-    id: 'game2048', title: '2048', icon: Grid3x3,
-    desc: 'Slide and merge tiles all the way to 2048.',
+    id: 'game2048', titleKey: null, descKey: 'desc2048', icon: Grid3x3,
     component: Game2048, tile: 'from-orange-500/80 to-amber-700/80',
   },
 ];
 
+// Display title for a game entry (2048 keeps its numeric name in every language).
+export function gameTitle(t, g) {
+  return g.titleKey ? t('games.' + g.titleKey) : '2048';
+}
+
 export default function ArcadeApp({ windowApi }) {
   const { user } = useAuth();
+  const { t } = useLang();
   const userId = user?.id || 'guest';
   const [scores, setScores] = useState(() => loadScores(userId));
   const [activeId, setActiveId] = useState(null);
 
   useEffect(() => {
-    windowApi?.setTitle?.('Arcade');
-  }, [windowApi]);
+    windowApi?.setTitle?.(t('games.arcade'));
+  }, [windowApi, t]);
 
   // Keep the arcade card shelf fresh when a game records a score.
   useEffect(() => {
@@ -83,20 +84,22 @@ export default function ArcadeApp({ windowApi }) {
             <Gamepad2 size={26} />
           </span>
           <div>
-            <h1 className="text-xl font-bold tracking-tight">Arcade</h1>
-            <p className="text-sm text-white/80">Pick a game and play. High scores are saved automatically.</p>
+            <h1 className="text-xl font-bold tracking-tight">{t('games.arcade')}</h1>
+            <p className="text-sm text-white/80">{t('games.pickGame')}</p>
           </div>
         </div>
       </div>
       <div className="grid flex-1 grid-cols-1 content-start gap-4 overflow-y-auto p-6 sm:grid-cols-2 lg:grid-cols-3">
         {GAMES.map((g) => {
           const Icon = g.icon;
+          const title = gameTitle(t, g);
+          const summary = scoreSummary(g.id, scores, t);
           return (
             <button
               key={g.id}
               type="button"
               onClick={() => setActiveId(g.id)}
-              aria-label={`Play ${g.title} — ${scoreSummary(g.id, scores)}`}
+              aria-label={t('games.playAria', { game: title, summary })}
               className="group flex min-h-[44px] flex-col gap-3 rounded-os border border-osborder bg-surface p-4 text-left shadow-os transition-transform hover:-translate-y-0.5 hover:border-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               <div className="flex items-center gap-3">
@@ -104,17 +107,17 @@ export default function ArcadeApp({ windowApi }) {
                   <Icon size={28} />
                 </span>
                 <div className="min-w-0">
-                  <h2 className="text-base font-bold text-ink">{g.title}</h2>
+                  <h2 className="text-base font-bold text-ink">{title}</h2>
                   <p className="flex items-center gap-1 text-xs text-muted">
                     <Trophy size={12} className="text-accent" />
-                    {scoreSummary(g.id, scores)}
+                    {summary}
                   </p>
                 </div>
                 <span className="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent transition-colors group-hover:bg-accent group-hover:text-white">
                   <Play size={16} />
                 </span>
               </div>
-              <p className="text-sm leading-snug text-muted">{g.desc}</p>
+              <p className="text-sm leading-snug text-muted">{t('games.' + g.descKey)}</p>
             </button>
           );
         })}

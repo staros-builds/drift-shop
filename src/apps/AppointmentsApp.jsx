@@ -88,7 +88,14 @@ function EditorDialog({ initial, customers, staff, appointments, canDelete, onCl
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // Add-to-calendar feedback: 'idle' | 'sent' (transient success tick)
+  const [calSent, setCalSent] = useState(false);
+  const calTimerRef = useRef(null);
   const custBoxRef = useRef(null);
+
+  useEffect(() => () => {
+    if (calTimerRef.current) clearTimeout(calTimerRef.current);
+  }, []);
 
   useEffect(() => {
     const onDoc = (e) => {
@@ -129,6 +136,17 @@ function EditorDialog({ initial, customers, staff, appointments, canDelete, onCl
   }, [appointments, startsAt, endsAt, staffId, editing, initial]);
 
   const staffName = staffId ? (staff.find((s) => s.id === staffId)?.name || '') : '';
+
+  const handleAddToCalendar = useCallback(() => {
+    if (downloadAppointmentIcs({ title, startsAt, endsAt, notes, customerName: custSearch })) {
+      setError('');
+      setCalSent(true);
+      if (calTimerRef.current) clearTimeout(calTimerRef.current);
+      calTimerRef.current = setTimeout(() => setCalSent(false), 2500);
+    } else {
+      setError(t('integrations.addToCalendarFail'));
+    }
+  }, [title, startsAt, endsAt, notes, custSearch, t]);
 
   const save = async () => {
     setError('');
@@ -332,21 +350,14 @@ function EditorDialog({ initial, customers, staff, appointments, canDelete, onCl
           ) : <span />}
           <div className="flex gap-2">
             {editing && (
-              <button type="button" onClick={() => {
-                if (downloadAppointmentIcs({ title, startsAt, endsAt, notes, customerName: custSearch })) {
-                  setError('');
-                  // Show brief success feedback
-                  const btn = event.target.closest('button');
-                  const orig = btn.innerHTML;
-                  btn.innerHTML = '✓ ' + t('integrations.addToCalendar');
-                  setTimeout(() => { btn.innerHTML = orig; }, 2000);
-                } else {
-                  setError(t('integrations.addToCalendarFail'));
-                }
-              }}
+              <button type="button" onClick={handleAddToCalendar}
                 title={t('integrations.addToCalendar')}
-                className="flex items-center gap-1.5 rounded-os border border-osborder px-3 py-2 text-sm font-medium text-ink hover:border-accent">
-                <CalendarPlus size={15} /> {t('integrations.addToCalendar')}
+                className="flex items-center gap-1.5 rounded-os border border-osborder px-3 py-2 text-sm font-medium text-ink hover:border-accent"
+                aria-live="polite">
+                {calSent
+                  ? <Check size={15} className="text-green-600" />
+                  : <CalendarPlus size={15} />}
+                {calSent ? t('integrations.calendarDownloaded') : t('integrations.addToCalendar')}
               </button>
             )}
             <button type="button" onClick={onClose}

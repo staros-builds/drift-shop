@@ -10,9 +10,9 @@ import { useAuth } from '../../os/AuthContext.jsx';
 import { useLang } from '../../lib/i18n.jsx';
 
 const QUALITY = {
-  high: { w: 480, label: 'High' },
-  med: { w: 368, label: 'Medium' },
-  low: { w: 288, label: 'Low' },
+  high: { w: 480, labelKey: 'duskHigh' },
+  med: { w: 368, labelKey: 'duskMedium' },
+  low: { w: 288, labelKey: 'duskLow' },
 };
 
 const EVENT_SOUNDS = {
@@ -284,22 +284,22 @@ export default function DuskfallGame({ onExit }) {
         </button>
         <Skull size={16} className="text-[#c0392b]" />
         <span className="text-sm font-bold tracking-[0.2em]">DUSKFALL</span>
-        {best > 0 && <span className="ml-1 rounded bg-[#1d1310] px-2 py-0.5 text-xs text-[#a89880]">Best {best}</span>}
+        {best > 0 && <span className="ml-1 rounded bg-[#1d1310] px-2 py-0.5 text-xs text-[#a89880]">{t('games.duskBest', { n: best })}</span>}
         <div className="ml-auto flex items-center gap-2">
-          <label className="text-xs text-[#a89880]" htmlFor="dusk-quality">Detail</label>
+          <label className="text-xs text-[#a89880]" htmlFor="dusk-quality">{t('games.duskDetail')}</label>
           <select
             id="dusk-quality"
             value={quality}
             onChange={(e) => { setQuality(e.target.value); if (screenRef.current === 'playing') restartWithQuality(e.target.value); }}
             className="rounded border border-[#2a1d18] bg-[#1d1310] px-1.5 py-1 text-xs"
           >
-            {Object.entries(QUALITY).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+            {Object.entries(QUALITY).map(([k, v]) => <option key={k} value={k}>{t('games.' + v.labelKey)}</option>)}
           </select>
-          <button onClick={toggleMute} className="rounded p-1.5 text-[#a89880] hover:bg-[#1d1310] hover:text-white" aria-label={muted ? 'Unmute' : 'Mute'} title={muted ? 'Unmute' : 'Mute'}>
+          <button onClick={toggleMute} className="rounded p-1.5 text-[#a89880] hover:bg-[#1d1310] hover:text-white" aria-label={muted ? t('games.duskUnmute') : t('games.duskMute')} title={muted ? t('games.duskUnmute') : t('games.duskMute')}>
             {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
           </button>
           {inGame && (
-            <button onClick={togglePause} className="rounded p-1.5 text-[#a89880] hover:bg-[#1d1310] hover:text-white" aria-label={screen === 'paused' ? 'Resume' : 'Pause'}>
+            <button onClick={togglePause} className="rounded p-1.5 text-[#a89880] hover:bg-[#1d1310] hover:text-white" aria-label={screen === 'paused' ? t('games.duskResume') : t('games.duskPause')}>
               {screen === 'paused' ? <Play size={16} /> : <Pause size={16} />}
             </button>
           )}
@@ -327,27 +327,27 @@ export default function DuskfallGame({ onExit }) {
           <>
             <div className="pointer-events-none absolute left-2 top-2 flex flex-col gap-1.5">
               <div className="rounded bg-black/60 px-2 py-1">
-                <div className="text-[10px] uppercase tracking-wider text-[#a89880]">Health</div>
+                <div className="text-[10px] uppercase tracking-wider text-[#a89880]">{t('games.duskHealth')}</div>
                 <div className="h-2.5 w-32 overflow-hidden rounded-sm bg-[#2a1410]">
                   <div className={`h-full transition-all ${hud.hp > 50 ? 'bg-[#7bc47f]' : hud.hp > 25 ? 'bg-[#e0a83c]' : 'bg-[#c0392b]'}`} style={{ width: `${hud.hp}%` }} />
                 </div>
                 <div className="mt-0.5 text-sm font-bold leading-none">{hud.hp}<span className="ml-2 text-xs font-normal text-[#7fa8d0]">🛡 {hud.armor}</span></div>
               </div>
               <div className="rounded bg-black/60 px-2 py-1 text-xs">
-                <span className={`font-bold ${hud.weapon === 'pistol' ? 'text-[#e8ded2]' : 'text-[#a89880]'}`}>1 Pistol <span className="text-[#e0a83c]">{hud.bullets}</span></span>
+                <span className={`font-bold ${hud.weapon === 'pistol' ? 'text-[#e8ded2]' : 'text-[#a89880]'}`}>1 {t('games.duskPistol')} <span className="text-[#e0a83c]">{hud.bullets}</span></span>
                 <span className="mx-1.5 text-[#5a4a3c]">|</span>
-                <span className={`font-bold ${hud.weapon === 'shotgun' ? 'text-[#e8ded2]' : 'text-[#a89880]'}`}>2 Scattergun <span className="text-[#e0a83c]">{hud.shells}</span></span>
+                <span className={`font-bold ${hud.weapon === 'shotgun' ? 'text-[#e8ded2]' : 'text-[#a89880]'}`}>2 {t('games.duskScattergun')} <span className="text-[#e0a83c]">{hud.shells}</span></span>
               </div>
             </div>
             <div className="pointer-events-none absolute right-2 top-2 flex flex-col items-end gap-1">
               <div className="rounded bg-black/60 px-2 py-1 text-right text-xs">
-                <div className="font-bold text-[#e8ded2]">Lv{hud.level}/{hud.total} · {hud.levelName}</div>
-                <div className="text-[#e0a83c]">Score {hud.score} · Kills {hud.kills}</div>
+                <div className="font-bold text-[#e8ded2]">{t('games.duskLevel', { level: hud.level, total: hud.total, name: hud.levelName })}</div>
+                <div className="text-[#e0a83c]">{t('games.duskScoreKills', { score: hud.score, kills: hud.kills })}</div>
               </div>
               {(hud.red || hud.blue) && (
                 <div className="flex gap-1">
-                  {hud.red && <span className="rounded bg-black/60 px-1.5 py-0.5 text-[11px] font-bold text-[#e06a6a]">◆ RED</span>}
-                  {hud.blue && <span className="rounded bg-black/60 px-1.5 py-0.5 text-[11px] font-bold text-[#7fa8d0]">◆ BLUE</span>}
+                  {hud.red && <span className="rounded bg-black/60 px-1.5 py-0.5 text-[11px] font-bold text-[#e06a6a]">{t('games.duskKeyRed')}</span>}
+                  {hud.blue && <span className="rounded bg-black/60 px-1.5 py-0.5 text-[11px] font-bold text-[#7fa8d0]">{t('games.duskKeyBlue')}</span>}
                 </div>
               )}
             </div>
@@ -364,16 +364,16 @@ export default function DuskfallGame({ onExit }) {
           <>
             <div className="absolute bottom-4 left-3 grid grid-cols-3 gap-1.5 opacity-80">
               <span />
-              <button aria-label="Move forward" className="rounded-lg bg-white/10 p-3 text-white active:bg-white/25" {...hold('fwd')}><ChevronUp size={22} /></button>
+              <button aria-label={t('games.duskMoveForward')} className="rounded-lg bg-white/10 p-3 text-white active:bg-white/25" {...hold('fwd')}><ChevronUp size={22} /></button>
               <span />
-              <button aria-label="Turn left" className="rounded-lg bg-white/10 p-3 text-white active:bg-white/25" {...hold('turnL')}><ChevronLeft size={22} /></button>
-              <button aria-label="Move back" className="rounded-lg bg-white/10 p-3 text-white active:bg-white/25" {...hold('back')}><ChevronDown size={22} /></button>
-              <button aria-label="Turn right" className="rounded-lg bg-white/10 p-3 text-white active:bg-white/25" {...hold('turnR')}><ChevronRight size={22} /></button>
+              <button aria-label={t('games.duskTurnLeft')} className="rounded-lg bg-white/10 p-3 text-white active:bg-white/25" {...hold('turnL')}><ChevronLeft size={22} /></button>
+              <button aria-label={t('games.duskMoveBack')} className="rounded-lg bg-white/10 p-3 text-white active:bg-white/25" {...hold('back')}><ChevronDown size={22} /></button>
+              <button aria-label={t('games.duskTurnRight')} className="rounded-lg bg-white/10 p-3 text-white active:bg-white/25" {...hold('turnR')}><ChevronRight size={22} /></button>
             </div>
             <div className="absolute bottom-4 right-3 flex items-end gap-1.5 opacity-80">
-              <button aria-label="Use door" className="rounded-lg bg-white/10 p-3 text-white active:bg-white/25" {...tap(() => { inputRef.current.use = true; })}><DoorOpen size={22} /></button>
-              <button aria-label="Switch weapon" className="rounded-lg bg-white/10 p-3 text-white active:bg-white/25" {...tap(() => { const g = gameRef.current; if (g) { g.weapon = g.weapon === 'pistol' ? 'shotgun' : 'pistol'; playSound('click'); } })}><Repeat size={22} /></button>
-              <button aria-label="Fire" className="rounded-full bg-[#c0392b]/70 p-5 text-white active:bg-[#c0392b]" {...hold('fire')}><Crosshair size={26} /></button>
+              <button aria-label={t('games.duskUseDoor')} className="rounded-lg bg-white/10 p-3 text-white active:bg-white/25" {...tap(() => { inputRef.current.use = true; })}><DoorOpen size={22} /></button>
+              <button aria-label={t('games.duskSwitchWeapon')} className="rounded-lg bg-white/10 p-3 text-white active:bg-white/25" {...tap(() => { const g = gameRef.current; if (g) { g.weapon = g.weapon === 'pistol' ? 'shotgun' : 'pistol'; playSound('click'); } })}><Repeat size={22} /></button>
+              <button aria-label={t('games.duskFire')} className="rounded-full bg-[#c0392b]/70 p-5 text-white active:bg-[#c0392b]" {...hold('fire')}><Crosshair size={26} /></button>
             </div>
           </>
         )}
@@ -382,8 +382,8 @@ export default function DuskfallGame({ onExit }) {
         {clearInfo && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/50">
             <div className="text-center">
-              <div className="text-3xl font-black tracking-[0.25em] text-[#e0a83c]">SECTOR CLEAR</div>
-              <div className="mt-2 text-sm text-[#a89880]">Score {clearInfo.score} — descending…</div>
+              <div className="text-3xl font-black tracking-[0.25em] text-[#e0a83c]">{t('games.duskSectorClear')}</div>
+              <div className="mt-2 text-sm text-[#a89880]">{t('games.duskDescending', { n: clearInfo.score })}</div>
             </div>
           </div>
         )}
@@ -395,26 +395,24 @@ export default function DuskfallGame({ onExit }) {
               <Skull size={40} className="mx-auto text-[#c0392b]" />
               <h1 className="mt-2 text-4xl font-black tracking-[0.3em] text-[#e8ded2]">DUSKFALL</h1>
               <p className="mt-3 text-sm leading-relaxed text-[#a89880]">
-                The facility went quiet an hour ago. Three sectors stand between you
-                and the surface lift — and something is moving in the dark.
-                Find keycards, conserve shells, and reach the green exit glow.
+                {t('games.duskStory')}
               </p>
               <p className="mt-2 text-xs italic text-[#5a4a3c]">{t('egg.found')}</p>
               <div className="mx-auto mt-4 grid max-w-xs grid-cols-2 gap-x-4 gap-y-1 text-left text-xs text-[#a89880]">
-                <span><b className="text-[#e8ded2]">WASD</b> move / strafe</span>
-                <span><b className="text-[#e8ded2]">← →</b> turn</span>
-                <span><b className="text-[#e8ded2]">Space</b> fire</span>
-                <span><b className="text-[#e8ded2]">E</b> open doors</span>
-                <span><b className="text-[#e8ded2]">1 / 2</b> weapons</span>
-                <span><b className="text-[#e8ded2]">Shift</b> run · <b className="text-[#e8ded2]">P</b> pause</span>
+                <span><b className="text-[#e8ded2]">WASD</b> {t('games.duskMoveStrafe')}</span>
+                <span><b className="text-[#e8ded2]">← →</b> {t('games.duskTurn')}</span>
+                <span><b className="text-[#e8ded2]">Space</b> {t('games.duskFireKey')}</span>
+                <span><b className="text-[#e8ded2]">E</b> {t('games.duskOpenDoors')}</span>
+                <span><b className="text-[#e8ded2]">1 / 2</b> {t('games.duskWeapons')}</span>
+                <span><b className="text-[#e8ded2]">Shift</b> {t('games.duskRun')} · <b className="text-[#e8ded2]">P</b> {t('games.duskPauseKey')}</span>
               </div>
               <button
                 onClick={startGame}
                 className="mt-5 inline-flex items-center gap-2 rounded bg-[#c0392b] px-6 py-2.5 text-sm font-bold text-white hover:bg-[#a93226]"
               >
-                <Play size={16} /> Enter Sector 1
+                <Play size={16} /> {t('games.duskEnter')}
               </button>
-              {best > 0 && <div className="mt-2 text-xs text-[#a89880]">Best score: {best}</div>}
+              {best > 0 && <div className="mt-2 text-xs text-[#a89880]">{t('games.duskBestScore', { n: best })}</div>}
             </div>
           </div>
         )}
@@ -423,13 +421,13 @@ export default function DuskfallGame({ onExit }) {
         {screen === 'paused' && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/70">
             <div className="text-center">
-              <div className="text-2xl font-black tracking-[0.25em]">PAUSED</div>
+              <div className="text-2xl font-black tracking-[0.25em]">{t('games.duskPaused')}</div>
               <div className="mt-4 flex justify-center gap-2">
                 <button onClick={togglePause} className="inline-flex items-center gap-2 rounded bg-[#c0392b] px-4 py-2 text-sm font-bold text-white hover:bg-[#a93226]">
-                  <Play size={15} /> Resume
+                  <Play size={15} /> {t('games.duskResume')}
                 </button>
                 <button onClick={startGame} className="inline-flex items-center gap-2 rounded border border-[#2a1d18] px-4 py-2 text-sm text-[#a89880] hover:text-white">
-                  <RotateCcw size={15} /> Restart
+                  <RotateCcw size={15} /> {t('games.duskRestart')}
                 </button>
                 <button onClick={onExit} className="inline-flex items-center gap-2 rounded border border-[#2a1d18] px-4 py-2 text-sm text-[#a89880] hover:text-white">
                   <X size={15} /> {t('egg.quit')}
@@ -443,12 +441,12 @@ export default function DuskfallGame({ onExit }) {
         {screen === 'dead' && hud && (
           <div className="absolute inset-0 flex items-center justify-center bg-[#1a0505]/90 p-4">
             <div className="text-center">
-              <div className="text-4xl font-black tracking-[0.2em] text-[#c0392b]">YOU DIED</div>
-              <div className="mt-3 text-sm text-[#a89880]">Sector {hud.level} · {hud.kills} kills · Score {hud.score}</div>
-              {newBest && <div className="mt-1 text-sm font-bold text-[#e0a83c]">★ New best score! ★</div>}
+              <div className="text-4xl font-black tracking-[0.2em] text-[#c0392b]">{t('games.duskDied')}</div>
+              <div className="mt-3 text-sm text-[#a89880]">{t('games.duskSectorStats', { level: hud.level, kills: hud.kills, score: hud.score })}</div>
+              {newBest && <div className="mt-1 text-sm font-bold text-[#e0a83c]">{t('games.duskNewBest')}</div>}
               <div className="mt-4 flex justify-center gap-2">
                 <button onClick={startGame} className="inline-flex items-center gap-2 rounded bg-[#c0392b] px-5 py-2 text-sm font-bold text-white hover:bg-[#a93226]">
-                  <RotateCcw size={15} /> Try again
+                  <RotateCcw size={15} /> {t('games.duskTryAgain')}
                 </button>
                 <button onClick={onExit} className="rounded border border-[#2a1d18] px-4 py-2 text-sm text-[#a89880] hover:text-white">{t('egg.quit')}</button>
               </div>
@@ -460,13 +458,13 @@ export default function DuskfallGame({ onExit }) {
         {screen === 'win' && hud && (
           <div className="absolute inset-0 flex items-center justify-center bg-[#0b0708]/95 p-4">
             <div className="text-center">
-              <div className="text-4xl font-black tracking-[0.2em] text-[#7bc47f]">SURFACED</div>
-              <p className="mt-3 text-sm text-[#a89880]">All three sectors cleared. The lift doors close behind you.</p>
-              <div className="mt-2 text-sm text-[#a89880]">{hud.kills} kills · Final score {hud.score}</div>
-              {newBest && <div className="mt-1 text-sm font-bold text-[#e0a83c]">★ New best score! ★</div>}
+              <div className="text-4xl font-black tracking-[0.2em] text-[#7bc47f]">{t('games.duskSurfaced')}</div>
+              <p className="mt-3 text-sm text-[#a89880]">{t('games.duskSurfacedText')}</p>
+              <div className="mt-2 text-sm text-[#a89880]">{t('games.duskKillsFinal', { kills: hud.kills, score: hud.score })}</div>
+              {newBest && <div className="mt-1 text-sm font-bold text-[#e0a83c]">{t('games.duskNewBest')}</div>}
               <div className="mt-4 flex justify-center gap-2">
                 <button onClick={startGame} className="inline-flex items-center gap-2 rounded bg-[#c0392b] px-5 py-2 text-sm font-bold text-white hover:bg-[#a93226]">
-                  <RotateCcw size={15} /> Play again
+                  <RotateCcw size={15} /> {t('games.playAgain')}
                 </button>
                 <button onClick={onExit} className="rounded border border-[#2a1d18] px-4 py-2 text-sm text-[#a89880] hover:text-white">{t('egg.quit')}</button>
               </div>
@@ -477,7 +475,7 @@ export default function DuskfallGame({ onExit }) {
 
       {/* footer hints */}
       <div className="hidden border-t border-[#2a1d18] px-3 py-1.5 text-[11px] text-[#5a4a3c] sm:block">
-        WASD move · ←/→ turn · Mouse steer, click fires · Space fire · E doors · 1/2 weapons · Shift run · P pause · Esc close
+        {t('games.duskFooter')}
       </div>
     </div>
   );

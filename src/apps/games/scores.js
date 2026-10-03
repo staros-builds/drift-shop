@@ -116,25 +116,30 @@ export function recordMinesweeperTime(difficulty, seconds) {
   }
 }
 
-/** One-line summary for the arcade cards. */
-export function scoreSummary(gameId, scores) {
+/** One-line summary for the arcade cards. Pass the i18n t() for translated text. */
+export function scoreSummary(gameId, scores, t) {
+  const tt = t || ((k) => k);
   const s = scores?.[gameId];
-  if (!s) return 'Not played yet';
+  if (!s) return tt('games.notPlayed');
   switch (gameId) {
     case 'chess':
     case 'checkers':
       return `${s.w || 0}W · ${s.l || 0}L · ${s.d || 0}D`;
     case 'klondike':
-      return s.wins ? `${s.wins} win${s.wins === 1 ? '' : 's'} · best ${s.best}` : 'Not won yet';
+      return s.wins
+        ? (s.wins === 1
+            ? tt('games.klondikeSummaryOne', { best: s.best })
+            : tt('games.klondikeSummary', { n: s.wins, best: s.best }))
+        : tt('games.notWon');
     case 'snake':
     case 'game2048':
-      return s.best ? `Best: ${s.best}` : 'Not played yet';
+      return s.best ? tt('games.bestScore', { n: s.best }) : tt('games.notPlayed');
     case 'minesweeper': {
       const parts = [];
-      if (s.beginner) parts.push(`Easy ${fmtTime(s.beginner)}`);
-      if (s.intermediate) parts.push(`Med ${fmtTime(s.intermediate)}`);
-      if (s.expert) parts.push(`Hard ${fmtTime(s.expert)}`);
-      return parts.length ? parts.join(' · ') : 'Not won yet';
+      if (s.beginner) parts.push(tt('games.msSummary', { label: tt('games.levelEasy'), time: fmtTime(s.beginner) }));
+      if (s.intermediate) parts.push(tt('games.msSummary', { label: tt('games.levelMedium'), time: fmtTime(s.intermediate) }));
+      if (s.expert) parts.push(tt('games.msSummary', { label: tt('games.levelHard'), time: fmtTime(s.expert) }));
+      return parts.length ? parts.join(' · ') : tt('games.notWon');
     }
     default:
       return '';

@@ -4,6 +4,7 @@ import { GameBar, ResultBanner } from './ChessGame.jsx';
 import { DPadBtn } from './SnakeGame.jsx';
 import { recordBest, useScores } from './scores.js';
 import { useAuth } from '../../os/AuthContext.jsx';
+import { useLang } from '../../lib/i18n.jsx';
 
 const SIZE = 4;
 
@@ -87,6 +88,7 @@ function canMove(board) {
 
 export default function Game2048({ onExit }) {
   const { user } = useAuth();
+  const { t } = useLang();
   const [scores] = useScores(user?.id);
   const [board, setBoard] = useState(() => spawn(spawn(emptyBoard())));
   const [score, setScore] = useState(0);
@@ -145,16 +147,16 @@ export default function Game2048({ onExit }) {
 
   return (
     <div className="flex h-full flex-col gap-3 p-4">
-      <GameBar title="2048" onExit={onExit} onNew={reset} onUndo={null} />
+      <GameBar title="2048" onExit={onExit} onNew={reset} onUndo={null} t={t} />
       <div className="flex items-center gap-4 text-xs text-muted">
-        <span>Score: <b className="text-ink">{score}</b></span>
-        <span>Best: <b className="text-ink">{Math.max(best, score)}</b></span>
-        <span className="hidden sm:inline">Arrow keys or swipe to slide</span>
+        <span>{t('games.scoreLabel')} <b className="text-ink">{score}</b></span>
+        <span>{t('games.bestLabel')} <b className="text-ink">{Math.max(best, score)}</b></span>
+        <span className="hidden sm:inline">{t('games.swipeHint')}</span>
       </div>
       {won && !keepGoing && !over && (
-        <ResultBanner over={{ result: 'win' }} label="You made 2048!" onNew={() => { setKeepGoing(true); }} />
+        <ResultBanner t={t} over={{ result: 'win' }} label={t('games.made2048')} onNew={() => { setKeepGoing(true); }} />
       )}
-      {over && <ResultBanner over={{ result: 'gameover' }} label={`No moves left — score ${score}`} onNew={reset} />}
+      {over && <ResultBanner t={t} over={{ result: 'gameover' }} label={t('games.noMovesLeft', { score })} onNew={reset} />}
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3">
         <div
           className="grid aspect-square w-full max-w-[min(100%,calc(100vh-360px))] select-none gap-2 rounded-os bg-[#bbada0] p-2 shadow-os"
@@ -175,11 +177,11 @@ export default function Game2048({ onExit }) {
         </div>
         <div className="grid grid-cols-3 gap-1">
           <span />
-          <DPadBtn onPress={() => doMove('up')} label="up"><ChevronUp size={20} /></DPadBtn>
+          <DPadBtn onPress={() => doMove('up')} label={t('games.dirUp')}><ChevronUp size={20} /></DPadBtn>
           <span />
-          <DPadBtn onPress={() => doMove('left')} label="left"><ChevronLeft size={20} /></DPadBtn>
-          <DPadBtn onPress={() => doMove('down')} label="down"><ChevronDown size={20} /></DPadBtn>
-          <DPadBtn onPress={() => doMove('right')} label="right"><ChevronRight size={20} /></DPadBtn>
+          <DPadBtn onPress={() => doMove('left')} label={t('games.dirLeft')}><ChevronLeft size={20} /></DPadBtn>
+          <DPadBtn onPress={() => doMove('down')} label={t('games.dirDown')}><ChevronDown size={20} /></DPadBtn>
+          <DPadBtn onPress={() => doMove('right')} label={t('games.dirRight')}><ChevronRight size={20} /></DPadBtn>
         </div>
       </div>
     </div>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Users, Bot } from 'lucide-react';
 import { GameBar, ResultBanner } from './ChessGame.jsx';
 import { recordResult } from './scores.js';
+import { useLang } from '../../lib/i18n.jsx';
 
 const W = 'w', B = 'b';
 const opp = (c) => (c === W ? B : W);
@@ -118,6 +119,7 @@ function aiPick(state, color) {
 }
 
 export default function CheckersGame({ onExit }) {
+  const { t } = useLang();
   const [state, setState] = useState(newState);
   const [selected, setSelected] = useState(null);
   const [mode, setMode] = useState('ai');
@@ -183,28 +185,30 @@ export default function CheckersGame({ onExit }) {
   return (
     <div className="flex h-full flex-col gap-3 p-4">
       <GameBar
-        title="Checkers"
+        title={t('games.nameCheckers')}
         onExit={onExit}
         onNew={() => newGame()}
         onUndo={null}
+        t={t}
         extra={
           <>
-            <ModeBtn2 active={mode === 'ai'} onClick={() => newGame('ai')} icon={<Bot size={15} />} label="vs AI" />
-            <ModeBtn2 active={mode === '2p'} onClick={() => newGame('2p')} icon={<Users size={15} />} label="2 players" />
+            <ModeBtn2 active={mode === 'ai'} onClick={() => newGame('ai')} icon={<Bot size={15} />} label={t('games.vsAI')} />
+            <ModeBtn2 active={mode === '2p'} onClick={() => newGame('2p')} icon={<Users size={15} />} label={t('games.twoPlayers')} />
           </>
         }
       />
       <div className="flex flex-wrap items-center gap-3 text-xs text-muted">
-        <span className={state.turn === W && !state.winner ? 'font-semibold text-ink' : ''}>White to move</span>
-        <span className={state.turn === B && !state.winner ? 'font-semibold text-ink' : ''}>Black to move</span>
-        {mustCapture && !state.winner && <span className="font-semibold text-accent">Jump required!</span>}
-        {state.mustFrom >= 0 && !state.winner && <span className="font-semibold text-accent">Keep jumping with the same piece</span>}
-        <span className="ml-auto">Captured — you: {mode === 'ai' ? (aiColor === B ? captured.w : captured.b) : captured.w} · opponent: {mode === 'ai' ? (aiColor === B ? captured.b : captured.w) : captured.b}</span>
+        <span className={state.turn === W && !state.winner ? 'font-semibold text-ink' : ''}>{t('games.whiteToMove')}</span>
+        <span className={state.turn === B && !state.winner ? 'font-semibold text-ink' : ''}>{t('games.blackToMove')}</span>
+        {mustCapture && !state.winner && <span className="font-semibold text-accent">{t('games.jumpRequired')}</span>}
+        {state.mustFrom >= 0 && !state.winner && <span className="font-semibold text-accent">{t('games.keepJumping')}</span>}
+        <span className="ml-auto">{t('games.capturedLine', { you: mode === 'ai' ? (aiColor === B ? captured.w : captured.b) : captured.w, opp: mode === 'ai' ? (aiColor === B ? captured.b : captured.w) : captured.b })}</span>
       </div>
       {state.winner && (
         <ResultBanner
+          t={t}
           over={{ result: 'win', winner: state.winner }}
-          label={state.winner === 'draw' ? 'Draw — 80 moves with no capture' : `${state.winner === W ? 'White' : 'Black'} wins!`}
+          label={state.winner === 'draw' ? t('games.draw80') : t('games.winsBang', { winner: state.winner === W ? t('games.white') : t('games.black') })}
           onNew={() => newGame()}
         />
       )}
@@ -223,7 +227,7 @@ export default function CheckersGame({ onExit }) {
                 type="button"
                 onClick={() => onSquare(sq)}
                 className={`relative flex aspect-square items-center justify-center ${dark ? 'bg-[#a5714f]' : 'bg-[#ecdcb9]'} ${isSel ? 'ring-2 ring-inset ring-accent' : ''}`}
-                aria-label={`square ${sq}`}
+                aria-label={t('games.squareAria', { n: sq })}
               >
                 {piece && (
                   <span
