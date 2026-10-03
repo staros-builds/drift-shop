@@ -4,7 +4,7 @@
     "lucide-react": "^0.454.0",
     "qrcode-generator": "^2.0.4",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^19.3.0"
   },
   "description": "Drift \u2014 a calm, paper-and-ink personal cloud desktop. Shared frontend for StarOS builds 3 (Supabase) and 4 (Replit).",
   "devDependencies": {
