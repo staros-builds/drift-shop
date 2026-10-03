@@ -44,7 +44,7 @@ export default function ProfileSettings() {
       const saved = await backend.auth.changeOwnUsername(draft);
       setCurrent(saved);
       setDraft(saved);
-      push({ title: t('settings.fields.usernameSaved'), tone: 'ok' });
+      push(t('settings.fields.usernameSaved'), saved);
     } catch (err) {
       setError(String(err?.message || err));
     } finally {
