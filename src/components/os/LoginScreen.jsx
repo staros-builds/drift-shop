@@ -355,12 +355,12 @@ function LoginHelpDialog({ onClose, trialAvailable }) {
       className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 p-4"
       role="dialog"
       aria-modal="true"
-      aria-label={t('login.helpTitle')}
+      aria-labelledby="login-help-heading"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-os bg-surface p-5 shadow-os">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-base font-semibold text-ink">
+          <h2 id="login-help-heading" className="flex items-center gap-2 text-base font-semibold text-ink">
             <LifeBuoy size={18} className="text-accent" />
             {t('login.helpTitle')}
           </h2>

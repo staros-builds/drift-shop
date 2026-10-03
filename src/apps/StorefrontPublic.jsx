@@ -35,7 +35,7 @@ import { OAUTH_PROVIDERS, savePendingFlow, clearPendingFlow } from '../lib/authF
 
 /**
  * Public storefront page (#/store/<slug>) — the customer-facing web page
- * for one shop, the Comelin-style "website" half of Drift Shop.
+ * for one shop, the public "website" half of Vendra.
  *
  * main.jsx renders this INSTEAD of the desktop when the URL hash matches
  * #/store/<slug>: no staff login required, no app chrome, no self-check
@@ -472,6 +472,18 @@ export default function StorefrontPublic({ slug, configError = null, appHome = n
     phase: configError ? 'error' : 'loading',
     data: null,
   });
+  // Page-state strings in the visitor's language (one language at a time —
+  // never EN+FR stacked). Uses the saved UI language preference.
+  const pageLang = getLang();
+  const ps = {
+    loading: { fr: 'Chargement…', en: 'Loading…', es: 'Cargando…', pt: 'Carregando…' }[pageLang] || 'Loading…',
+    errTitle: { fr: 'Impossible de charger cette page.', en: 'We couldn’t load this page.', es: 'No pudimos cargar esta página.', pt: 'Não conseguimos carregar esta página.' }[pageLang] || 'We couldn’t load this page.',
+    errBody: { fr: 'Vérifiez votre connexion Internet, puis touchez Réessayer.', en: 'Please check your internet connection, then tap Try again.', es: 'Revisa tu conexión a internet y toca Reintentar.', pt: 'Verifique sua conexão e toque em Tentar de novo.' }[pageLang] || 'Please check your internet connection, then tap Try again.',
+    retry: { fr: 'Réessayer', en: 'Try again', es: 'Reintentar', pt: 'Tentar de novo' }[pageLang] || 'Try again',
+    missTitle: { fr: 'Cette page de boutique n’est pas disponible.', en: 'This shop page isn’t available.', es: 'Esta página de tienda no está disponible.', pt: 'Esta página de loja não está disponível.' }[pageLang] || 'This shop page isn’t available.',
+    missBody: { fr: 'Elle n’est peut-être pas encore publiée, ou l’adresse est incorrecte.', en: 'It may not be published yet, or the address may be wrong.', es: 'Quizás aún no se ha publicado o la dirección es incorrecta.', pt: 'Talvez ainda não tenha sido publicada ou o endereço esteja errado.' }[pageLang] || 'It may not be published yet, or the address may be wrong.',
+    staffLogin: { fr: 'Connexion du personnel', en: 'Staff login', es: 'Acceso del personal', pt: 'Login da equipe' }[pageLang] || 'Staff login',
+  };
   const [classifiedAds, setClassifiedAds] = useState([]); // published ads (migration 097); [] = none / unavailable
   // Craigslist patterns: buyer favorites + hidden ads, persisted per shop (no account needed)
   const [favAdIds, setFavAdIds] = useState(() => {
@@ -1197,33 +1209,29 @@ export default function StorefrontPublic({ slug, configError = null, appHome = n
             )
           ) : null}
           <a href={appUrl} style={styles.loginBtn}>
-            Staff login / Connexion du personnel
+            {ps.staffLogin}
           </a>
         </div>
       </header>
 
       {state.phase === 'loading' && (
-        <p style={styles.center}>Loading… / Chargement…</p>
+        <p style={styles.center}>{ps.loading}</p>
       )}
 
       {state.phase === 'error' && (
         <div style={styles.center}>
           <p style={{ fontWeight: 700, color: '#26221c' }}>
-            We couldn’t load this page.
-            <br />
-            Impossible de charger cette page.
+            {ps.errTitle}
           </p>
           <p>
-            Please check your internet connection, then tap Try again.
-            <br />
-            Vérifiez votre connexion Internet, puis touchez Réessayer.
+            {ps.errBody}
           </p>
           <button
             type="button"
             onClick={() => window.location.reload()}
             style={{ ...styles.contactLink, cursor: 'pointer', fontFamily: 'inherit' }}
           >
-            Try again / Réessayer
+            {ps.retry}
           </button>
         </div>
       )}
@@ -1231,14 +1239,10 @@ export default function StorefrontPublic({ slug, configError = null, appHome = n
       {state.phase === 'missing' && (
         <div style={styles.center}>
           <p style={{ fontWeight: 700, color: '#26221c', fontSize: 17 }}>
-            This shop page isn’t available.
-            <br />
-            Cette page de boutique n’est pas disponible.
+            {ps.missTitle}
           </p>
           <p>
-            It may not be published yet, or the address may be wrong.
-            <br />
-            Elle n’est peut-être pas encore publiée, ou l’adresse est incorrecte.
+            {ps.missBody}
           </p>
         </div>
       )}

@@ -101,7 +101,7 @@ function renderBootError(err) {
 /*   2. a known table exists (basic schema sanity).                    */
 /*                                                                     */
 /* A failure never leaves a blank page: the user gets a clear status   */
-/* screen with Retry. Drift Shop is cloud-only — there is no offline   */
+/* screen with Retry. Vendra is cloud-only — there is no offline   */
 /* mode, so a dead network means boot waits rather than starting a     */
 /* session that cannot reach the one shared database.                  */
 /* ------------------------------------------------------------------ */
@@ -458,5 +458,25 @@ captureInstallPrompt();
 if (typeof window !== 'undefined') {
   window.addEventListener('load', () => {
     registerServiceWorker();
+  });
+
+  // Deep-link hardening (2026-10-03): the storefront/community routes are
+  // decided once at cold boot from window.location.hash. If the hash later
+  // changes to (or from) one of those public routes — back/forward buttons,
+  // pasted links, in-app navigation — a full reload re-runs the same
+  // cold-boot decision instead of leaving the wrong surface on screen.
+  // Same-page anchor jumps (no route change) are ignored.
+  const PUBLIC_ROUTE_RE = /^#\/(store\/[^/?#]+|community)\/?$/;
+  let lastPublicRoute = PUBLIC_ROUTE_RE.test(window.location.hash || '')
+    ? (window.location.hash || '')
+    : null;
+  window.addEventListener('hashchange', () => {
+    const h = window.location.hash || '';
+    const isPublic = PUBLIC_ROUTE_RE.test(h);
+    const wasPublic = lastPublicRoute !== null;
+    lastPublicRoute = isPublic ? h : null;
+    if (isPublic !== wasPublic) {
+      window.location.reload();
+    }
   });
 }

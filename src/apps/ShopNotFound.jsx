@@ -11,9 +11,9 @@ import { BRAND } from '../lib/brand.js';
  * at the main site. Never a raw 404, never a spinner forever.
  *
  * Self-contained inline styles, same as StorefrontPublic: this page must
- * render on anything that can open a link. Strings are stacked EN/FR
- * like the storefront page (ES/PT follow the same treatment when those
- * storefront strings are picked up in the i18n pass).
+ * render on anything that can open a link. Strings follow the visitor's
+ * browser language (FR/EN/ES/PT), defaulting to English — never two
+ * languages stacked on screen at once.
  *
  * Variants:
  *   'notfound' — no shop at this address (the default)
@@ -21,8 +21,62 @@ import { BRAND } from '../lib/brand.js';
  *   'error'    — the lookup itself failed (connection trouble); offers
  *                a Try again reload, mirroring StorefrontPublic.
  */
+
+// One language at a time, picked from the visitor's browser setting.
+function pickLang() {
+  try {
+    const l = (typeof navigator !== 'undefined' && navigator.language ? navigator.language : 'en').toLowerCase();
+    if (l.startsWith('fr')) return 'fr';
+    if (l.startsWith('es')) return 'es';
+    if (l.startsWith('pt')) return 'pt';
+    return 'en';
+  } catch {
+    return 'en';
+  }
+}
+
+const STRINGS = {
+  en: {
+    loading: 'Loading…',
+    notfoundTitle: 'There is no shop page at this address.',
+    notfoundBody: 'The address may be mistyped, or the shop has not published its page yet.',
+    home: 'Go to the main site',
+    errorTitle: 'We couldn’t load this page.',
+    errorBody: 'Please check your internet connection, then tap Try again.',
+    retry: 'Try again',
+  },
+  fr: {
+    loading: 'Chargement…',
+    notfoundTitle: 'Il n’y a pas de page de boutique à cette adresse.',
+    notfoundBody: 'L’adresse contient peut-être une faute, ou la boutique n’a pas encore publié sa page.',
+    home: 'Aller au site principal',
+    errorTitle: 'Impossible de charger cette page.',
+    errorBody: 'Vérifiez votre connexion Internet, puis touchez Réessayer.',
+    retry: 'Réessayer',
+  },
+  es: {
+    loading: 'Cargando…',
+    notfoundTitle: 'No hay página de tienda en esta dirección.',
+    notfoundBody: 'La dirección puede estar mal escrita o la tienda aún no ha publicado su página.',
+    home: 'Ir al sitio principal',
+    errorTitle: 'No pudimos cargar esta página.',
+    errorBody: 'Revisa tu conexión a internet y toca Reintentar.',
+    retry: 'Reintentar',
+  },
+  pt: {
+    loading: 'Carregando…',
+    notfoundTitle: 'Não há página de loja neste endereço.',
+    notfoundBody: 'O endereço pode estar errado ou a loja ainda não publicou sua página.',
+    home: 'Ir para o site principal',
+    errorTitle: 'Não conseguimos carregar esta página.',
+    errorBody: 'Verifique sua conexão e toque em Tentar de novo.',
+    retry: 'Tentar de novo',
+  },
+};
+
 export default function ShopNotFound({ variant = 'notfound', homeUrl = null }) {
   const home = homeUrl || `${window.location.origin}/`;
+  const s = STRINGS[pickLang()] || STRINGS.en;
 
   return (
     <div
@@ -46,23 +100,17 @@ export default function ShopNotFound({ variant = 'notfound', homeUrl = null }) {
 
       {variant === 'loading' && (
         <p style={{ fontSize: 15, color: '#6d6252', margin: 0, lineHeight: 1.6 }}>
-          Loading… / Chargement…
+          {s.loading}
         </p>
       )}
 
       {variant === 'notfound' && (
         <>
           <p style={{ fontWeight: 700, fontSize: 19, margin: '0 0 10px', lineHeight: 1.45 }}>
-            There is no shop page at this address.
-            <br />
-            Il n’y a pas de page de boutique à cette adresse.
+            {s.notfoundTitle}
           </p>
           <p style={{ fontSize: 15, color: '#6d6252', margin: '0 0 22px', lineHeight: 1.6, maxWidth: 460 }}>
-            The address may be mistyped, or the shop has not published its
-            page yet.
-            <br />
-            L’adresse contient peut-être une faute, ou la boutique n’a pas
-            encore publié sa page.
+            {s.notfoundBody}
           </p>
           <a
             href={home}
@@ -77,7 +125,7 @@ export default function ShopNotFound({ variant = 'notfound', homeUrl = null }) {
               textDecoration: 'none',
             }}
           >
-            Go to the main site / Aller au site principal
+            {s.home}
           </a>
         </>
       )}
@@ -85,14 +133,10 @@ export default function ShopNotFound({ variant = 'notfound', homeUrl = null }) {
       {variant === 'error' && (
         <>
           <p style={{ fontWeight: 700, fontSize: 17, margin: '0 0 10px', lineHeight: 1.45 }}>
-            We couldn’t load this page.
-            <br />
-            Impossible de charger cette page.
+            {s.errorTitle}
           </p>
           <p style={{ fontSize: 15, color: '#6d6252', margin: '0 0 22px', lineHeight: 1.6, maxWidth: 460 }}>
-            Please check your internet connection, then tap Try again.
-            <br />
-            Vérifiez votre connexion Internet, puis touchez Réessayer.
+            {s.errorBody}
           </p>
           <button
             type="button"
@@ -109,7 +153,7 @@ export default function ShopNotFound({ variant = 'notfound', homeUrl = null }) {
               fontFamily: 'inherit',
             }}
           >
-            Try again / Réessayer
+            {s.retry}
           </button>
         </>
       )}

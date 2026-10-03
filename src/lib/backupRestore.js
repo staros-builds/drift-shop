@@ -3,7 +3,7 @@
  * so node tests can run it directly: tests/backup-restore.test.mjs).
  *
  * validateBackup(data) inspects a parsed backup file BEFORE anything is
- * touched: is it really a Drift Shop backup, what is inside (in counts a
+ * touched: is it really a Vendra backup, what is inside (in counts a
  * shop owner understands), and is there anything in it this version
  * cannot put back. The UI turns these codes into plain words.
  *
@@ -91,7 +91,7 @@ export function countBackupContents(data) {
 }
 
 /**
- * Decide whether a parsed JSON file is a restorable Drift Shop backup.
+ * Decide whether a parsed JSON file is a restorable Vendra backup.
  * Returns { ok, fatal: [code], warnings: [{code, ...}], summary }.
  * `ok` means the file is usable; warnings are honest "this part cannot
  * come back" notes the UI shows BEFORE the user confirms.

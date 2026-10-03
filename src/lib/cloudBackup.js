@@ -6,7 +6,7 @@
  * a free Google account comes with 15 GB (room for hundreds of these JSON
  * backups), and the Drive API works straight from the browser — no server,
  * no client secret, nothing of ours in the middle. The token comes from
- * Google Identity Services with the narrow `drive.file` scope: Drift Shop
+ * Google Identity Services with the narrow `drive.file` scope: Vendra
  * can only see and change the backup files it creates itself, never the
  * owner's photos, email, or other Drive files.
  *
@@ -320,7 +320,7 @@ export async function getDriveAbout(token) {
   }
 }
 
-/** The one folder Drift Shop keeps its backups in (created on first use). */
+/** The one folder Vendra keeps its backups in (created on first use). */
 export async function ensureBackupFolder(token) {
   const q = `name = '${BACKUP_FOLDER_NAME.replace(/'/g, "\\'")}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
   const list = await driveJson(token, `${DRIVE_API}/files?q=${encodeURIComponent(q)}&fields=files(id,name)&spaces=drive`);
