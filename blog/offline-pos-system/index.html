@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Offline POS System Guide | Vendra</title>
+<meta name="description" content="What to look for in an offline-capable POS system. Test Vendra free for 30 days and see how it handles your shop." />
+<link rel="canonical" href="https://vendra-1f2.pages.dev/blog/offline-pos-system/" />
+<meta property="og:type" content="article" />
+<meta property="og:title" content="Offline POS System Guide | Vendra" />
+<meta property="og:description" content="What to look for in an offline-capable POS system. Test Vendra free for 30 days and see how it handles your shop." />
+<meta property="og:url" content="https://vendra-1f2.pages.dev/blog/offline-pos-system/" />
+<style>
+  :root{--paper:#f7f3ec;--card:#fffdf8;--ink:#26221c;--soft:#6d6252;--line:#e2d9c8;--accent:#b4542a}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.7}
+  .wrap{max-width:720px;margin:0 auto;padding:0 20px}
+  header{padding:20px 0;border-bottom:1px solid var(--line);margin-bottom:30px}
+  header a{color:var(--accent);text-decoration:none;font-weight:700}
+  h1{font-size:32px;line-height:1.2}
+  h2{font-size:24px;margin-top:36px}
+  h3{font-size:19px;margin-top:28px}
+  .cta-box{background:var(--card);border:2px solid var(--accent);border-radius:12px;padding:24px;margin:32px 0;text-align:center}
+  .cta-box a{display:inline-block;background:var(--accent);color:#fff;font-weight:700;text-decoration:none;border-radius:999px;padding:12px 28px;margin-top:12px}
+  footer{margin:40px 0;padding:20px 0;border-top:1px solid var(--line);color:var(--soft);font-size:14px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header><a href="https://vendra-1f2.pages.dev/landing/">&larr; Vendra</a></header>
+<article>
+
+<p>It's Saturday afternoon, your shop is packed, and the internet drops. The card terminal stares blankly. The cloud POS shows a spinner. A line of customers watches you reboot a router.</p>
+
+<p>This scenario is why offline capability matters in a POS system — and why "offline mode" on a feature list deserves harder questions than most buyers ask.</p>
+
+<h2>What &quot;Offline POS&quot; Actually Means</h2>
+
+<p>The term covers several different capabilities, and vendors use it loosely. Here's what to distinguish:</p>
+
+<p><strong>Offline sales capture.</strong> The till keeps ringing up sales without internet — cash and card details recorded locally. This is the baseline expectation of "offline mode."</p>
+
+<p><strong>Queued sync.</strong> Sales recorded offline upload to the cloud when connectivity returns. The key questions: is the queue automatic? Is anything lost if the device restarts before syncing? How are conflicts handled?</p>
+
+<p><strong>Offline inventory and pricing.</strong> Can the till look up products, prices, and stock levels without internet — or does it only record blind transactions to reconcile later?</p>
+
+<p><strong>Offline payments.</strong> True offline card processing (storing encrypted card data for later authorization) carries fraud risk and is heavily restricted. Most "offline POS" systems record the sale and process payment on reconnect — or accept cash only while offline.</p>
+
+<p><strong>Full offline operation.</strong> Till, inventory, discounts, and reporting all working locally, syncing everything later. Few systems genuinely deliver this.</p>
+
+<p>When a vendor says "works offline," ask which of these they mean. The answers vary enormously.</p>
+
+<h2>Why It Matters More Than You Think</h2>
+
+<p>Internet outages aren't rare edge cases for small shops:</p>
+
+<ul>
+<li><strong>Shared buildings</strong> with flaky shared Wi-Fi</li>
+<li><strong>Rural locations</strong> with unreliable connections</li>
+<li><strong>Market stalls and pop-ups</strong> with no fixed connection at all</li>
+<li><strong>Construction nearby</strong> cutting lines for hours</li>
+<li><strong>Provider outages</strong> affecting entire neighborhoods</li>
+<li><strong>Peak-hour congestion</strong> slowing connections to a crawl</li>
+</ul>
+
+<p>A shop that can't sell during an outage isn't just losing that hour's revenue — it's losing customers who walk to a competitor and don't come back. The cost of one bad Saturday can exceed a year of POS subscription.</p>
+
+<h2>How to Evaluate Offline Claims</h2>
+
+<p>"Offline mode" is easy to claim and hard to verify. During any trial, test it for real:</p>
+
+<p>1. <strong>Disconnect completely</strong> — airplane mode, not just unplugged ethernet. Wi-Fi assist and fallback connections can mask failures.</p>
+<p>2. <strong>Ring up 20 mixed sales</strong> — items, discounts, returns, multiple tender types. Note anything that errors or behaves differently.</p>
+<p>3. <strong>Check inventory lookups</strong> — can you search products and see stock levels, or only record sales blind?</p>
+<p>4. <strong>Restart the device mid-outage</strong> — do the queued sales survive? This is where weak implementations lose data.</p>
+<p>5. <strong>Reconnect and watch the sync</strong> — does it happen automatically? How long does it take? Are all 20 sales present and correct in reports?</p>
+<p>6. <strong>Verify the numbers</strong> — compare end-of-day totals against what you recorded. Every cent must reconcile.</p>
+
+<p>If a vendor discourages this test or the results are vague, treat the offline claim as marketing.</p>
+
+<h2>Architecture Matters: Local-First vs. Cloud-Dependent</h2>
+
+<p>POS systems fall on a spectrum:</p>
+
+<ul>
+<li><strong>Cloud-dependent:</strong> the till is essentially a window into a remote server. No internet, no sales. Simple architecture, total outage vulnerability.</li>
+<li><strong>Cached cloud:</strong> product data and recent history are cached locally; new sales queue for upload. Survives short outages if implemented carefully.</li>
+<li><strong>Local-first:</strong> the app runs fully on the device with its own local database, syncing to the cloud as a backup and multi-device channel. The most resilient — and the rarest.</li>
+</ul>
+
+<p>For a small shop, cached-cloud with a well-tested sync queue is usually sufficient. But verify the queue's durability: sales data should survive app restarts and device reboots, not just brief disconnections.</p>
+
+<h2>The Honest Limitations</h2>
+
+<p>No offline system is magic. Be realistic about:</p>
+
+<ul>
+<li><strong>Card authorizations</strong> generally can't complete offline — the network that approves the charge is, by definition, unreachable. Plan for cash-only or delayed-capture workflows during outages.</li>
+<li><strong>Real-time inventory across devices</strong> can't sync offline — two registers can't see each other's sales until reconnected.</li>
+<li><strong>Online ordering</strong> obviously requires connectivity.</li>
+<li><strong>Fraud risk</strong> rises with deferred payment processing — know your processor's rules.</li>
+</ul>
+
+<p>A trustworthy vendor explains these limits upfront. One that promises "everything works perfectly offline" is selling something.</p>
+
+<h2>What Vendra Does About Connectivity</h2>
+
+<p>Vendra is designed with resilience in mind: automatic backups protect your data, and the platform is built to keep the till usable and to safeguard every sale. Because offline behavior is genuinely complex — queue durability, sync conflicts, reconciliation — we encourage every shop to test it hands-on during the free trial: disconnect, sell, reconnect, and verify every number reconciles.</p>
+
+<p>That test-it-yourself standard applies to any POS you're evaluating, ours included. Thirty days of full access is enough time to simulate your worst Saturday and confirm the system handles it.</p>
+
+<p>Beyond resilience, Vendra gives independent shops the complete package at <strong>$350/year</strong> flat:</p>
+
+<ul>
+<li>Touch-friendly POS till with discounts, taxes, and receipts</li>
+<li>Inventory management with low-stock alerts</li>
+<li>Appointment booking with reminders</li>
+<li>Staff time-clock and scheduling</li>
+<li>Online ordering and a public storefront page</li>
+<li>Gift cards, sales reports, automatic backups</li>
+<li>Four languages: English, French, Spanish, Brazilian Portuguese</li>
+<li>No transaction fees from Vendra</li>
+</ul>
+
+<h2>Building Your Outage Playbook</h2>
+
+<p>Whatever system you choose, prepare for the inevitable outage:</p>
+
+<p>1. <strong>Know your offline procedure</strong> — which tender types work, what to tell customers, how to record sales.</p>
+<p>2. <strong>Keep a cash float</strong> — card-only shops are fully exposed during outages.</p>
+<p>3. <strong>Test quarterly</strong> — run the airplane-mode drill every few months, not just during the trial.</p>
+<p>4. <strong>Have a backup connection</strong> — a phone hotspot costs nothing to keep in reserve and saves the day regularly.</p>
+<p>5. <strong>Reconcile after every outage</strong> — verify totals before the next business day, while memories are fresh.</p>
+
+<h2>The Bottom Line</h2>
+
+<p>An offline POS system isn't about a checkbox on a feature list — it's about verified behavior under real failure conditions. Disconnect, sell, restart, reconnect, reconcile: if every step holds up, the claim is real. Test it during the trial, build your outage playbook, and never again watch a Saturday's revenue depend on a router.</p>
+
+<p>---</p>
+
+<p><strong>Want to run the outage test yourself?</strong> Try <a href="https://vendra-1f2.pages.dev/">Vendra</a> free for 30 days — put it in airplane mode, ring up real sales, reconnect, and verify every cent reconciles. $350/year flat when you're convinced.</p>
+
+<div class="cta-box">
+<strong>Try Vendra free for 30 days</strong><br>
+<span style="color:var(--soft)">POS, inventory, appointments, staff &amp; online ordering. $350/year flat.</span><br>
+<a href="https://vendra-1f2.pages.dev/">Start Free Trial</a>
+</div>
+</article>
+<footer>Vendra — Shop management for independents. $350/year, no transaction fees.</footer>
+</div>
+</body>
+</html>
