@@ -52,6 +52,46 @@ const POST_META = {
     title: 'Offline POS System Guide | Vendra',
     desc: 'What to look for in an offline-capable POS system. Test Vendra free for 30 days and see how it handles your shop.',
   },
+  'cheap-pos-system': {
+    title: 'Cheap POS System That Isn\'t a Trap | Vendra',
+    desc: 'Looking for a cheap POS system? Learn the true cost of "free" POS plans and find real value. Vendra: $350/year, no transaction fees.',
+  },
+  'pos-for-coffee-shops': {
+    title: 'POS System for Coffee Shops | Vendra',
+    desc: 'Best POS for coffee shops? Speed, modifiers, loyalty & small-ticket fees compared. Vendra handles it all at $350/year.',
+  },
+  'retail-management-software-small-business': {
+    title: 'Retail Management Software for Small Business | Vendra',
+    desc: 'Choosing retail management software? Features, pricing, and vendor questions answered. Vendra: $350/year flat.',
+  },
+  'best-pos-for-clothing-stores': {
+    title: 'Best POS for Clothing Stores | Vendra',
+    desc: 'POS for clothing stores: variants, returns, seasonal inventory. Compare options. Vendra: $350/year, no transaction fees.',
+  },
+  'pos-for-small-restaurants': {
+    title: 'POS System for Small Restaurants | Vendra',
+    desc: 'Small restaurant POS: order management, rush-hour reliability, no long contracts. Vendra at $350/year.',
+  },
+  'vendra-vs-square': {
+    title: 'Vendra vs Square: Honest Comparison 2026 | Vendra',
+    desc: 'Vendra vs Square compared honestly — pricing, features, where each wins. See the real annual costs.',
+  },
+  'how-to-reduce-pos-costs': {
+    title: 'How to Reduce POS Costs: 9 Strategies | Vendra',
+    desc: 'Paying too much for POS? 9 ways to cut costs, from auditing add-ons to switching. Vendra: $350/year flat.',
+  },
+  'pos-for-gift-shops': {
+    title: 'POS System for Gift Shops | Vendra',
+    desc: 'Gift shop POS: unique SKUs, seasonal staff, holiday rush. What to look for. Vendra: $350/year.',
+  },
+  'small-business-software-bundle': {
+    title: 'Small Business Software Bundle Guide | Vendra',
+    desc: 'Consolidate your software stack and save. Compare bundle costs. Vendra replaces 5+ tools at $350/year.',
+  },
+  'bilingual-pos-system-canada': {
+    title: 'Bilingual POS System for Canada (EN/FR) | Vendra',
+    desc: 'Need a bilingual POS in Canada? Vendra switches between English and French per user. $350/year.',
+  },
 };
 
 function esc(s) {
