@@ -1510,7 +1510,7 @@ export default function SettingsApp({ windowApi }) {
             <div className="flex justify-between border-b border-osborder px-3 py-2">
               <dt className="text-muted">{t('settings.fields.modeNote')}</dt>
               <dd className="max-w-[60%] text-right text-xs">
-                {t('login.cloudHint')}
+                {t('settings.fields.modeNoteText')}
               </dd>
             </div>
             <div className="flex items-center justify-between px-3 py-2">

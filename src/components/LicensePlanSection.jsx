@@ -73,6 +73,10 @@ export default function LicensePlanSection() {
   if (!available) return null;
 
   const owned = rows.filter((r) => r.my_role === 'owner');
+  // Key entry is only useful while at least one owned shop still needs
+  // unlocking. Once every owned shop is active, hide the field so a
+  // redeemed key doesn't leave a stale entry box behind (QA backlog).
+  const needsKey = owned.some((r) => r.effective_status !== 'active');
 
   const statusLine = (r) => {
     if (r.effective_status === 'trial') {
@@ -140,7 +144,7 @@ export default function LicensePlanSection() {
             </div>
           ))}
 
-          {owned.length > 0 && (
+          {needsKey && (
             <div>
               <p className="text-sm text-muted">{t('licensing.planKeyHelp')}</p>
               {owned.length > 1 && (
@@ -179,9 +183,9 @@ export default function LicensePlanSection() {
                 </button>
               </div>
               {error && <p className="mt-2 text-sm text-red-700">{error}</p>}
-              {notice && <p className="mt-2 text-sm font-medium text-emerald-700">{notice}</p>}
             </div>
           )}
+          {notice && <p className="mt-2 text-sm font-medium text-emerald-700">{notice}</p>}
         </div>
       </section>
 

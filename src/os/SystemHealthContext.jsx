@@ -128,6 +128,10 @@ export function SystemHealthProvider({ children }) {
   const [lastChecked, setLastChecked] = useState(null);
   const [checking, setChecking] = useState(false);
   const mountedRef = useRef(true);
+  // Consecutive non-ok results before the taskbar dot actually flips.
+  // This kills the transient "Problem detected" flash right after sign-in,
+  // when the session/DB checks can race the auth state settling (QA backlog).
+  const badStreakRef = useRef(0);
 
   const runChecks = useCallback(async () => {
     if (!mountedRef.current) return;
@@ -150,7 +154,18 @@ export function SystemHealthProvider({ children }) {
         crashes: crashRes,
       };
       setResults(next);
-      setStatus(deriveStatus(next));
+      const derived = deriveStatus(next);
+      // Only flip the visible status after 2 consecutive non-ok runs;
+      // a single transient failure (e.g. session still settling right
+      // after sign-in) keeps the previous status instead of flashing.
+      if (derived === 'ok') {
+        badStreakRef.current = 0;
+        setStatus('ok');
+      } else if (badStreakRef.current >= 1) {
+        setStatus(derived);
+      } else {
+        badStreakRef.current += 1;
+      }
       setLastChecked(new Date());
     } finally {
       if (mountedRef.current) setChecking(false);

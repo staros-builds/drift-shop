@@ -343,6 +343,7 @@ export default function SheetsApp({ windowApi, path }) {
   const [showName, setShowName] = useState(false);
   const gridRef = useRef(null);
   const cellInputRef = useRef(null);
+  const fxInputRef = useRef(null);
   const dirtyRef = useRef(false);
   dirtyRef.current = dirty;
 
@@ -659,8 +660,15 @@ export default function SheetsApp({ windowApi, path }) {
         <span className="w-14 shrink-0 rounded-os border border-osborder bg-paper px-2 py-1 text-center text-xs font-semibold">
           {selRef}
         </span>
-        <span className="shrink-0 text-sm italic text-muted">fx</span>
+        <button
+          type="button"
+          onClick={() => fxInputRef.current?.focus()}
+          className="shrink-0 text-sm italic text-muted hover:text-accent"
+          aria-label="Focus formula bar"
+          title="Focus formula bar"
+        >fx</button>
         <input
+          ref={fxInputRef}
           value={editing ? editVal : selRaw}
           onChange={(e) => {
             if (!editing) startEdit();

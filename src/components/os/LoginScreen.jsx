@@ -1469,6 +1469,25 @@ export default function LoginScreen() {
         <p className="mt-3 text-center text-xs text-muted">
           {t('login.customerShopOwnerNote')}
         </p>
+
+        <div className="mt-3 rounded-os border border-osborder bg-paper p-3 text-center">
+          <p className="text-xs leading-relaxed text-muted">{t('login.customerFreeAccount')}</p>
+          <button
+            type="button"
+            onClick={() => {
+              setAudience('shop');
+              setMode('signup');
+              setError('');
+              setCheckEmail(null);
+              setMagicMode(false);
+              setMagicSent(null);
+              setNotice(null);
+            }}
+            className="mt-2 rounded-os bg-accent px-4 py-1.5 text-sm font-semibold text-accentink duration-160 hover:opacity-90"
+          >
+            {t('login.customerCreateAccount')}
+          </button>
+        </div>
         </>
         )}
 
