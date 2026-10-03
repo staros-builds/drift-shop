@@ -3179,6 +3179,7 @@ media: {
             b0: 'Haz {brand} tuyo.',
             b1: [
               'Apariencia: modo claro/oscuro, color de acento, fondo de pantalla, estilo de interfaz, posición de la barra de tareas, modo táctil.',
+              'Perfil: cambia el nombre de usuario con el que inicias sesión.',
               'Aplicaciones: elige qué apps se muestran en el escritorio y en el menú Inicio.',
               'Tus datos: importa, exporta o borra todo.'
             ]

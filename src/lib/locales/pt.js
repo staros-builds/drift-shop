@@ -3171,6 +3171,7 @@ media: {
             b0: 'Deixe o {brand} do seu jeito.',
             b1: [
               'Aparência: modo claro/escuro, cor de destaque, papel de parede, estilo de interface, posição da barra de tarefas, modo de toque.',
+              'Perfil: altere o nome de usuário com o qual você entra.',
               'Aplicativos: escolha quais apps aparecem na área de trabalho e no menu Iniciar.',
               'Seus dados: importe, exporte ou apague tudo.'
             ]

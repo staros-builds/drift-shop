@@ -3188,6 +3188,7 @@ media: {
             b0: 'Faites de {brand} le vôtre.',
             b1: [
               'Apparence : mode clair/sombre, couleur d’accent, fond d’écran, style d’interface, position de la barre des tâches, mode tactile.',
+              'Profil : changez le nom d’utilisateur avec lequel vous vous connectez.',
               'Applications : choisissez quelles applis s’affichent sur le bureau et dans le menu Démarrer.',
               'Vos données : importez, exportez ou effacez tout.'
             ]

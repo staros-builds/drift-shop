@@ -3182,6 +3182,7 @@ media: {
             b0: 'Make {brand} yours.',
             b1: [
               'Appearance: light/dark mode, accent color, wallpaper, interface style, taskbar position, touch mode.',
+              'Profile: change the username you sign in with.',
               'Apps: choose which apps show on the desktop and in the Start menu.',
               'Your data: import, export, or erase everything.'
             ]
