@@ -496,6 +496,7 @@ media: {
     chimesDesc: 'Sininhos suaves sintetizados para janelas, notificações e vendas — sem arquivos de áudio',
     homeScreenDesc: 'Tela inicial estilo iOS com botões grandes de toque',
     sections: {
+      profile: 'Perfil',
       appearance: 'Aparência',
       display: 'Tela',
       apps: 'Aplicativos',
@@ -622,6 +623,12 @@ media: {
       fullscreen: 'Tela cheia',
       modeNote: 'Nota do modo',
       modeNoteText: 'Modo nuvem — sua loja sincroniza em todos os seus dispositivos.',
+      username: 'Nome de usuário',
+      usernameHint: 'Pelo menos 3 caracteres: letras, números, ponto, sublinhado, hífen.',
+      changeUsername: 'Alterar nome de usuário',
+      changingUsername: 'Salvando…',
+      usernameSaved: 'Nome de usuário atualizado.',
+      usernameLoadFailed: 'Não foi possível carregar seu perfil.',
       copyright: 'Direitos autorais',
       version: 'Versão',
       comingSoon: 'Em breve',
@@ -2055,6 +2062,7 @@ media: {
     sendFeedback: 'Enviar comentários',
     sending: 'Enviando…',
     yourRequests: 'Seus pedidos',
+    myFeedback: 'Meus comentários',
     ownersReply: 'Resposta do dono',
     nothingFound: 'Nada encontrado. Tente outra palavra — ou explore as seções à esquerda.',
   },
@@ -3107,6 +3115,46 @@ media: {
               'Veja os anúncios de todos no mural comunitário; salve favoritos e oculte anúncios que não interessam.'
             ],
             b2: 'Atingiu um limite? É para isso que serve o plano de loja — anúncios ilimitados mais o caixa completo.'
+          },
+          'g-calculator': {
+            title: 'Calculadora',
+            keywords: 'calculadora matemática aritmética cálculo rápido',
+            b0: 'Uma calculadora de bolso para contas rápidas.',
+            b1: [
+              'Digite os números ou clique nos botões.',
+              'Use-a junto ao ponto de venda para conferir totais.',
+              'O teclado também funciona — comece a digitar com a janela aberta.'
+            ]
+          },
+          'g-pdfviewer': {
+            title: 'Visualizador de PDF',
+            keywords: 'pdf visualizador documentos faturas recibos',
+            b0: 'Abra e leia arquivos PDF — faturas, recibos, manuais.',
+            b1: [
+              'Abra um PDF em Arquivos ou arraste-o para o visualizador.',
+              'Aproxime com a barra de ferramentas; pesquise texto com Ctrl+F.',
+              'A impressão usa a caixa de diálogo do seu navegador.'
+            ]
+          },
+          'g-clipboard': {
+            title: 'Área de transferência',
+            keywords: 'área de transferência copiar colar histórico trechos',
+            b0: 'Tudo o que você copia, guardado em um só lugar.',
+            b1: [
+              'Copie texto em qualquer lugar e ele chega ao histórico da área de transferência.',
+              'Clique em uma entrada para copiá-la de novo.',
+              'Fixe os trechos que você reutiliza — endereços, respostas, descrições de produtos.'
+            ]
+          },
+          'g-admin': {
+            title: 'Painel de administração',
+            keywords: 'admin usuários contas solicitações assistência anúncios moderação',
+            b0: 'Para donos de loja e equipe da plataforma: gerencie contas e assistência.',
+            b1: [
+              'Os donos veem sua equipe, as solicitações de assistência e os comentários.',
+              'Os donos da plataforma ainda veem cada anúncio de cliente para moderação e as configurações da plataforma.',
+              'As ações da zona perigosa (redefinição de fábrica, restaurações) pedem antes uma confirmação digitada.'
+            ]
           },
           'g-settings': {
             title: 'Configurações',

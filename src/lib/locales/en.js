@@ -497,6 +497,7 @@ media: {
     chimesDesc: 'Subtle synthesized chimes for windows, notifications, and sales — no audio files',
     homeScreenDesc: 'iOS-style home screen with large touch targets',
     sections: {
+      profile: 'Profile',
       appearance: 'Appearance',
       display: 'Display',
       apps: 'Apps',
@@ -623,6 +624,12 @@ media: {
       fullscreen: 'Fullscreen',
       modeNote: 'Mode note',
       modeNoteText: 'Cloud mode — your shop syncs across all your devices.',
+      username: 'Username',
+      usernameHint: 'At least 3 characters: letters, numbers, dot, underscore, dash.',
+      changeUsername: 'Change username',
+      changingUsername: 'Saving…',
+      usernameSaved: 'Username updated.',
+      usernameLoadFailed: 'Could not load your profile.',
       copyright: 'Copyright',
       version: 'Version',
       comingSoon: 'Coming soon',
@@ -2056,6 +2063,7 @@ media: {
     sendFeedback: 'Send feedback',
     sending: 'Sending…',
     yourRequests: 'Your requests',
+    myFeedback: 'My feedback',
     ownersReply: "Owner's reply",
     nothingFound: 'Nothing found. Try a different word — or browse the sections on the left.',
   },
@@ -3118,6 +3126,46 @@ media: {
               'Browse everyone’s ads on the community board; save favorites and hide ads you don’t want to see.'
             ],
             b2: 'Hit a limit? That’s what the shop plan is for — unlimited ads plus the full point of sale.'
+          },
+          'g-calculator': {
+            title: 'Calculator',
+            keywords: 'calculator math arithmetic quick calc',
+            b0: 'A pocket calculator for quick math.',
+            b1: [
+              'Type numbers or click the buttons.',
+              'Use it alongside the point of sale to double-check totals.',
+              'The keyboard works too — just start typing when the window is open.'
+            ]
+          },
+          'g-pdfviewer': {
+            title: 'PDF Viewer',
+            keywords: 'pdf viewer documents read invoices receipts',
+            b0: 'Open and read PDF files — invoices, receipts, manuals.',
+            b1: [
+              'Open a PDF from Files, or drag one into the viewer.',
+              'Zoom with the toolbar; search text with Ctrl+F.',
+              'Printing uses your browser’s print dialog.'
+            ]
+          },
+          'g-clipboard': {
+            title: 'Clipboard',
+            keywords: 'clipboard copy paste history snippets',
+            b0: 'Everything you copy, kept in one place.',
+            b1: [
+              'Copy text anywhere and it lands in the Clipboard history.',
+              'Click any entry to copy it again.',
+              'Pin the snippets you reuse — addresses, replies, product descriptions.'
+            ]
+          },
+          'g-admin': {
+            title: 'Admin panel',
+            keywords: 'admin users accounts support tickets feedback unlock keys moderation',
+            b0: 'For shop owners and platform staff: manage accounts and support.',
+            b1: [
+              'Owners see their shop’s team, support requests, and feedback.',
+              'Platform owners additionally see every customer ad for moderation and the platform settings.',
+              'Danger-zone actions (factory reset, restores) ask for typed confirmation first.'
+            ]
           },
           'g-settings': {
             title: 'Settings',

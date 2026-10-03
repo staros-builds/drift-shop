@@ -5068,6 +5068,25 @@ function TeamTab({ store, members, selfId, v4, onInvite, onRevokeInvite, onSetRo
   const [resetFor, setResetFor] = useState(null); // team member getting an assisted password reset
   const [resetPass, setResetPass] = useState('');
   const [resetDone, setResetDone] = useState('');
+  // Other login accounts on this shop (device-pinned auth accounts not in
+  // the staff list) — wired to recovery.listTeamLogins so the owner can
+  // reset their passwords too. Loaded lazily, manager-only.
+  const [otherLogins, setOtherLogins] = useState(null); // null = not loaded
+  useEffect(() => {
+    if (!manager) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const logins = await backend.recovery.listTeamLogins(store.id);
+        if (cancelled) return;
+        const memberIds = new Set((members || []).map((m) => m.userId));
+        setOtherLogins((logins || []).filter((l) => l.userId && !memberIds.has(l.userId) && l.userId !== selfId));
+      } catch {
+        if (!cancelled) setOtherLogins([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [manager, store.id, members, selfId]);
   const manager = canManage(store.role);
   const isOwner = store.role === 'owner';
 
@@ -5186,6 +5205,41 @@ function TeamTab({ store, members, selfId, v4, onInvite, onRevokeInvite, onSetRo
           ))}
         </div>
       </section>
+
+      {/* Other login accounts on this shop (device-pinned, not in the team
+          list) — same assisted reset, via recovery.listTeamLogins. */}
+      {manager && otherLogins !== null && otherLogins.length > 0 && (
+        <section>
+          <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-ink">
+            <KeyRound size={15} className="text-accent" /> {t('recovery.teamOtherLogins')}
+          </h3>
+          <p className="mb-2 text-xs text-muted">{t('recovery.teamOtherLoginsHint')}</p>
+          <div className="space-y-1.5">
+            {otherLogins.map((l) => (
+              <div
+                key={l.userId}
+                className="flex items-center gap-2 rounded-os border border-osborder bg-paper px-3 py-2"
+              >
+                <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">
+                  {l.displayName || l.username}
+                </span>
+                {l.username && l.displayName && (
+                  <span className="hidden shrink-0 text-xs text-muted sm:inline">@{l.username}</span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => { setResetFor({ userId: l.userId, username: l.username || l.displayName }); setResetPass(''); setResetDone(''); }}
+                  title={t('recovery.teamReset')}
+                  aria-label={`${t('recovery.teamReset')} — ${l.username || l.displayName}`}
+                  className="rounded-os p-1.5 text-muted hover:bg-surface hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                >
+                  <KeyRound size={15} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Team password-reset dialog */}
       {resetFor && (

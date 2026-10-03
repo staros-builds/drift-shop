@@ -497,6 +497,7 @@ media: {
     chimesDesc: 'Carillons synth\u00e9tis\u00e9s subtils pour les fen\u00eatres, les notifications et les ventes \u2014 aucun fichier audio',
     homeScreenDesc: "\u00c9cran d'accueil de style iOS avec de grandes cibles tactiles",
     sections: {
+      profile: 'Profil',
       appearance: 'Apparence',
       display: 'Affichage',
       apps: 'Applications',
@@ -623,6 +624,12 @@ media: {
       fullscreen: 'Plein écran',
       modeNote: 'Note de mode',
       modeNoteText: 'Mode cloud — votre boutique se synchronise sur tous vos appareils.',
+      username: 'Nom d’utilisateur',
+      usernameHint: 'Au moins 3 caractères : lettres, chiffres, point, tiret bas, tiret.',
+      changeUsername: 'Changer le nom d’utilisateur',
+      changingUsername: 'Enregistrement…',
+      usernameSaved: 'Nom d’utilisateur mis à jour.',
+      usernameLoadFailed: 'Impossible de charger votre profil.',
       copyright: 'Droit d’auteur',
       version: 'Version',
       comingSoon: 'Bientôt disponible',
@@ -2064,6 +2071,7 @@ media: {
     sendFeedback: 'Envoyer un commentaire',
     sending: 'Envoi…',
     yourRequests: 'Vos demandes',
+    myFeedback: 'Mes retours',
     ownersReply: 'Réponse du propriétaire',
     nothingFound: 'Rien trouvé. Essayez un autre mot — ou parcourez les sections à gauche.',
   },
@@ -3124,6 +3132,46 @@ media: {
               'Parcourez les annonces de tout le monde sur le babillard communautaire; enregistrez vos favoris et masquez les annonces qui ne vous intéressent pas.'
             ],
             b2: 'Vous atteignez une limite ? C’est à ça que sert le forfait boutique — annonces illimitées plus la caisse complète.'
+          },
+          'g-calculator': {
+            title: 'Calculatrice',
+            keywords: 'calculatrice calcul maths arithmétique',
+            b0: 'Une calculatrice de poche pour les calculs rapides.',
+            b1: [
+              'Tapez les chiffres ou cliquez sur les boutons.',
+              'Utilisez-la avec la caisse pour vérifier les totaux.',
+              'Le clavier fonctionne aussi — commencez à taper quand la fenêtre est ouverte.'
+            ]
+          },
+          'g-pdfviewer': {
+            title: 'Lecteur PDF',
+            keywords: 'pdf lecteur documents factures reçus',
+            b0: 'Ouvrez et lisez les fichiers PDF — factures, reçus, manuels.',
+            b1: [
+              'Ouvrez un PDF depuis Fichiers, ou glissez-le dans le lecteur.',
+              'Zoomez avec la barre d’outils; cherchez du texte avec Ctrl+F.',
+              'L’impression utilise la boîte de dialogue de votre navigateur.'
+            ]
+          },
+          'g-clipboard': {
+            title: 'Presse-papiers',
+            keywords: 'presse-papiers copier coller historique extraits',
+            b0: 'Tout ce que vous copiez, conservé au même endroit.',
+            b1: [
+              'Copiez du texte n’importe où et il arrive dans l’historique du presse-papiers.',
+              'Cliquez sur une entrée pour la recopier.',
+              'Épinglez les extraits que vous réutilisez — adresses, réponses, descriptions de produits.'
+            ]
+          },
+          'g-admin': {
+            title: 'Panneau d’administration',
+            keywords: 'admin utilisateurs comptes demandes assistance annonces modération',
+            b0: 'Pour les propriétaires de boutique et le personnel de la plateforme : gérez les comptes et l’assistance.',
+            b1: [
+              'Les propriétaires voient leur équipe, les demandes d’assistance et les retours.',
+              'Les propriétaires de la plateforme voient en plus chaque annonce client pour la modération et les réglages de la plateforme.',
+              'Les actions de la zone dangereuse (réinitialisation d’usine, restaurations) demandent d’abord une confirmation tapée.'
+            ]
           },
           'g-settings': {
             title: 'Réglages',

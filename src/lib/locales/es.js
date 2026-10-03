@@ -497,6 +497,7 @@ media: {
     chimesDesc: 'Campanadas sutiles sintetizadas para ventanas, notificaciones y ventas — sin archivos de audio',
     homeScreenDesc: 'Pantalla de inicio estilo iOS con botones grandes táctiles',
     sections: {
+      profile: 'Perfil',
       appearance: 'Apariencia',
       display: 'Pantalla',
       apps: 'Aplicaciones',
@@ -623,6 +624,12 @@ media: {
       fullscreen: 'Pantalla completa',
       modeNote: 'Nota de modo',
       modeNoteText: 'Modo nube — tu tienda se sincroniza en todos tus dispositivos.',
+      username: 'Nombre de usuario',
+      usernameHint: 'Al menos 3 caracteres: letras, números, punto, guion bajo, guion.',
+      changeUsername: 'Cambiar nombre de usuario',
+      changingUsername: 'Guardando…',
+      usernameSaved: 'Nombre de usuario actualizado.',
+      usernameLoadFailed: 'No se pudo cargar tu perfil.',
       copyright: 'Derechos de autor',
       version: 'Versión',
       comingSoon: 'Próximamente',
@@ -2056,6 +2063,7 @@ media: {
     sendFeedback: 'Enviar comentarios',
     sending: 'Enviando…',
     yourRequests: 'Tus solicitudes',
+    myFeedback: 'Mis comentarios',
     ownersReply: 'Respuesta del dueño',
     nothingFound: 'Nada encontrado. Prueba con otra palabra — o explora las secciones de la izquierda.',
   },
@@ -3115,6 +3123,46 @@ media: {
               'Explora los anuncios de todos en el tablón comunitario; guarda favoritos y oculta los anuncios que no te interesen.'
             ],
             b2: '¿Llegaste a un límite? Para eso está el plan de tienda: anuncios ilimitados más la caja completa.'
+          },
+          'g-calculator': {
+            title: 'Calculadora',
+            keywords: 'calculadora matemáticas aritmética cálculo rápido',
+            b0: 'Una calculadora de bolsillo para cálculos rápidos.',
+            b1: [
+              'Escribe los números o haz clic en los botones.',
+              'Úsala junto al punto de venta para verificar totales.',
+              'El teclado también funciona: empieza a escribir con la ventana abierta.'
+            ]
+          },
+          'g-pdfviewer': {
+            title: 'Visor de PDF',
+            keywords: 'pdf visor documentos facturas recibos',
+            b0: 'Abre y lee archivos PDF: facturas, recibos, manuales.',
+            b1: [
+              'Abre un PDF desde Archivos o arrástralo al visor.',
+              'Acércalo con la barra de herramientas; busca texto con Ctrl+F.',
+              'La impresión usa el diálogo de tu navegador.'
+            ]
+          },
+          'g-clipboard': {
+            title: 'Portapapeles',
+            keywords: 'portapapeles copiar pegar historial fragmentos',
+            b0: 'Todo lo que copies, guardado en un solo lugar.',
+            b1: [
+              'Copia texto en cualquier parte y llega al historial del portapapeles.',
+              'Haz clic en una entrada para copiarla de nuevo.',
+              'Fija los fragmentos que reutilizas: direcciones, respuestas, descripciones de productos.'
+            ]
+          },
+          'g-admin': {
+            title: 'Panel de administración',
+            keywords: 'admin usuarios cuentas solicitudes asistencia anuncios moderación',
+            b0: 'Para dueños de tiendas y personal de la plataforma: gestiona cuentas y asistencia.',
+            b1: [
+              'Los dueños ven su equipo, las solicitudes de asistencia y los comentarios.',
+              'Los dueños de la plataforma además ven cada anuncio de cliente para moderación y los ajustes de la plataforma.',
+              'Las acciones de la zona peligrosa (restablecimiento de fábrica, restauraciones) piden primero una confirmación escrita.'
+            ]
           },
           'g-settings': {
             title: 'Configuración',

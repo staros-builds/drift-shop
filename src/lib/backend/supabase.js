@@ -1270,13 +1270,6 @@ export function createSupabaseBackend(config = null) {
       return { kind: 'none' };
     },
 
-    // Back-compat wrapper: true when a recovery session is now active.
-    // New code should use consumeAuthCallback().
-    async consumeRecoveryCode() {
-      const res = await auth.consumeAuthCallback();
-      return res.kind === 'recovery';
-    },
-
     // True when a previous recovery-link landing is still waiting for the
     // user to choose a new password.
     recoveryPending() {

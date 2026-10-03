@@ -323,7 +323,7 @@ export default function Taskbar({ forcePosition, centered }) {
       aria-label={t('health.title')}
       aria-haspopup="dialog"
       aria-expanded={healthOpen}
-      title={`${t('health.title')}: ${t(healthMeta.labelKey)}`}
+      title={`${t('health.title')}: ${t(healthMeta.labelKey)} · v${import.meta.env.VITE_APP_VERSION || '2.1'}`}
       onClick={() => {
         setMenuOpen(false);
         setPanelOpen(false);

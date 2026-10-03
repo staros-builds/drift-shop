@@ -1491,7 +1491,7 @@ export default function LoginScreen() {
         </>
         )}
 
-        <div className="mt-4 flex items-center justify-center gap-3 text-xs text-muted">
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-3 text-xs text-muted">
           <span>© {new Date().getFullYear()} {t('brand.name')}</span>
           <span aria-hidden="true">·</span>
           <button
@@ -1502,6 +1502,13 @@ export default function LoginScreen() {
             <LifeBuoy size={13} />
             {t('login.helpButton')}
           </button>
+          <span aria-hidden="true">·</span>
+          <span
+            className="rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-[11px] font-bold text-accent"
+            title="Vendra version"
+          >
+            v{import.meta.env.VITE_APP_VERSION || '2.1'}
+          </span>
         </div>
       </div>
       </div>

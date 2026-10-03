@@ -26,6 +26,7 @@ import { appTitle } from '../lib/appTitle.js';
 import { ConfirmDialog } from '../components/os/dialogs.jsx';
 import LicensePlanSection from '../components/LicensePlanSection.jsx';
 import RecoverySettings from '../components/RecoverySettings.jsx';
+import ProfileSettings from '../components/ProfileSettings.jsx';
 import { isEnabled as soundOn, setEnabled as setSoundOn, playSound, getVolume, setVolume } from '../lib/sound.js';
 import { UNLOCK_EVENT } from '../lib/easterEgg.js';
 import { listLaunchableApps } from './registry.jsx';
@@ -971,6 +972,9 @@ export default function SettingsApp({ windowApi }) {
 
         {/* Account recovery — email-independent (recovery codes, security questions) */}
         <RecoverySettings />
+
+        {/* Profile — username change */}
+        <ProfileSettings />
 
         {/* Appearance */}
         <section className="mb-8">

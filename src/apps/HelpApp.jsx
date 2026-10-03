@@ -354,6 +354,62 @@ function buildSections(t) {
             ] },
           ],
         },
+        {
+          id: 'g-calculator',
+          title: T('helpContent.sections.apps.articles.g-calculator.title'),
+          keywords: T('helpContent.sections.apps.articles.g-calculator.keywords'),
+          appId: 'calculator',
+          blocks: [
+            { t: 'p', text: T('helpContent.sections.apps.articles.g-calculator.b0') },
+            { t: 'steps', items: [
+              T('helpContent.sections.apps.articles.g-calculator.b1.0'),
+              T('helpContent.sections.apps.articles.g-calculator.b1.1'),
+              T('helpContent.sections.apps.articles.g-calculator.b1.2'),
+            ] },
+          ],
+        },
+        {
+          id: 'g-pdfviewer',
+          title: T('helpContent.sections.apps.articles.g-pdfviewer.title'),
+          keywords: T('helpContent.sections.apps.articles.g-pdfviewer.keywords'),
+          appId: 'pdfviewer',
+          blocks: [
+            { t: 'p', text: T('helpContent.sections.apps.articles.g-pdfviewer.b0') },
+            { t: 'steps', items: [
+              T('helpContent.sections.apps.articles.g-pdfviewer.b1.0'),
+              T('helpContent.sections.apps.articles.g-pdfviewer.b1.1'),
+              T('helpContent.sections.apps.articles.g-pdfviewer.b1.2'),
+            ] },
+          ],
+        },
+        {
+          id: 'g-clipboard',
+          title: T('helpContent.sections.apps.articles.g-clipboard.title'),
+          keywords: T('helpContent.sections.apps.articles.g-clipboard.keywords'),
+          appId: 'clipboard',
+          blocks: [
+            { t: 'p', text: T('helpContent.sections.apps.articles.g-clipboard.b0') },
+            { t: 'steps', items: [
+              T('helpContent.sections.apps.articles.g-clipboard.b1.0'),
+              T('helpContent.sections.apps.articles.g-clipboard.b1.1'),
+              T('helpContent.sections.apps.articles.g-clipboard.b1.2'),
+            ] },
+          ],
+        },
+        {
+          id: 'g-admin',
+          title: T('helpContent.sections.apps.articles.g-admin.title'),
+          keywords: T('helpContent.sections.apps.articles.g-admin.keywords'),
+          appId: 'admin',
+          blocks: [
+            { t: 'p', text: T('helpContent.sections.apps.articles.g-admin.b0') },
+            { t: 'steps', items: [
+              T('helpContent.sections.apps.articles.g-admin.b1.0'),
+              T('helpContent.sections.apps.articles.g-admin.b1.1'),
+              T('helpContent.sections.apps.articles.g-admin.b1.2'),
+            ] },
+          ],
+        },
       ],
     },
     {
@@ -642,6 +698,7 @@ function ContactSection() {
   const [fb, setFb] = useState('');
   const [rating, setRating] = useState(0);
   const [tickets, setTickets] = useState([]);
+  const [myFeedback, setMyFeedback] = useState([]);
   const [busy, setBusy] = useState(null);
   const [notice, setNotice] = useState(null); // { ok, text }
 
@@ -650,6 +707,11 @@ function ContactSection() {
       setTickets(await backend.support.listMyTickets());
     } catch {
       /* tickets are a bonus; the forms still work */
+    }
+    try {
+      setMyFeedback(await backend.feedback.listMine());
+    } catch {
+      /* feedback history is a bonus; the form still works */
     }
   }, []);
 
@@ -681,6 +743,7 @@ function ContactSection() {
       setFb('');
       setRating(0);
       setNotice({ ok: true, text: 'Thanks — your feedback is on its way.' });
+      await load();
     } catch (e) {
       setNotice({ ok: false, text: e.message || 'Could not send. Try again.' });
     } finally {
@@ -810,6 +873,35 @@ function ContactSection() {
                     <span className="whitespace-pre-wrap">{t.admin_response}</span>
                   </p>
                 )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {myFeedback.length > 0 && (
+        <div className="mt-4">
+          <h3 className="mb-2 text-sm font-semibold text-ink">{t('help.myFeedback')}</h3>
+          <ul className="space-y-2">
+            {myFeedback.map((f) => (
+              <li key={f.id} className="rounded-os border border-osborder bg-surface px-3 py-2.5">
+                <div className="flex items-center gap-2">
+                  {f.rating != null && (
+                    <span className="flex shrink-0 items-center gap-0.5" aria-label={`${f.rating}/5`}>
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Star
+                          key={s}
+                          size={12}
+                          className={s <= f.rating ? 'fill-accent text-accent' : 'text-osborder'}
+                        />
+                      ))}
+                    </span>
+                  )}
+                  <p className="ml-auto shrink-0 text-[11px] text-muted">
+                    {new Date(f.created_at).toLocaleDateString(localeTag(), { month: 'short', day: 'numeric' })}
+                  </p>
+                </div>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-ink">{f.message}</p>
               </li>
             ))}
           </ul>
