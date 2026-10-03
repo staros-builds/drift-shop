@@ -163,6 +163,7 @@ function TabButton({ id, label, icon: Icon, active, onClick, badge }) {
 }
 
 function Modal({ title, onClose, children, wide }) {
+  const { t } = useLang();
   const dialogRef = useRef(null);
   const closeRef = useRef(null);
   // NUCLEAR FAILSAFE: keep the latest onClose in a ref so the mount effect

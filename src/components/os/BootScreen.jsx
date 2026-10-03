@@ -38,7 +38,7 @@ export default function BootScreen({ onDone }) {
       if (!cancelled) setLines((prev) => [...prev, text]);
     };
     (async () => {
-      add('Starting drift…');
+      add('Starting Vendra…');
       try {
         await backend.settings.get();
         add(`Backend ready — ${backend.kind} mode.`);
@@ -62,7 +62,7 @@ export default function BootScreen({ onDone }) {
       <div className="text-accent">
         <DriftMark size={56} />
       </div>
-      <h1 className="mt-4 text-4xl font-light tracking-tight">drift</h1>
+      <h1 className="mt-4 text-4xl font-light tracking-tight">vendra</h1>
       <div className="mt-8 h-20 w-72 text-center" role="status" aria-live="polite">
         {lines.map((line, i) => (
           <p key={i} className="text-sm text-muted duration-160">
