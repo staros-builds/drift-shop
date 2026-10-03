@@ -37,8 +37,7 @@ create index if not exists classified_ads_customer
 
 create index if not exists classified_ads_customer_active
   on public.classified_ads (user_id)
-  where owner_type = 'customer' and status = 'published'
-    and (expires_at is null or expires_at > now());
+  where owner_type = 'customer' and status = 'published';
 
 -- ================= 2. server-side limit enforcement =================
 -- Fires only for customer ads. Raises distinct error codes the client maps
