@@ -78,7 +78,13 @@ export function renderSitemap(config, lastmod, blogSlugs = []) {
     `    <lastmod>${lastmod}</lastmod>`,
     '  </url>',
   ].join('\n') : '';
-  const allUrls = [urls, blogUrls, blogIndex].filter(Boolean).join('\n');
+  const aboutUrl = [
+    '  <url>',
+    `    <loc>${origin}/about/</loc>`,
+    `    <lastmod>${lastmod}</lastmod>`,
+    '  </url>',
+  ].join('\n');
+  const allUrls = [urls, blogUrls, blogIndex, aboutUrl].filter(Boolean).join('\n');
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">',
@@ -169,6 +175,17 @@ export async function buildLanding({ root, out }) {
   const robots = path.join(out, 'robots.txt');
   await writeFile(robots, renderRobots(config));
   written.push(robots);
+
+  // About page (entity building for SEO)
+  try {
+    const aboutSrc = await readFile(path.join(root, 'landing', 'about-src.html'), 'utf8');
+    const aboutDir = path.join(out, 'about');
+    await mkdir(aboutDir, { recursive: true });
+    const aboutDest = path.join(aboutDir, 'index.html');
+    await writeFile(aboutDest, aboutSrc);
+    written.push(aboutDest);
+  } catch { /* no about page source */ }
+
   return written;
 }
 
