@@ -4,7 +4,7 @@ import {
   Search, ShieldAlert, Cloud, MessageCircleQuestion, Star, Send,
   Users, UserPlus, KeyRound, Trash2, X, Check, Pencil, Plus, CheckCircle2,
   Store, Globe, ExternalLink, LayoutGrid, ShoppingBag, UtensilsCrossed,
-  CalendarDays, Fuel, Upload, SlidersHorizontal, Tag,
+  CalendarDays, Fuel, Upload, SlidersHorizontal, Tag, Copy, ImagePlus,
 } from 'lucide-react';
 import { backend } from '../lib/backend/current.js';
 import { BRAND } from '../lib/brand.js';
@@ -18,6 +18,7 @@ import { acquireUpdateLock } from '../lib/updateGuard.js';
 import { BUSINESS_PRESET_IDS, BUSINESS_PRESETS, isBusinessPreset, presetSettingsPatch } from '../lib/businessPresets.js';
 import { savePrinterConfig } from '../lib/pos-print/index.js';
 import { localeTag, useLang, tagFor } from '../lib/i18n.jsx';
+import { shrinkImageFile } from '../lib/imageShrink.js';
 
 const FIVE_MIN_MS = 5 * 60 * 1000;
 
@@ -2013,7 +2014,7 @@ function StorefrontSection() {
   const lock = useRef(false);
   const [form, setForm] = useState({
     slug: '', displayName: '', tagline: '', about: '', hours: '',
-    contactEmail: '', contactPhone: '', accentColor: '',
+    contactEmail: '', contactPhone: '', accentColor: '', logoData: '',
     published: false, showPrices: true,
     address: '', facebookUrl: '', instagramUrl: '', tiktokUrl: '',
     whatsappPhone: '', reviewUrl: '', directionsUrl: '', orderUrl: '',
@@ -2142,6 +2143,7 @@ function StorefrontSection() {
             contactEmail: prof.contact_email || '',
             contactPhone: prof.contact_phone || '',
             accentColor: prof.accent_color || '',
+            logoData: prof.logo_data || '',
             published: !!prof.published,
             showPrices: prof.show_prices !== false,
             address: prof.address || '',
@@ -2168,7 +2170,7 @@ function StorefrontSection() {
             slug: slugify(store?.name || ''),
             displayName: store?.name || '',
             tagline: '', about: '', hours: '',
-            contactEmail: '', contactPhone: '', accentColor: '',
+            contactEmail: '', contactPhone: '', accentColor: '', logoData: '',
             published: false, showPrices: true,
             onlineOrdering: false, orderingNote: '',
             lsEnabled: false, lsCheckoutUrl: '', lsStoreUrl: '', lsWebhookSecret: '',
@@ -2341,6 +2343,16 @@ function StorefrontSection() {
                 <label className={labelCls}>{t('storefront.publicLink')}</label>
                 <div className="flex items-center gap-2">
                   <code className="min-w-0 flex-1 truncate rounded-os border border-osborder bg-surface px-2.5 py-2 text-xs text-ink">{publicLink}</code>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      try { navigator.clipboard.writeText(publicLink); } catch { /* user can select manually */ }
+                    }}
+                    title={t('storefront.copyLink')}
+                    className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-os border border-osborder bg-surface px-3 text-xs font-semibold text-ink"
+                  >
+                    <Copy size={13} /> {t('storefront.copyLink')}
+                  </button>
                   <a
                     href={publicLink}
                     target="_blank"
@@ -2516,6 +2528,55 @@ function StorefrontSection() {
                   className="h-9 w-12 cursor-pointer rounded-os border border-osborder bg-surface p-1"
                 />
                 <input {...field('accentColor')} placeholder="#b4542a" className="h-9 w-32 rounded-os border border-osborder bg-surface px-2.5 text-sm outline-none" />
+              </div>
+            </div>
+
+            <div>
+              <label className={labelCls}>{t('storefront.logo')}</label>
+              <div className="flex items-start gap-3">
+                {!!form.logoData && (
+                  <img
+                    src={form.logoData}
+                    alt=""
+                    className="h-16 w-16 shrink-0 rounded-os border border-osborder object-contain bg-surface"
+                  />
+                )}
+                <div className="flex-1 space-y-2">
+                  <label className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-os border border-osborder bg-surface px-3 text-xs font-semibold text-ink">
+                    <ImagePlus size={13} /> {t('storefront.logoChoose')}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const files = Array.from(e.target.files || []);
+                        e.target.value = '';
+                        if (files.length === 0) return;
+                        try {
+                          const shrunk = await shrinkImageFile(files[0]);
+                          const reader = new FileReader();
+                          reader.onload = () => {
+                            setForm((f) => ({ ...f, logoData: String(reader.result || '') }));
+                            setSaved(false);
+                          };
+                          reader.readAsDataURL(shrunk);
+                        } catch {
+                          setError(t('storefront.logoFail'));
+                        }
+                      }}
+                    />
+                  </label>
+                  {!!form.logoData && (
+                    <button
+                      type="button"
+                      onClick={() => { setForm((f) => ({ ...f, logoData: '' })); setSaved(false); }}
+                      className="block text-xs font-semibold text-danger"
+                    >
+                      {t('storefront.logoRemove')}
+                    </button>
+                  )}
+                  <p className="text-xs text-muted">{t('storefront.logoHint')}</p>
+                </div>
               </div>
             </div>
 
@@ -2787,6 +2848,25 @@ function StorefrontSection() {
           </div>
         )}
       </section>
+
+      {/* Live preview: what customers see. The iframe loads the public
+          page; saving refreshes it (key bump). Unpublished shops see the
+          "not available" page — the preview still proves the link works. */}
+      {stores.length > 0 && storeId && !!publicLink && (
+        <section className="rounded-os border border-osborder bg-paper p-4">
+          <h3 className="text-sm font-semibold text-ink">{t('storefront.previewTitle')}</h3>
+          <p className="mt-1 text-xs text-muted">{t('storefront.previewHint')}</p>
+          <div className="mt-3 overflow-hidden rounded-os border border-osborder bg-white">
+            <iframe
+              key={publicLink + (saved ? '-saved' : '')}
+              src={publicLink}
+              title={t('storefront.previewTitle')}
+              className="h-[480px] w-full"
+              sandbox="allow-same-origin allow-scripts"
+            />
+          </div>
+        </section>
+      )}
 
       {stores.length > 0 && storeId && (
         <section className="rounded-os border border-osborder bg-paper p-4">

@@ -1698,6 +1698,14 @@ media: {
     saved: 'Guardado.',
     publicLink: 'Tu enlace público',
     openPage: 'Abrir página',
+    copyLink: 'Copiar enlace',
+    logo: 'Logo de la tienda',
+    logoChoose: 'Elegir logo',
+    logoRemove: 'Quitar logo',
+    logoHint: 'Se muestra en la parte superior de tu página pública. Una imagen cuadrada funciona mejor.',
+    logoFail: 'No se pudo leer esa imagen.',
+    previewTitle: 'Vista previa',
+    previewHint: 'Esto es lo que los clientes ven cuando abren tu enlace público. Guarda tus cambios primero, luego se actualiza la vista previa.',
     products: 'Productos en la página',
     productsHint: 'Los productos nuevos añadidos en el punto de venta aparecen aquí automáticamente. Apaga un producto para ocultarlo de la página pública.',
     noProducts: 'Aún no hay productos — añade algunos en el punto de venta y aparecerán aquí.',
@@ -3156,10 +3164,11 @@ media: {
           },
           'g-admin': {
             title: 'Panel de administración',
-            keywords: 'admin usuarios cuentas solicitudes asistencia anuncios moderación',
-            b0: 'Para dueños de tiendas y personal de la plataforma: gestiona cuentas y asistencia.',
+            keywords: 'admin usuarios cuentas solicitudes asistencia anuncios moderación escaparate página pública sitio',
+            b0: 'Para dueños de tiendas y personal de la plataforma: gestiona cuentas, asistencia y tu página pública de la tienda.',
             b1: [
               'Los dueños ven su equipo, las solicitudes de asistencia y los comentarios.',
+              'Pestaña Escaparate: edita tu página pública — nombre, logo, horarios, contacto, dirección web y qué productos se muestran. Vista previa en vivo, luego publica con un interruptor.',
               'Los dueños de la plataforma además ven cada anuncio de cliente para moderación y los ajustes de la plataforma.',
               'Las acciones de la zona peligrosa (restablecimiento de fábrica, restauraciones) piden primero una confirmación escrita.'
             ]

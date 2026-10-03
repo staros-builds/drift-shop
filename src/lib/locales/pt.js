@@ -1697,6 +1697,14 @@ media: {
     saved: 'Salvo.',
     publicLink: 'Seu link público',
     openPage: 'Abrir página',
+    copyLink: 'Copiar link',
+    logo: 'Logo da loja',
+    logoChoose: 'Escolher logo',
+    logoRemove: 'Remover logo',
+    logoHint: 'Exibido no topo da sua página pública. Uma imagem quadrada funciona melhor.',
+    logoFail: 'Não foi possível ler essa imagem.',
+    previewTitle: 'Pré-visualização',
+    previewHint: 'É assim que os clientes veem quando abrem seu link público. Salve suas alterações primeiro, depois a pré-visualização é atualizada.',
     products: 'Produtos na página',
     productsHint: 'Produtos novos adicionados no ponto de venda aparecem aqui automaticamente. Desligue um produto para ocultar da página pública.',
     noProducts: 'Ainda sem produtos — adicione alguns no ponto de venda e eles aparecem aqui.',
@@ -3148,10 +3156,11 @@ media: {
           },
           'g-admin': {
             title: 'Painel de administração',
-            keywords: 'admin usuários contas solicitações assistência anúncios moderação',
-            b0: 'Para donos de loja e equipe da plataforma: gerencie contas e assistência.',
+            keywords: 'admin usuários contas solicitações assistência anúncios moderação vitrine página pública site',
+            b0: 'Para donos de loja e equipe da plataforma: gerencie contas, assistência e sua página pública da loja.',
             b1: [
               'Os donos veem sua equipe, as solicitações de assistência e os comentários.',
+              'Aba Vitrine: edite sua página pública — nome, logo, horários, contato, endereço web e quais produtos aparecem. Pré-visualização ao vivo, depois publique com um interruptor.',
               'Os donos da plataforma ainda veem cada anúncio de cliente para moderação e as configurações da plataforma.',
               'As ações da zona perigosa (redefinição de fábrica, restaurações) pedem antes uma confirmação digitada.'
             ]

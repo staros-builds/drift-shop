@@ -4539,6 +4539,20 @@ export function createSupabaseBackend(config = null) {
         published: !!p.published,
         show_prices: p.showPrices !== false,
       };
+      // Logo column (migration 102). Omitted until the column exists, so
+      // a pre-102 database keeps saving exactly as before.
+      try {
+        const { error: logoCheck } = await client
+          .from('storefront_profiles')
+          .select('logo_data')
+          .limit(0);
+        if (!logoCheck) {
+          const logo = p.logoData != null ? String(p.logoData) : null;
+          clean.logo_data = logo && logo.length > 0 ? logo : null;
+        }
+      } catch {
+        // Column doesn't exist yet, skip
+      }
       // Web-service link columns (071, draft). Omitted entirely until the
       // columns exist, so a 063 database keeps saving exactly as before;
       // values that do not validate are stored as null, never as a bad link.
@@ -6797,6 +6811,7 @@ export function createSupabaseBackend(config = null) {
           const s = snakeRow(sfRow);
           const CORE = ['slug', 'display_name', 'tagline', 'about', 'hours', 'contact_email', 'contact_phone', 'accent_color', 'published', 'show_prices'];
           const LINKS = ['address', 'facebook_url', 'instagram_url', 'tiktok_url', 'whatsapp_phone', 'review_url', 'directions_url', 'order_url', 'newsletter_url'];
+          const LOGO = ['logo_data'];
           const build = (cols) => {
             const out = { store_id: storeId };
             if (UUID_RE.test(String(s.id ?? ''))) out.id = s.id;
@@ -6805,7 +6820,14 @@ export function createSupabaseBackend(config = null) {
           };
           let res = await client
             .from('storefront_profiles')
-            .upsert(build([...CORE, ...LINKS]), { onConflict: 'store_id' });
+            .upsert(build([...CORE, ...LINKS, ...LOGO]), { onConflict: 'store_id' });
+          if (res.error && /42703|does not exist|column/i.test(res.error.message || '')) {
+            // Column error: retry without the logo column (pre-102 database),
+            // then without the link columns (pre-071 database).
+            res = await client
+              .from('storefront_profiles')
+              .upsert(build([...CORE, ...LINKS]), { onConflict: 'store_id' });
+          }
           if (res.error && /42703|does not exist|column/i.test(res.error.message || '')) {
             res = await client
               .from('storefront_profiles')

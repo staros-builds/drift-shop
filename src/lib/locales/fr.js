@@ -1706,6 +1706,14 @@ media: {
     saved: 'Enregistré.',
     publicLink: 'Votre lien public',
     openPage: 'Ouvrir la page',
+    copyLink: 'Copier le lien',
+    logo: 'Logo de la boutique',
+    logoChoose: 'Choisir un logo',
+    logoRemove: 'Retirer le logo',
+    logoHint: 'Affiché en haut de votre page publique. Une image carrée fonctionne le mieux.',
+    logoFail: 'Impossible de lire cette image.',
+    previewTitle: 'Aperçu',
+    previewHint: 'Voici ce que les clients voient quand ils ouvrent votre lien public. Enregistrez vos changements d’abord, puis l’aperçu se met à jour.',
     products: 'Produits sur la page',
     productsHint: 'Les nouveaux produits ajoutés à la caisse apparaissent ici automatiquement. Désactivez un produit pour le masquer de la page publique.',
     noProducts: "Aucun produit pour l'instant — ajoutez-en à la caisse et ils apparaîtront ici.",
@@ -3165,10 +3173,11 @@ media: {
           },
           'g-admin': {
             title: 'Panneau d’administration',
-            keywords: 'admin utilisateurs comptes demandes assistance annonces modération',
-            b0: 'Pour les propriétaires de boutique et le personnel de la plateforme : gérez les comptes et l’assistance.',
+            keywords: 'admin utilisateurs comptes demandes assistance annonces modération vitrine page publique site',
+            b0: 'Pour les propriétaires de boutique et le personnel de la plateforme : gérez les comptes, l’assistance et votre page boutique publique.',
             b1: [
               'Les propriétaires voient leur équipe, les demandes d’assistance et les retours.',
+              'Onglet Vitrine : modifiez votre page boutique publique — nom, logo, horaires, coordonnées, adresse web et quels produits s’affichent. Prévisualisez en direct, puis publiez d’un seul interrupteur.',
               'Les propriétaires de la plateforme voient en plus chaque annonce client pour la modération et les réglages de la plateforme.',
               'Les actions de la zone dangereuse (réinitialisation d’usine, restaurations) demandent d’abord une confirmation tapée.'
             ]

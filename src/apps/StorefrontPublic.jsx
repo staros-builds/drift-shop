@@ -1243,6 +1243,13 @@ export default function StorefrontPublic({ slug, configError = null, appHome = n
         <main style={styles.main}>
           <div style={styles.hero}>
             <div style={{ ...styles.heroRule, background: accent }} />
+            {shop.logo ? (
+              <img
+                src={shop.logo}
+                alt={shopName}
+                style={{ maxWidth: 160, maxHeight: 120, objectFit: 'contain', margin: '0 auto 12px', display: 'block', borderRadius: 8 }}
+              />
+            ) : null}
             <h1 style={styles.h1}>{shopName}</h1>
             {shop.tagline ? <p style={styles.tagline}>{shop.tagline}</p> : null}
           </div>

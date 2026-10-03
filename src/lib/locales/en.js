@@ -1698,6 +1698,14 @@ media: {
     saved: 'Saved.',
     publicLink: 'Your public link',
     openPage: 'Open page',
+    copyLink: 'Copy link',
+    logo: 'Shop logo',
+    logoChoose: 'Choose logo',
+    logoRemove: 'Remove logo',
+    logoHint: 'Shown at the top of your public page. A square image works best.',
+    logoFail: 'Could not read that image.',
+    previewTitle: 'Preview',
+    previewHint: 'This is what customers see when they open your public link. Save your changes first, then the preview updates.',
     products: 'Products on the page',
     productsHint: 'New products added in the POS appear here automatically. Turn a product off to hide it from the public page.',
     noProducts: 'No products yet — add some in the POS and they will show up here.',
@@ -3159,10 +3167,11 @@ media: {
           },
           'g-admin': {
             title: 'Admin panel',
-            keywords: 'admin users accounts support tickets feedback unlock keys moderation',
-            b0: 'For shop owners and platform staff: manage accounts and support.',
+            keywords: 'admin users accounts support tickets feedback unlock keys moderation storefront public page website',
+            b0: 'For shop owners and platform staff: manage accounts, support, and your public shop page.',
             b1: [
               'Owners see their shop’s team, support requests, and feedback.',
+              'Storefront tab: edit your public shop page — name, logo, hours, contact info, web address, and which products show. Preview it live, then publish with one switch.',
               'Platform owners additionally see every customer ad for moderation and the platform settings.',
               'Danger-zone actions (factory reset, restores) ask for typed confirmation first.'
             ]
