@@ -18,6 +18,8 @@
 
 import { backend } from './backend/current.js';
 import { getPrinterConfig } from './pos-print/index.js';
+import { validateBackup } from './backupRestore.js';
+import { runBackupRestore } from './restoreImport.js';
 
 // Binary files ride along as data URLs so a restore is byte-identical.
 // Caps keep one huge video from blowing up the backup: files over 25 MB
@@ -235,4 +237,47 @@ export function downloadBackupFile(dump, filename) {
   } finally {
     setTimeout(() => URL.revokeObjectURL(url), 5000);
   }
+}
+
+/**
+ * importAccountBackup(dump, { onProgress }) — the restore counterpart of
+ * exportAccountBackup(). Validates the dump first (kind must be
+ * 'drift-backup', and it must look like a real account backup), then hands
+ * it to runBackupRestore(), which restores in this order: settings,
+ * profile, POS stores (products, sales, customers, staff, time-clock,
+ * appointments, drawer shifts, refunds), shop files, personal files,
+ * pins, Helm threads, spaces + window layouts, highscores, notifications,
+ * and support tickets + feedback.
+ *
+ * Merge semantics (nothing is silently deleted): settings and profile are
+ * overwritten; shop rows merge by ID (existing records are kept);
+ * personal files upsert by path; pins and Helm conversations are added
+ * only when the account has none yet; highscores/notifications merge by
+ * ID. Running the same file twice never doubles anything.
+ *
+ * Returns { report, validation }. Throws on validation failure or when
+ * the restore itself fails — callers must report the error, never swallow
+ * a partial restore silently. onProgress (optional) receives coarse step
+ * names: 'validating', 'restoring', 'settings', 'profile', 'stores',
+ * 'shop-files', 'files', 'pins', 'threads', 'spaces', 'scores',
+ * 'support', 'done'.
+ */
+export async function importAccountBackup(dump, { onProgress } = {}) {
+  const step = (name) => {
+    try {
+      onProgress?.(name);
+    } catch {
+      /* progress listeners must never break the restore */
+    }
+  };
+  step('validating');
+  const validation = validateBackup(dump);
+  if (!validation.ok) {
+    const code = validation.fatal?.[0] || 'not-a-backup';
+    throw new Error(`not-a-backup:${code}`);
+  }
+  step('restoring');
+  const report = await runBackupRestore(dump, { backend, onProgress: step });
+  step('done');
+  return { report, validation };
 }

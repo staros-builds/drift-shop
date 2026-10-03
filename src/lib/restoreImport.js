@@ -19,8 +19,15 @@
 
 import { dataUrlToBlob } from './backupRestore.js';
 
-export async function runBackupRestore(data, { backend } = {}) {
+export async function runBackupRestore(data, { backend, onProgress } = {}) {
   if (!backend) throw new Error('runBackupRestore needs a backend');
+  const step = (name) => {
+    try {
+      onProgress?.(name);
+    } catch {
+      /* progress listeners must never break the restore */
+    }
+  };
   const report = {
     settings: false,
     profileNote: null,
@@ -41,12 +48,14 @@ export async function runBackupRestore(data, { backend } = {}) {
   };
 
   // Settings first: a bad settings object aborts before anything else.
+  step('settings');
   if (data?.settings && typeof data.settings === 'object' && backend.settings?.update) {
     await backend.settings.update(data.settings);
     report.settings = true;
   }
 
   // Profile: display identity only (never roles or lock state).
+  step('profile');
   if (data?.profile && typeof data.profile === 'object' && backend.profile?.update) {
     try {
       const patch = {};
@@ -64,6 +73,7 @@ export async function runBackupRestore(data, { backend } = {}) {
 
   // POS stores FIRST: shop files and everything else hang off the store
   // IDs, which the store import preserves.
+  step('stores');
   for (const dump of Array.isArray(data?.posStores) ? data.posStores : []) {
     if (!dump || typeof dump !== 'object' || dump.__exportError) {
       report.posReports.push({ name: dump?.store?.name || 'Shop', error: dump?.__exportError || 'bad dump' });
@@ -88,6 +98,7 @@ export async function runBackupRestore(data, { backend } = {}) {
 
   // Shop files (shared per store): upload what the backup embedded.
   // Runs after the stores so the store IDs in the backup resolve.
+  step('shop-files');
   for (const entry of Array.isArray(data?.shopFiles) ? data.shopFiles : []) {
     const storeId = entry?.storeId;
     if (!storeId || entry.__exportError) continue;
@@ -111,6 +122,7 @@ export async function runBackupRestore(data, { backend } = {}) {
   }
 
   // Personal files: write/upload upsert by name, so a re-run is safe.
+  step('files');
   for (const f of Array.isArray(data?.files) ? data.files : []) {
     try {
       if (f.type === 'folder') {
@@ -140,6 +152,7 @@ export async function runBackupRestore(data, { backend } = {}) {
 
   // Pins: skipped wholesale when pins already exist — re-creating would
   // double them (pins carry no stable backup ID to dedupe on).
+  step('pins');
   try {
     const existingPins = await backend.pins.list({});
     const pins = Array.isArray(data?.pins) ? data.pins : [];
@@ -171,6 +184,7 @@ export async function runBackupRestore(data, { backend } = {}) {
   }
 
   // Helm conversations: same no-doubling rule as pins.
+  step('threads');
   try {
     const existingThreads = await backend.helm.threads();
     const threads = Array.isArray(data?.helmThreads) ? data.helmThreads : [];
@@ -194,6 +208,7 @@ export async function runBackupRestore(data, { backend } = {}) {
   }
 
   // Spaces: replaceAll swaps the whole layout set idempotently.
+  step('spaces');
   if (Array.isArray(data?.spaces) && data.spaces.length > 0 && backend.spaces?.replaceAll) {
     try {
       const restored = await backend.spaces.replaceAll(data.spaces);
@@ -204,6 +219,7 @@ export async function runBackupRestore(data, { backend } = {}) {
   }
 
   // Highscores + notifications: merge-only by ID/value, idempotent.
+  step('scores');
   try {
     if (backend.highscores?.importAll && Array.isArray(data?.highscores)) {
       report.highscoresRestored = (await backend.highscores.importAll(data.highscores)).inserted;
@@ -220,6 +236,7 @@ export async function runBackupRestore(data, { backend } = {}) {
   }
 
   // Support tickets + feedback (the user's own rows).
+  step('support');
   if (data?.support && typeof data.support === 'object') {
     try {
       if (backend.support?.importMine) {

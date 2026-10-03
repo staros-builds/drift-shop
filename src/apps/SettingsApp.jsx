@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Download, Upload, Sun, Moon, MonitorSmartphone, Check, HardDrive, RefreshCw, Maximize, Trash2, LayoutGrid, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, CloudUpload, CloudDownload, Link2, Unlink } from 'lucide-react';
+import { Download, Upload, Sun, Moon, MonitorSmartphone, Check, X, HardDrive, RefreshCw, Maximize, Trash2, LayoutGrid, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, CloudUpload, CloudDownload, Link2, Unlink } from 'lucide-react';
 import { backend } from '../lib/backend/current.js';
-import { exportAccountBackup, downloadBackupFile } from '../lib/accountBackup.js';
+import { exportAccountBackup, downloadBackupFile, importAccountBackup } from '../lib/accountBackup.js';
 import { validateBackup } from '../lib/backupRestore.js';
 import {
   CloudBackupError,
@@ -82,6 +82,15 @@ export default function SettingsApp({ windowApi }) {
   const [exporting, setExporting] = useState(false);
   const [erasing, setErasing] = useState(false);
   const [confirmErase, setConfirmErase] = useState(false);
+  // Restore from backup (owner): pick a backup file, review what is
+  // inside, type RESTORE to confirm, safety backup first, then restore.
+  const [restoreOpen, setRestoreOpen] = useState(false);
+  const [restorePick, setRestorePick] = useState(null); // { name, data, validation }
+  const [restoreWord, setRestoreWord] = useState('');
+  const [restoreBusy, setRestoreBusy] = useState(''); // '' | 'safety' | 'restoring'
+  const [restoreStep, setRestoreStep] = useState('');
+  const [restoreResult, setRestoreResult] = useState(null); // { report } | { error }
+  const restoreInputRef = useRef(null);
   const [soundTick, setSoundTick] = useState(0); // re-render the sound toggle
   void soundTick;
   // Easter egg: 7 quick taps on the About version line opens the hidden
@@ -396,6 +405,267 @@ export default function SettingsApp({ windowApi }) {
     }
   };
 
+  // ---- restore from backup (owner) -----------------------------------------
+  // Same merge semantics as the master restore: settings/profile/files
+  // are overwritten, shop rows merge by ID (nothing deleted), pins and
+  // conversations are added only when the account has none. A safety
+  // backup of the current state is downloaded before anything changes.
+  const onRestoreFile = async (file) => {
+    setRestoreResult(null);
+    setRestoreWord('');
+    setRestorePick(null);
+    if (!file) return;
+    let data;
+    try {
+      data = JSON.parse(await file.text());
+    } catch {
+      push(t('settings.restore.title'), t('settings.restore.fileInvalid'));
+      return;
+    }
+    const validation = validateBackup(data);
+    if (!validation.ok) {
+      const code = validation.fatal?.[0] || 'not-a-backup';
+      push(
+        t('settings.restore.title'),
+        t(code === 'wrong-file' ? 'settings.restore.wrongFile' : 'settings.restore.notABackup')
+      );
+      return;
+    }
+    setRestorePick({ name: file.name, data, validation });
+    setRestoreOpen(true);
+  };
+
+  const doRestore = async () => {
+    if (!restorePick || restoreBusy) return;
+    setRestoreResult(null);
+    // Safety net first: download how things are right now. If this
+    // fails, stop before touching anything.
+    setRestoreBusy('safety');
+    setRestoreStep('');
+    try {
+      const dump = await exportAccountBackup();
+      downloadBackupFile(dump, `vendra-before-restore-${new Date().toISOString().slice(0, 10)}.json`);
+    } catch {
+      setRestoreBusy('');
+      setRestoreResult({ error: t('settings.restore.safetyFailed') });
+      return;
+    }
+    setRestoreBusy('restoring');
+    try {
+      const { report } = await importAccountBackup(restorePick.data, {
+        onProgress: (s) => setRestoreStep(s),
+      });
+      setRestoreResult({ report });
+      try {
+        updateSettings({});
+      } catch {
+        /* settings context refresh is best effort */
+      }
+    } catch (err) {
+      const msg = String(err?.message || err);
+      const code = msg.startsWith('not-a-backup:') ? msg.slice('not-a-backup:'.length) : null;
+      setRestoreResult({
+        error: code
+          ? t(code === 'wrong-file' ? 'settings.restore.wrongFile' : 'settings.restore.notABackup')
+          : msg,
+      });
+    } finally {
+      setRestoreBusy('');
+    }
+  };
+
+  const closeRestore = () => {
+    setRestoreOpen(false);
+    setRestorePick(null);
+    setRestoreWord('');
+    setRestoreStep('');
+    setRestoreResult(null);
+  };
+
+  const fmtRestoreDate = (iso) => {
+    if (!iso) return '';
+    try {
+      return new Intl.DateTimeFormat(localeTag(), { dateStyle: 'long' }).format(new Date(iso));
+    } catch {
+      return String(iso).slice(0, 10);
+    }
+  };
+
+  const renderRestoreWarnings = (warnings) =>
+    (warnings || []).map((w, i) => {
+      const key = {
+        'legacy-backup': 'settings.restore.warnLegacy',
+        'newer-version': 'settings.restore.warnNewer',
+        'partial-backup': 'settings.restore.warnPartial',
+        'unknown-table': 'settings.restore.warnUnknownTable',
+        'store-export-error': 'settings.restore.warnStoreError',
+        'table-export-error': 'settings.restore.warnTableError',
+        'files-not-embedded': 'settings.restore.warnFilesNotEmbedded',
+      }[w.code];
+      if (!key) return null;
+      return (
+        <li key={i} className="text-xs leading-relaxed text-ink">
+          {t(key, { table: w.table || '', store: w.store || '', count: w.count ?? '', version: w.version || '' })}
+        </li>
+      );
+    });
+
+  const renderRestoreDialog = () => {
+    if (!restoreOpen) return null;
+    const armed = restoreWord === 'RESTORE' && !!restorePick && !restoreBusy;
+    const s = restorePick?.validation?.summary;
+    const totals = s?.totals || {};
+    const busyLabel = restoreBusy === 'safety'
+      ? t('settings.restore.stepSafety')
+      : restoreBusy === 'restoring'
+        ? t('settings.restore.stepRestoring', { step: t(`settings.restore.step${restoreStep.charAt(0).toUpperCase()}${restoreStep.slice(1).replace(/-([a-z])/g, (_, c) => c.toUpperCase())}`, { defaultValue: restoreStep }) })
+        : '';
+    return (
+      <div
+        className="fixed inset-0 z-[70] flex items-center justify-center bg-ink/30 p-4"
+        onMouseDown={(e) => { if (e.target === e.currentTarget && !restoreBusy) closeRestore(); }}
+      >
+        <div role="dialog" aria-modal="true" aria-label={t('settings.restore.title')} className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-os border border-osborder bg-surface shadow-win">
+          <div className="flex items-center justify-between border-b border-osborder px-4 py-3">
+            <h3 className="flex items-center gap-2 text-sm font-semibold text-ink">
+              <Upload size={16} className="shrink-0 text-accent" aria-hidden="true" />
+              {t('settings.restore.title')}
+            </h3>
+            {!restoreBusy && (
+              <button
+                type="button"
+                onClick={closeRestore}
+                aria-label={t('dialogs.closeDialog')}
+                className="rounded-os p-1 text-muted hover:bg-paper hover:text-ink"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+          <div className="p-4">
+            {restoreResult?.error ? (
+              <>
+                <p className="text-sm font-semibold text-red-700">{t('settings.restore.failedTitle')}</p>
+                <p className="mt-2 text-xs leading-relaxed text-ink">{restoreResult.error}</p>
+                <div className="mt-4 flex justify-end">
+                  <button type="button" onClick={closeRestore} className="rounded-os bg-accent px-4 py-1.5 text-sm font-medium text-accentink">
+                    {t('settings.restore.closeButton')}
+                  </button>
+                </div>
+              </>
+            ) : restoreResult?.report ? (
+              <>
+                <p className="flex items-center gap-2 text-sm font-semibold text-ink">
+                  <Check size={16} className="text-accent" /> {t('settings.restore.doneTitle')}
+                </p>
+                <p className="mt-2 text-xs leading-relaxed text-ink">
+                  {t('settings.restore.doneSummary', {
+                    stores: (restoreResult.report.posReports || []).length,
+                    files: restoreResult.report.filesRestored || 0,
+                    pins: restoreResult.report.pinsRestored || 0,
+                    threads: restoreResult.report.threadsRestored || 0,
+                    spaces: restoreResult.report.spacesRestored || 0,
+                  })}
+                </p>
+                {(() => {
+                  const problems = [];
+                  for (const pr of restoreResult.report.posReports || []) {
+                    for (const [, msg] of Object.entries(pr.errors || {})) {
+                      if (msg) problems.push(`${pr.name}: ${msg}`);
+                    }
+                    if (pr.error) problems.push(`${pr.name}: ${pr.error}`);
+                  }
+                  for (const f of restoreResult.report.filesSkipped || []) problems.push(`${f.path} (${f.reason})`);
+                  for (const f of restoreResult.report.shopFilesSkipped || []) problems.push(`${f.path} (${f.reason})`);
+                  for (const e of restoreResult.report.errors || []) problems.push(e);
+                  if (!problems.length) return null;
+                  return (
+                    <>
+                      <p className="mt-3 text-xs font-semibold text-red-700">{t('settings.restore.doneProblems')}</p>
+                      <ul className="mt-1 list-disc space-y-1 pl-5">
+                        {problems.slice(0, 12).map((p, i) => (
+                          <li key={i} className="text-xs leading-relaxed text-ink">{p}</li>
+                        ))}
+                      </ul>
+                    </>
+                  );
+                })()}
+                <div className="mt-4 flex justify-end">
+                  <button type="button" onClick={closeRestore} className="rounded-os bg-accent px-4 py-1.5 text-sm font-medium text-accentink">
+                    {t('settings.restore.closeButton')}
+                  </button>
+                </div>
+              </>
+            ) : restoreBusy ? (
+              <>
+                <p className="text-sm font-semibold text-ink">{busyLabel}</p>
+                <p className="mt-2 text-xs text-muted">{t('settings.restore.pointSafety')}</p>
+              </>
+            ) : (
+              <>
+                {s?.exportedAt && (
+                  <p className="text-xs font-semibold text-ink">{t('settings.restore.savedOn', { date: fmtRestoreDate(s.exportedAt) })}</p>
+                )}
+                <p className="mt-1 text-xs leading-relaxed text-ink">
+                  {t('settings.restore.countsLine', {
+                    stores: totals.stores || 0,
+                    products: totals.products || 0,
+                    sales: totals.sales || 0,
+                    files: s?.files || 0,
+                    pins: s?.pins || 0,
+                  })}
+                </p>
+                {(restorePick?.validation?.warnings?.length > 0) && (
+                  <>
+                    <p className="mt-3 text-xs font-semibold text-ink">{t('settings.restore.warningsTitle')}</p>
+                    <ul className="mt-1 list-disc space-y-1 pl-5">
+                      {renderRestoreWarnings(restorePick.validation.warnings)}
+                    </ul>
+                  </>
+                )}
+                <p className="mt-3 text-xs font-semibold text-ink">{t('settings.restore.intro')}</p>
+                <ul className="mt-1 list-disc space-y-1 pl-5">
+                  <li className="text-xs leading-relaxed text-ink">{t('settings.restore.pointSettings')}</li>
+                  <li className="text-xs leading-relaxed text-ink">{t('settings.restore.pointShops')}</li>
+                  <li className="text-xs leading-relaxed text-ink">{t('settings.restore.pointPins')}</li>
+                  <li className="text-xs leading-relaxed text-ink">{t('settings.restore.pointSafety')}</li>
+                </ul>
+                <label className="mt-4 block text-xs font-medium text-ink">
+                  {t('settings.restore.typeToConfirm')}
+                  <input
+                    value={restoreWord}
+                    onChange={(e) => setRestoreWord(e.target.value)}
+                    placeholder="RESTORE"
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    className="mt-1 w-full rounded-os border border-osborder bg-paper px-3 py-2 text-sm text-ink outline-none focus:border-accent"
+                  />
+                </label>
+                <div className="mt-4 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={closeRestore}
+                    className="rounded-os border border-osborder px-3 py-1.5 text-sm text-ink hover:bg-paper"
+                  >
+                    {t('dialogs.cancel')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={doRestore}
+                    disabled={!armed}
+                    className="rounded-os bg-accent px-4 py-1.5 text-sm font-medium text-accentink disabled:opacity-40"
+                  >
+                    {t('settings.restore.confirmButton')}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
   // S2: wipe everything, gated on a single explicit danger dialog.
   // Resetting settings to defaults also clears welcome_seen, so the welcome
   // guide replays once — a full wipe is a fresh start.
@@ -1106,6 +1376,26 @@ export default function SettingsApp({ windowApi }) {
               <Download size={15} /> {exporting ? t('settings.backingUp') : t('settings.downloadBackup')}
             </button>
             <button
+              onClick={() => restoreInputRef.current?.click()}
+              disabled={exporting || !!restoreBusy}
+              className="flex items-center gap-2 rounded-os border border-osborder bg-surface px-4 py-2 text-sm text-muted transition-colors duration-160 hover:text-ink disabled:opacity-40"
+            >
+              <Upload size={15} /> {t('settings.restore.button')}
+            </button>
+            <input
+              ref={restoreInputRef}
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              aria-hidden="true"
+              tabIndex={-1}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = '';
+                if (f) onRestoreFile(f);
+              }}
+            />
+            <button
               onClick={() => setConfirmErase(true)}
               disabled={erasing}
               className="flex items-center gap-2 rounded-os border border-osborder bg-surface px-4 py-2 text-sm text-muted transition-colors duration-160 hover:text-ink disabled:opacity-40"
@@ -1252,6 +1542,7 @@ export default function SettingsApp({ windowApi }) {
           onCancel={() => setConfirmErase(false)}
         />
       )}
+      {renderRestoreDialog()}
     </div>
   );
 }

@@ -1617,6 +1617,7 @@ function RestoreSection() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const phase1InputRef = useRef(null);
+  const phase1LockRef = useRef(false); // synchronous double-submit lock (local to this section)
 
   // Phase 2 — shown when a restore is waiting (flag set by phase 1).
   const [pending] = useState(() => getRestorePending());
@@ -1658,8 +1659,8 @@ function RestoreSection() {
   };
 
   const doPhase1 = async () => {
-    if (!armed || busy || resetLockRef.current) return;
-    resetLockRef.current = true;
+    if (!armed || busy || phase1LockRef.current) return;
+    phase1LockRef.current = true;
     const releaseRestoreLock = acquireUpdateLock('backup-restore');
     setBusy(true);
     setError('');
@@ -1671,7 +1672,7 @@ function RestoreSection() {
       downloadBackupFile(dump, beforeName);
     } catch (bErr) {
       releaseRestoreLock();
-      resetLockRef.current = false;
+      phase1LockRef.current = false;
       setBusy(false);
       setError(t('adminUsers.restoreSafetyFailed'));
       return;
@@ -1685,7 +1686,7 @@ function RestoreSection() {
     } catch (e) {
       clearRestorePending();
       releaseRestoreLock();
-      resetLockRef.current = false;
+      phase1LockRef.current = false;
       setBusy(false);
       setError(t('adminUsers.restoreWipeFailed'));
       return;
