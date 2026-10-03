@@ -149,10 +149,10 @@ export async function buildLanding({ root, out }) {
 }
 
 const UNLOCK_PRICE_LINES = {
-  en: 'one unlock key — and no monthly software bill, ever',
-  fr: 'une seule clé d’activation — et aucun abonnement mensuel, jamais',
-  es: 'una sola clave de activación, sin pagos mensuales de software, nunca',
-  pt: 'uma única chave de ativação — e nenhuma mensalidade de software, nunca',
+  en: 'one unlock key at $350/year — and no monthly software bill, ever',
+  fr: 'une seule clé d’activation à 350 $/an — et aucun abonnement mensuel, jamais',
+  es: 'una sola clave de activación por $350/año, sin pagos mensuales de software, nunca',
+  pt: 'uma única chave de ativação por $350/ano — e nenhuma mensalidade de software, nunca',
 };
 
 const isCli = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
