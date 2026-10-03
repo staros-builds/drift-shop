@@ -3843,6 +3843,23 @@ export function createSupabaseBackend(config = null) {
     }
     return posRefundHistoryImport;
   }
+  // Migration 103 capability probe (backup-coverage import RPCs), same
+  // pattern as posHasRefundHistoryImport: call with an empty payload — a
+  // missing function errors, a gate answer means the function exists.
+  let posBackupCoverageImport = null;
+  async function posHasBackupCoverageImport() {
+    if (posBackupCoverageImport !== null) return posBackupCoverageImport;
+    try {
+      const res = await client.rpc('pos_online_order_items_import', {
+        p_store_id: '00000000-0000-0000-0000-000000000000',
+        p_items: [],
+      });
+      posBackupCoverageImport = !res.error || /not a member|managers only|only managers/i.test(res.error.message || '');
+    } catch {
+      posBackupCoverageImport = false;
+    }
+    return posBackupCoverageImport;
+  }
   let posBreakHistoryImport = null;
   async function posHasBreakHistoryImport() {
     if (posBreakHistoryImport !== null) return posBreakHistoryImport;
@@ -3981,6 +3998,9 @@ export function createSupabaseBackend(config = null) {
     bq_special_orders: ['id', 'store_id', 'owner_id', 'customer_name', 'customer_phone', 'title', 'author', 'notes', 'status', 'created_at', 'updated_at', 'customer_id'],
     // bq_donation_items is a junction table (donation_id, item_id) with no
     // id/store_id — handled specially in importStore step 3b, not here.
+    // Team invite codes (migration 002): created_by is re-attributed via
+    // POS_IMPORT_USER_COLS; expired/used-up codes restore harmlessly.
+    pos_invites: ['id', 'store_id', 'code', 'role', 'created_by', 'created_at', 'expires_at', 'max_uses', 'uses'],
   };
   // Columns that reference auth.users — always re-attributed to the
   // importing user (or nulled), never to a user from another account.
@@ -6412,6 +6432,12 @@ export function createSupabaseBackend(config = null) {
         // M14: Shop memberships and license state — without these, restored
         // shops lose team members and re-lock (trial/paid state gone).
         'pos_store_members', 'shop_licenses',
+        // Backup coverage (migration 103): team invite codes, online
+        // customer accounts, per-shop customer links, stock idempotency
+        // keys. online_order_items has no store_id — exported separately
+        // below by order_id.
+        'pos_invites', 'online_customers', 'shop_customers',
+        'pos_stock_applications',
       ];
       for (const t of tables) {
         try {
@@ -6422,6 +6448,30 @@ export function createSupabaseBackend(config = null) {
         } catch (err) {
           dump.tables[t] = { __exportError: err?.message || String(err) };
         }
+      }
+      // online_order_items: keyed by order_id, not store_id. Export items
+      // for every online order captured above — without these, a restored
+      // shop keeps order headers with no line items.
+      try {
+        const orders = Array.isArray(dump.tables.online_orders) ? dump.tables.online_orders : [];
+        const orderIds = [...new Set(orders.map((o) => o?.id).filter(Boolean))];
+        if (orderIds.length) {
+          const all = [];
+          // Chunk to stay under URL length limits on large order histories.
+          for (let i = 0; i < orderIds.length; i += 200) {
+            const chunk = orderIds.slice(i, i + 200);
+            const rows = check(
+              await client.from('online_order_items').select('*').in('order_id', chunk).limit(10000),
+              'Exporting online_order_items'
+            );
+            if (Array.isArray(rows)) all.push(...rows);
+          }
+          dump.tables.online_order_items = all;
+        } else {
+          dump.tables.online_order_items = [];
+        }
+      } catch (err) {
+        dump.tables.online_order_items = { __exportError: err?.message || String(err) };
       }
       return dump;
     },
@@ -6772,6 +6822,117 @@ export function createSupabaseBackend(config = null) {
             bump('pos_breaks', data?.skipped ?? 0, 'skipped');
           } catch (err) {
             report.errors.breaks = err?.message || String(err);
+          }
+        }
+      }
+
+      // 7b. Backup coverage (migration 103): online orders + line items,
+      // customer account links, and stock idempotency keys. These tables
+      // have no direct-write RLS by design, so they restore through the
+      // manager-only import RPCs. Orders run before items (items need
+      // their orders) and before customer links (links reference orders).
+      const rawOnlineOrders = Array.isArray(tables.online_orders) ? tables.online_orders : [];
+      const rawOrderItems = Array.isArray(tables.online_order_items) ? tables.online_order_items : [];
+      const rawOnlineCustomers = Array.isArray(tables.online_customers) ? tables.online_customers : [];
+      const rawShopCustomers = Array.isArray(tables.shop_customers) ? tables.shop_customers : [];
+      const rawStockApps = Array.isArray(tables.pos_stock_applications) ? tables.pos_stock_applications : [];
+      if (rawOnlineOrders.length || rawOrderItems.length || rawOnlineCustomers.length || rawShopCustomers.length || rawStockApps.length) {
+        if (!(await posHasBackupCoverageImport())) {
+          report.errors.backupCoverage =
+            'Online orders, line items and customer links are in this backup but could not be put back yet: the shop copy needs the latest update (backup coverage). Everything else restored normally.';
+        } else {
+          if (rawOnlineOrders.length) {
+            try {
+              const { data, error } = await client.rpc('pos_online_orders_import', {
+                p_store_id: storeId,
+                p_orders: rawOnlineOrders.map((r) => snakeRow(r)),
+              });
+              if (error) throw error;
+              bump('online_orders', data?.inserted ?? 0, 'inserted');
+              bump('online_orders', data?.skipped ?? 0, 'skipped');
+            } catch (err) {
+              report.errors.onlineOrders = err?.message || String(err);
+            }
+          }
+          // The orders RPC preserves backup UUIDs, so seed the ID set from
+          // the backup rows plus anything already in the store.
+          const orderIdSet = new Set();
+          for (const o of rawOnlineOrders) {
+            const s = snakeRow(o);
+            if (UUID_RE.test(String(s.id ?? ''))) orderIdSet.add(String(s.id));
+          }
+          try {
+            const { data: existingOrders } = await client.from('online_orders').select('id').eq('store_id', storeId);
+            for (const r of existingOrders?.data ?? existingOrders ?? []) orderIdSet.add(r.id);
+          } catch { /* non-fatal */ }
+          const fixOrderRef = (v) => {
+            if (v == null || v === '') return null;
+            const s = String(v);
+            const mapped = remap.has(s) ? remap.get(s) : (UUID_RE.test(s) ? s : null);
+            return mapped && orderIdSet.has(mapped) ? mapped : null;
+          };
+          if (rawOrderItems.length) {
+            try {
+              const items = [];
+              for (const r of rawOrderItems) {
+                if (!r || typeof r !== 'object') continue;
+                const s = snakeRow(r);
+                const oid = fixOrderRef(s.order_id ?? s.orderId);
+                if (!oid) continue;
+                items.push({
+                  order_id: oid,
+                  product_id: UUID_RE.test(String(s.product_id ?? '')) ? s.product_id : null,
+                  name: String(s.name ?? '').slice(0, 200),
+                  qty: Math.max(0, Math.round(Number(s.qty) || 0)),
+                  unit_price_cents: Math.round(Number(s.unit_price_cents ?? s.unitPriceCents) || 0),
+                  line_total_cents: Math.round(Number(s.line_total_cents ?? s.lineTotalCents) || 0),
+                });
+              }
+              if (items.length) {
+                const { data, error } = await client.rpc('pos_online_order_items_import', {
+                  p_store_id: storeId,
+                  p_items: items,
+                });
+                if (error) throw error;
+                bump('online_order_items', data?.inserted ?? 0, 'inserted');
+                bump('online_order_items', data?.skipped ?? 0, 'skipped');
+              }
+            } catch (err) {
+              report.errors.onlineOrderItems = err?.message || String(err);
+            }
+          }
+          if (rawOnlineCustomers.length || rawShopCustomers.length) {
+            try {
+              // Build the pos_customers old->new ID map for link remap.
+              const custRemap = {};
+              for (const [k, v] of remap) custRemap[k] = v;
+              const { data, error } = await client.rpc('pos_customer_links_import', {
+                p_store_id: storeId,
+                p_online: rawOnlineCustomers.map((r) => snakeRow(r)),
+                p_shop: rawShopCustomers.map((r) => snakeRow(r)),
+                p_customer_ids: custRemap,
+              });
+              if (error) throw error;
+              bump('online_customers', data?.online_inserted ?? 0, 'inserted');
+              bump('online_customers', data?.online_skipped ?? 0, 'skipped');
+              bump('shop_customers', data?.shop_inserted ?? 0, 'inserted');
+              bump('shop_customers', data?.shop_skipped ?? 0, 'skipped');
+            } catch (err) {
+              report.errors.customerLinks = err?.message || String(err);
+            }
+          }
+          if (rawStockApps.length) {
+            try {
+              const { data, error } = await client.rpc('pos_stock_applications_import', {
+                p_store_id: storeId,
+                p_rows: rawStockApps.map((r) => snakeRow(r)),
+              });
+              if (error) throw error;
+              bump('pos_stock_applications', data?.inserted ?? 0, 'inserted');
+              bump('pos_stock_applications', data?.skipped ?? 0, 'skipped');
+            } catch (err) {
+              report.errors.stockApplications = err?.message || String(err);
+            }
           }
         }
       }

@@ -629,7 +629,6 @@ function SellTab({ products, store, v4, customers, customerId, onCustomerChange,
       for (const r of redeemed) {
         try {
           if (r.kind === 'giftcard') await backend.pos.creditGiftCard(store.id, r.refId, r.cents);
-          else if (r.kind === 'creditnote') await backend.pos.creditCreditNote(store.id, r.refId, r.cents);
           else if (r.kind === 'deposit') await backend.pos.depositUnapply(store.id, r.refId, r.cents);
           else if (r.kind === 'loyalty') await backend.pos.deltaLoyaltyPoints(store.id, customerId, r.points);
         } catch (err) {
@@ -649,7 +648,6 @@ function SellTab({ products, store, v4, customers, customerId, onCustomerChange,
           if (cents <= 0) continue;
           if (a.kind === 'giftcard') await backend.pos.redeemGiftCard(store.id, a.refId, cents);
           else if (!extras) throw new Error('That tender type is not available yet.');
-          else if (a.kind === 'creditnote') await backend.pos.redeemCreditNote(store.id, a.refId, cents);
           else if (a.kind === 'deposit') await backend.pos.depositApply(store.id, a.refId, cents);
           else if (a.kind === 'loyalty') await backend.pos.redeemLoyaltyPoints(store.id, customerId, a.points);
           redeemed.push({ kind: a.kind, refId: a.refId, cents, points: a.points });
@@ -1782,13 +1780,11 @@ function GiftCardsModal({ store, cashier, onSaleComplete, onClose }) {
 
   const loadOutstanding = async () => {
     try {
-      // Credit notes are part of the wider tender suite (still unimplemented
-      // server-side); the gift-card view degrades to cards only.
+      // Store credit from refunds is issued as a gift card under the hood,
+      // so the gift-card list below already includes outstanding credits.
       const [gcs, cns] = await Promise.all([
         backend.pos.listGiftCards(store.id, { outstandingOnly: true }),
-        typeof backend.pos.listCreditNotes === 'function'
-          ? backend.pos.listCreditNotes(store.id, { outstandingOnly: true })
-          : Promise.resolve([]),
+        Promise.resolve([]),
       ]);
       setOutstanding({ gcs, cns });
     } catch (err) {

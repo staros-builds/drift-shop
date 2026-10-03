@@ -162,18 +162,17 @@
  *       recordSale(storeId, sale) -> sale                   // any member
  *       voidSale(storeId, id) -> void                       // manager+
  *       // POS upgrades: sale records also carry adjustments: [{ kind: 'giftcard'|
- *       // 'creditnote'|'loyalty'|'deposit', code, label, cents, refId }],
+ *       // 'loyalty'|'deposit', code, label, cents, refId }],
  *       // promoCode, promoDiscountCents, loyaltyEarned, loyaltyRedeemed,
  *       // refunds: [{ id, createdAt, lines, amountCents, method, reason }]
  *       listGiftCards({ outstandingOnly }) -> [giftcard]
  *       sellGiftCard(storeId, { amountCents, note, saleNumber }) -> giftcard
  *       redeemGiftCard(storeId, id, amountCents) -> giftcard
  *       creditGiftCard(storeId, id, amountCents) -> giftcard   // rollback
- *       listCreditNotes({ outstandingOnly }) -> [creditnote]
- *       issueCreditNote(storeId, { amountCents, customerId, customerName,
- *                                reason, saleNumber }) -> creditnote
- *       redeemCreditNote(storeId, id, amountCents) -> creditnote
- *       creditCreditNote(storeId, id, amountCents) -> creditnote // rollback
+ *       // NOTE: credit notes are issued as gift cards under the hood —
+ *       // refundSale(asCreditNote: true) issues a gift card and returns its
+ *       // code; the customer redeems it via lookupTenderCode like any card.
+ *       // There is no separate credit-note table or RPC suite.
  *       lookupTenderCode(storeId, code) -> { kind, id, code, label, balanceCents }
  *       listDeposits({ status }) -> [deposit]               // open|ready|picked
  *       takeDeposit(storeId, { customerName, customerId, description,
