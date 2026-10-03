@@ -220,7 +220,7 @@
  *       update(id, patch) -> ad                            // any member
  *       remove(id) -> void                                 // owner/manager only
  *       publicList(slug) -> [public ad]                    // published only, [] if n/a
- *       // Free customer tier (migration 098): personal ads, no shop needed.
+ *       // Free customer tier (migration 099): personal ads, no shop needed.
  *       // Limits enforced server-side (15 active, 5/day, 60-day expiry).
  *       customerLimitsInfo() -> { maxActive, maxPerDay, expiryDays }
  *       customerList() -> [ad]                             // caller's own

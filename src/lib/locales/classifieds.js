@@ -95,7 +95,7 @@ export const classifieds = {
     savedSearches: 'Saved searches',
     removeSavedSearch: 'Remove saved search',
     searchSaved: 'Search saved.',
-    // Free customer tier (migration 098) — personal ads, Kijiji-style
+    // Free customer tier (migration 099) — personal ads, Kijiji-style
     custAppName: 'My listings',
     custAppTagline: 'Your free personal ads — like Kijiji, built in. No shop needed.',
     custLimitBanner: '{active} of {max} active ads · {left} posts left today',

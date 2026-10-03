@@ -16,7 +16,7 @@ import {
 /* My listings — free customer tier for classifieds (Kijiji-style).   */
 /*                                                                     */
 /* Any signed-in user can post personal ads without owning a shop.    */
-/* Limits are enforced SERVER-SIDE (migration 098 trigger):            */
+/* Limits are enforced SERVER-SIDE (migration 099 trigger):            */
 /*   * 15 active (published, non-expired) ads per user                 */
 /*   * 5 new ads per user per calendar day                             */
 /*   * published ads expire after 60 days (renewable)                  */

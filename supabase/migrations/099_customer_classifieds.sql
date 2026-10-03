@@ -1,4 +1,4 @@
--- 098_customer_classifieds.sql
+-- 099_customer_classifieds.sql
 --
 -- Free customer tier for classifieds (Kijiji-style).
 --

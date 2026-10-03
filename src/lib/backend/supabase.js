@@ -3198,7 +3198,7 @@ export function createSupabaseBackend(config = null) {
       }
     },
 
-    // ---- free customer tier (migration 098, Kijiji-style) -------------------
+    // ---- free customer tier (migration 099, Kijiji-style) -------------------
     // Personal ads: no shop required. Limits are enforced SERVER-SIDE by the
     // classified_ads_customer_guard trigger; these methods map the trigger's
     // error codes to friendly, UI-translatable error names.
@@ -3256,7 +3256,7 @@ export function createSupabaseBackend(config = null) {
           expiryDays: CUSTOMER_EXPIRY_DAYS,
         };
       } catch (err) {
-        // Migration 098 not applied yet: report zeros so the UI degrades.
+        // Migration 099 not applied yet: report zeros so the UI degrades.
         if (/42883|PGRST202|does not exist/i.test(err?.message || '')) {
           return { active: 0, today: 0, maxActive: CUSTOMER_MAX_ACTIVE, maxPerDay: CUSTOMER_MAX_PER_DAY, expiryDays: CUSTOMER_EXPIRY_DAYS };
         }
@@ -3368,7 +3368,7 @@ export function createSupabaseBackend(config = null) {
 
     /**
      * Public community board: published, non-expired CUSTOMER ads.
-     * Uses the public_customer_classifieds() RPC (migration 098);
+     * Uses the public_customer_classifieds() RPC (migration 099);
      * returns [] when the migration is not applied yet.
      */
     async customerPublicList() {

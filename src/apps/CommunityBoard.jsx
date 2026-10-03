@@ -6,7 +6,7 @@ import { classifieds } from '../lib/locales/classifieds.js';
 
 /**
  * Public community board (#/community) — Kijiji-style browsing of the
- * FREE customer-tier ads (migration 098).
+ * FREE customer-tier ads (migration 099).
  *
  * Standalone page like StorefrontPublic: no desktop chrome, no login
  * required, self-contained inline styles so it renders cleanly on a

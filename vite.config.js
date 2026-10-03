@@ -73,5 +73,13 @@ export default defineConfig(({ mode }) => {
       outDir: 'dist',
       sourcemap: false,
     },
+    // App version from package.json, available as import.meta.env.VITE_APP_VERSION.
+    // Settings → About displays this so the visible version can never drift
+    // from the release version.
+    define: {
+      'import.meta.env.VITE_APP_VERSION': JSON.stringify(
+        (() => { try { return JSON.parse(fs.readFileSync('package.json', 'utf8')).version || '0.0.0'; } catch { return '0.0.0'; } })()
+      ),
+    },
   };
 });

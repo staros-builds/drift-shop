@@ -1497,7 +1497,7 @@ export default function SettingsApp({ windowApi }) {
           <dl className="rounded-os border border-osborder bg-surface text-sm">
             <div className="flex justify-between border-b border-osborder px-3 py-2">
               <dt className="text-muted">{t('settings.fields.version')}</dt>
-              <dd onClick={tapVersion} className="select-none text-base font-bold text-accent">v2.1</dd>
+              <dd onClick={tapVersion} className="select-none text-base font-bold text-accent">v{import.meta.env.VITE_APP_VERSION || '2.1'}</dd>
             </div>
             <div className="flex justify-between border-b border-osborder px-3 py-2">
               <dt className="text-muted">{t('settings.fields.copyright')}</dt>

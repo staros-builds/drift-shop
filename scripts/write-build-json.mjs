@@ -4,7 +4,7 @@
 // buildId — the post-deploy smoke check. buildId is the git SHA when
 // available so a mirror can be tied to an exact commit.
 import { execSync } from 'node:child_process';
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 
 let sha = process.env.GITHUB_SHA || '';
 if (!sha) {
@@ -14,8 +14,14 @@ if (!sha) {
     sha = '';
   }
 }
+let version = '0.0.0';
+try {
+  version = JSON.parse(readFileSync('package.json', 'utf8')).version || version;
+} catch {
+  /* keep default */
+}
 const buildId = (sha || `local-${Date.now()}`).slice(0, 40);
-const payload = { buildId, builtAt: new Date().toISOString(), product: 'vendra', version: '2.0.0' };
+const payload = { buildId, builtAt: new Date().toISOString(), product: 'vendra', version };
 mkdirSync('public', { recursive: true });
 writeFileSync('public/build.json', JSON.stringify(payload, null, 2) + '\n');
 console.log(`[build] buildId=${buildId}`);
