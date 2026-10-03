@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { LogIn, UserPlus, AlertCircle, Timer, X, Languages, KeyRound, Mail, MailQuestion, CheckCircle2, Store } from 'lucide-react';
+import { LogIn, UserPlus, AlertCircle, Timer, X, Languages, KeyRound, Mail, MailQuestion, CheckCircle2, Store, ShoppingBag } from 'lucide-react';
 import { useAuth, TRIAL_USED_KEY } from '../../os/AuthContext.jsx';
 import { useLang } from '../../lib/i18n.jsx';
 import { backend } from '../../lib/backend/current.js';
@@ -62,6 +62,43 @@ function LangToggle() {
           {l.label}
         </button>
       ))}
+    </div>
+  );
+}
+
+/**
+ * "Visiting a shop?" — the customer-facing door: type a shop's public web
+ * address to jump to its storefront (#/store/<slug>). Shared by the Shop
+ * login view (compact, at the bottom) and the Customer view (prominent,
+ * front and center).
+ */
+function VisitShopPanel({ t, shopSlug, setShopSlug, visitShop, prominent }) {
+  return (
+    <div className={prominent ? 'rounded-os border border-osborder bg-paper p-4' : 'mt-4 rounded-os bg-paper p-3'}>
+      <p className={`flex items-center gap-1.5 font-semibold text-ink ${prominent ? 'text-sm' : 'text-xs'}`}>
+        <Store size={prominent ? 16 : 14} className="text-accent" />
+        {t('login.visitShopTitle')}
+      </p>
+      <p className="mt-1 text-xs leading-relaxed text-muted">{t('login.visitShopBody')}</p>
+      <form onSubmit={visitShop} className="mt-2 flex gap-2">
+        <input
+          type="text"
+          value={shopSlug}
+          onChange={(e) => setShopSlug(e.target.value)}
+          placeholder={t('login.shopAddressPh')}
+          autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck={false}
+          aria-label={t('login.visitShopTitle')}
+          className="min-w-0 flex-1 rounded-os border border-osborder bg-surface px-3 py-2 text-sm text-ink outline-none duration-160 focus:border-accent"
+        />
+        <button
+          type="submit"
+          className="shrink-0 rounded-os bg-accent px-3 py-2 text-sm font-semibold text-accentink duration-160 hover:opacity-90"
+        >
+          {t('login.visitShopBtn')}
+        </button>
+      </form>
     </div>
   );
 }
@@ -392,6 +429,9 @@ export default function LoginScreen() {
   const { signIn, signUpEmail, signInOAuth, signInMagicLink, signInGuest, accessBlock, clearAccessBlock } = useAuth();
   const { t, lang } = useLang();
   const [mode, setMode] = useState('signin'); // 'signin' | 'signup'
+  // Top-level audience toggle: 'shop' (owners/staff — the full login flow)
+  // or 'customer' (shoppers — a lightweight door to public storefronts).
+  const [audience, setAudience] = useState('shop'); // 'shop' | 'customer'
   // Single identifier field: accepts a username OR an email address.
   // We detect which one by the presence of '@' — no toggle needed.
   const [identifier, setIdentifier] = useState('');
@@ -733,6 +773,45 @@ export default function LoginScreen() {
           <LangToggle />
         </div>
 
+        {/* Audience toggle: shop owners/staff vs customers — obvious, at the top. */}
+        <div
+          className="mt-4 grid grid-cols-2 gap-1 rounded-os bg-paper p-1"
+          role="tablist"
+          aria-label={t('login.audienceLabel')}
+        >
+          {[
+            { id: 'shop', label: t('login.audienceShop'), Icon: Store },
+            { id: 'customer', label: t('login.audienceCustomer'), Icon: ShoppingBag },
+          ].map((b) => (
+            <button
+              key={b.id}
+              type="button"
+              role="tab"
+              aria-selected={audience === b.id}
+              onClick={() => {
+                if (audience === b.id) return;
+                setAudience(b.id);
+                // Fresh slate for the other audience: no stale errors,
+                // passwords, or half-finished auth panels crossing over.
+                setError('');
+                setPassword('');
+                setMagicMode(false);
+                setMagicSent(null);
+                setCheckEmail(null);
+                setNotice(null);
+              }}
+              className={`flex items-center justify-center gap-1.5 rounded-os px-3 py-2 text-sm font-semibold duration-160 ${
+                audience === b.id ? 'bg-surface text-ink shadow-os' : 'text-muted hover:text-ink'
+              }`}
+            >
+              <b.Icon size={15} className={audience === b.id ? 'text-accent' : ''} />
+              {b.label}
+            </button>
+          ))}
+        </div>
+
+        {audience === 'shop' ? (
+        <>
         <p className="mt-4 text-center text-xs text-muted">
           {t('login.cloudHint')}
         </p>
@@ -1044,32 +1123,30 @@ export default function LoginScreen() {
           </>
         )}
 
-        <div className="mt-4 rounded-os bg-paper p-3">
-          <p className="flex items-center gap-1.5 text-xs font-semibold text-ink">
-            <Store size={14} className="text-accent" />
-            {t('login.visitShopTitle')}
-          </p>
-          <p className="mt-1 text-xs leading-relaxed text-muted">{t('login.visitShopBody')}</p>
-          <form onSubmit={visitShop} className="mt-2 flex gap-2">
-            <input
-              type="text"
-              value={shopSlug}
-              onChange={(e) => setShopSlug(e.target.value)}
-              placeholder={t('login.shopAddressPh')}
-              autoCapitalize="off"
-              autoCorrect="off"
-              spellCheck={false}
-              aria-label={t('login.visitShopTitle')}
-              className="min-w-0 flex-1 rounded-os border border-osborder bg-surface px-3 py-2 text-sm text-ink outline-none duration-160 focus:border-accent"
-            />
-            <button
-              type="submit"
-              className="shrink-0 rounded-os bg-accent px-3 py-2 text-sm font-semibold text-accentink duration-160 hover:opacity-90"
-            >
-              {t('login.visitShopBtn')}
-            </button>
-          </form>
+        <VisitShopPanel t={t} shopSlug={shopSlug} setShopSlug={setShopSlug} visitShop={visitShop} />
+        </>
+        ) : (
+        <>
+        <div className="mt-4 flex flex-col items-center text-center">
+          <span
+            className="rounded-full p-3 text-accent"
+            style={{ background: 'color-mix(in srgb, var(--os-accent) 12%, transparent)' }}
+          >
+            <ShoppingBag size={28} />
+          </span>
+          <h2 className="mt-2 text-lg font-semibold text-ink">{t('login.customerTitle')}</h2>
+          <p className="mt-1 text-sm leading-relaxed text-muted">{t('login.customerBody')}</p>
         </div>
+
+        <div className="mt-3">
+          <VisitShopPanel t={t} shopSlug={shopSlug} setShopSlug={setShopSlug} visitShop={visitShop} prominent />
+        </div>
+
+        <p className="mt-3 text-center text-xs text-muted">
+          {t('login.customerShopOwnerNote')}
+        </p>
+        </>
+        )}
 
         <p className="mt-4 text-center text-xs text-muted">© {new Date().getFullYear()} {t('brand.name')}</p>
       </div>
