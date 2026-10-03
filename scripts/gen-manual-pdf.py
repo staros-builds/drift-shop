@@ -622,6 +622,39 @@ section('More parts of the shop (in plain words)', 'Les autres parties de la bou
     ('b', 'Couleurs et clair/sombre : R\u00e9glages \u00b7 Apparence.'),
     ('b', 'Si quelqu\u2019un change un r\u00e9glage sur une autre caisse, votre \u00e9cran le re\u00e7oit en environ une minute. Si vous \u00eates en train de taper dans un formulaire, ce que vous tapez n\u2019est jamais effac\u00e9 par \u00e7a.'),
     ('b', 'Quand une nouvelle version de la boutique est pr\u00eate, un petit message vous invite \u00e0 actualiser la page. Rien ne vous est impos\u00e9 au milieu d\u2019une vente.'),
+    ('h2', 'Online payments \u2014 Lemon Squeezy and Stripe / Paiements en ligne \u2014 Lemon Squeezy et Stripe'),
+    ('p', '<b>Online payments</b> let customers pay on the internet instead of only at pickup. '
+          'Vendra does not touch the money itself \u2014 you connect your own Lemon Squeezy or Stripe account, '
+          'and they handle the payment. Vendra adds no fee on top; Lemon Squeezy and Stripe charge their own processing fees.'),
+    ('p', 'Les <b>paiements en ligne</b> permettent aux clients de payer sur internet au lieu de seulement \u00e0 la cueillette. '
+          'Vendra ne touche pas l\u2019argent lui-m\u00eame \u2014 vous connectez votre propre compte Lemon Squeezy ou Stripe, '
+          'et ce sont eux qui traitent le paiement. Vendra n\u2019ajoute aucun frais ; Lemon Squeezy et Stripe facturent leurs propres frais de traitement.'),
+    ('p', '<b>To set up Lemon Squeezy:</b> (1) Create your store at lemonsqueezy.com. '
+          '(2) In Lemon Squeezy, go to Settings \u00b7 Webhooks, create a webhook pointing to the address shown in Vendra, '
+          'and copy the <b>signing secret</b>. '
+          '(3) In Vendra, go to Admin \u00b7 Storefront, turn on \u201cAccept online payments via Lemon Squeezy\u201d, '
+          'paste your checkout link and the signing secret, then Save. '
+          'Customers will see a \u201cPay online\u201d button after placing an order. When they pay, Vendra marks the order as paid automatically.'),
+    ('p', '<b>Pour configurer Lemon Squeezy :</b> (1) Cr\u00e9ez votre boutique sur lemonsqueezy.com. '
+          '(2) Dans Lemon Squeezy, allez \u00e0 Settings \u00b7 Webhooks, cr\u00e9ez un webhook vers l\u2019adresse indiqu\u00e9e dans Vendra, '
+          'et copiez le <b>secret de signature</b>. '
+          '(3) Dans Vendra, allez \u00e0 Admin \u00b7 Vitrine, activez \u00ab Accepter les paiements en ligne via Lemon Squeezy \u00bb, '
+          'collez votre lien de paiement et le secret de signature, puis Enregistrez. '
+          'Les clients verront un bouton \u00ab Payer en ligne \u00bb apr\u00e8s avoir pass\u00e9 commande. Quand ils paient, Vendra marque la commande comme pay\u00e9e automatiquement.'),
+    ('p', '<b>To set up Stripe:</b> (1) Create your account at stripe.com and create a payment link. '
+          '(2) In Stripe, go to Developers \u00b7 Webhooks, create an endpoint pointing to the address shown in Vendra, '
+          'and copy the <b>signing secret</b>. '
+          '(3) In Vendra, go to Admin \u00b7 Storefront, turn on \u201cAccept online payments via Stripe\u201d, '
+          'paste your payment link and the signing secret, then Save.'),
+    ('p', '<b>Pour configurer Stripe :</b> (1) Cr\u00e9ez votre compte sur stripe.com et cr\u00e9ez un lien de paiement. '
+          '(2) Dans Stripe, allez \u00e0 Developers \u00b7 Webhooks, cr\u00e9ez un point de terminaison vers l\u2019adresse indiqu\u00e9e dans Vendra, '
+          'et copiez le <b>secret de signature</b>. '
+          '(3) Dans Vendra, allez \u00e0 Admin \u00b7 Vitrine, activez \u00ab Accepter les paiements en ligne via Stripe \u00bb, '
+          'collez votre lien de paiement et le secret de signature, puis Enregistrez.'),
+    ('p', 'The signing secret is what keeps payments safe: Vendra checks every webhook signature before marking an order as paid. '
+          'Without the correct secret, fake payment notifications are rejected. Never share your webhook secret.'),
+    ('p', 'Le secret de signature est ce qui garde les paiements s\u00fbrs : Vendra v\u00e9rifie chaque signature de webhook avant de marquer une commande comme pay\u00e9e. '
+          'Sans le bon secret, les fausses notifications de paiement sont rejet\u00e9es. Ne partagez jamais votre secret de webhook.'),
 ])
 
 # ------------------------------- chapter 4: when something goes wrong
